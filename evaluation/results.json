@@ -1,0 +1,227 @@
+{
+  "timestamp": "2026-01-12T11:41:33.315345",
+  "routing_accuracy": {
+    "accuracy": 83.33333333333334,
+    "correct": 10,
+    "total": 12,
+    "detailed_results": [
+      {
+        "query": "How many employees are in the database?",
+        "expected": "sql",
+        "predicted": "sql",
+        "correct": true
+      },
+      {
+        "query": "What is the average salary of engineers?",
+        "expected": "sql",
+        "predicted": "sql",
+        "correct": true
+      },
+      {
+        "query": "List all departments with their budgets",
+        "expected": "sql",
+        "predicted": "sql",
+        "correct": true
+      },
+      {
+        "query": "Show me total sales for last month",
+        "expected": "sql",
+        "predicted": "sql",
+        "correct": true
+      },
+      {
+        "query": "Count products in Electronics category",
+        "expected": "sql",
+        "predicted": "sql",
+        "correct": true
+      },
+      {
+        "query": "What are the action items from the meeting?",
+        "expected": "document",
+        "predicted": "document",
+        "correct": true
+      },
+      {
+        "query": "What budget was approved in the strategic plan?",
+        "expected": "document",
+        "predicted": "document",
+        "correct": true
+      },
+      {
+        "query": "Summarize the performance review document",
+        "expected": "document",
+        "predicted": "document",
+        "correct": true
+      },
+      {
+        "query": "What's the status distribution in the roadmap file?",
+        "expected": "document",
+        "predicted": "document",
+        "correct": true
+      },
+      {
+        "query": "List recommendations from the uploaded report",
+        "expected": "document",
+        "predicted": "document",
+        "correct": true
+      },
+      {
+        "query": "Compare database sales with targets in uploaded file",
+        "expected": "hybrid",
+        "predicted": "document",
+        "correct": false
+      },
+      {
+        "query": "How do actual employee counts match hiring plan document?",
+        "expected": "hybrid",
+        "predicted": "document",
+        "correct": false
+      }
+    ],
+    "confusion_matrix": {
+      "sql": {
+        "sql": 5,
+        "document": 0,
+        "hybrid": 0
+      },
+      "document": {
+        "sql": 0,
+        "document": 5,
+        "hybrid": 0
+      },
+      "hybrid": {
+        "sql": 0,
+        "document": 2,
+        "hybrid": 0
+      }
+    }
+  },
+  "multilingual_support": {
+    "accuracy": 90.9090909090909,
+    "correct": 10,
+    "total": 11,
+    "languages_tested": 9,
+    "language_list": [
+      "ar",
+      "de",
+      "en",
+      "es",
+      "fr",
+      "hi",
+      "ja",
+      "ko",
+      "pt"
+    ],
+    "detailed_results": [
+      {
+        "query": "How many employees work here?",
+        "expected_language": "en",
+        "detected_language": "en",
+        "correct": true
+      },
+      {
+        "query": "¿Cuántos empleados trabajan aquí?",
+        "expected_language": "es",
+        "detected_language": "es",
+        "correct": true
+      },
+      {
+        "query": "¿Cuál es el salario promedio?",
+        "expected_language": "es",
+        "detected_language": "es",
+        "correct": true
+      },
+      {
+        "query": "Combien d'employés travaillent ici?",
+        "expected_language": "fr",
+        "detected_language": "fr",
+        "correct": true
+      },
+      {
+        "query": "Quel est le salaire moyen?",
+        "expected_language": "fr",
+        "detected_language": "fr",
+        "correct": true
+      },
+      {
+        "query": "Wie viele Mitarbeiter arbeiten hier?",
+        "expected_language": "de",
+        "detected_language": "de",
+        "correct": true
+      },
+      {
+        "query": "यहाँ कितने कर्मचारी काम करते हैं?",
+        "expected_language": "hi",
+        "detected_language": "hi",
+        "correct": true
+      },
+      {
+        "query": "这里有多少员工?",
+        "expected_language": "zh-cn",
+        "detected_language": "ko",
+        "correct": false
+      },
+      {
+        "query": "ここで働いている従業員は何人ですか?",
+        "expected_language": "ja",
+        "detected_language": "ja",
+        "correct": true
+      },
+      {
+        "query": "كم عدد الموظفين الذين يعملون هنا؟",
+        "expected_language": "ar",
+        "detected_language": "ar",
+        "correct": true
+      },
+      {
+        "query": "Quantos funcionários trabalham aqui?",
+        "expected_language": "pt",
+        "detected_language": "pt",
+        "correct": true
+      }
+    ]
+  },
+  "document_analytics": {},
+  "performance_metrics": {
+    "success_rate": 100.0,
+    "average_response_time": 1.5370229482650757,
+    "total_queries": 4,
+    "detailed_results": [
+      {
+        "query": "How many employees are there?",
+        "success": true,
+        "routing": "sql",
+        "response_time": 1.622448205947876,
+        "has_answer": true
+      },
+      {
+        "query": "What is the average salary?",
+        "success": true,
+        "routing": "sql",
+        "response_time": 1.356316328048706,
+        "has_answer": true
+      },
+      {
+        "query": "¿Cuántos empleados hay?",
+        "success": true,
+        "routing": "sql",
+        "response_time": 1.5278661251068115,
+        "has_answer": true
+      },
+      {
+        "query": "Combien d'employés?",
+        "success": true,
+        "routing": "sql",
+        "response_time": 1.6414611339569092,
+        "has_answer": true
+      }
+    ]
+  },
+  "overall_scores": {
+    "routing_accuracy": 83.33333333333334,
+    "language_detection": 90.9090909090909,
+    "success_rate": 100.0,
+    "avg_response_time": 1.5370229482650757,
+    "languages_supported": 9
+  }
+}

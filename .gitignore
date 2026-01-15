@@ -1,0 +1,221 @@
+# .gitignore for AI Business Analyst Project
+
+# ============================================================================
+# SECRETS & API KEYS (CRITICAL - NEVER COMMIT!)
+# ============================================================================
+.env
+.env.local
+.env.*.local
+*.key
+secrets/
+credentials/
+
+# ============================================================================
+# PYTHON
+# ============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+venv311/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# ============================================================================
+# DATA & DATABASES (Don't commit generated data)
+# ============================================================================
+# SQLite databases (contains sample/test data)
+*.db
+*.sqlite
+*.sqlite3
+
+# Vector stores (large binary files)
+data/vector_stores/
+data/faiss/
+*.faiss
+*.pkl
+
+# Uploaded files
+uploads/
+upload_*/
+
+# Generated data
+data/generated/
+data/temp/
+
+# Chat history
+data/chat_history.db
+
+# ============================================================================
+# LOGS & TEMPORARY FILES
+# ============================================================================
+logs/
+*.log
+*.log.*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.cache/
+
+# ============================================================================
+# EVALUATION & TEST OUTPUTS
+# ============================================================================
+# Keep figures but ignore temp results
+evaluation/results_temp.json
+evaluation/results_backup.json
+evaluation/*.backup
+
+# Test outputs
+test_output/
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# ============================================================================
+# MODELS & EMBEDDINGS (Large files - download separately)
+# ============================================================================
+# Hugging Face cache
+.cache/huggingface/
+models/
+*.bin
+*.safetensors
+
+# FAISS indices (can be regenerated)
+*.index
+
+# ============================================================================
+# DOCUMENTATION BUILD
+# ============================================================================
+docs/_build/
+site/
+.mkdocs/
+
+# ============================================================================
+# DEPENDENCIES & PACKAGE MANAGEMENT
+# ============================================================================
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# npm (if you add frontend later)
+node_modules/
+package-lock.json
+yarn.lock
+
+# ============================================================================
+# IDE & EDITOR
+# ============================================================================
+*.sublime-project
+*.sublime-workspace
+.atom/
+.brackets.json
+
+# ============================================================================
+# BACKUP & ARCHIVE FILES
+# ============================================================================
+*.bak
+*.backup
+*.old
+*.orig
+backup/
+archives/
+
+# ============================================================================
+# SYSTEM & CONFIGURATION
+# ============================================================================
+# Redis dumps
+dump.rdb
+
+# Docker (if you add containerization)
+.dockerignore
+docker-compose.override.yml
+
+# ============================================================================
+# PROJECT-SPECIFIC
+# ============================================================================
+# Session data (regenerated on use)
+data/vector_stores/*/
+
+# Temporary conversation files
+conversations_backup/
+
+# Large evaluation datasets
+evaluation/datasets/*.csv
+evaluation/datasets/*.xlsx
+
+# ============================================================================
+# KEEP THESE FILES (explicitly unignore)
+# ============================================================================
+!.env.example
+!data/.gitkeep
+!logs/.gitkeep
+!uploads/.gitkeep
+!evaluation/figures/*.png
+!evaluation/results.json
+!evaluation/results_report.txt
+!README.md
+!requirements.txt
