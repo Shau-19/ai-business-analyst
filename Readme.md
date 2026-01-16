@@ -685,7 +685,7 @@ ai-business-analyst/
 
 ## 📈 Performance Benchmarks
 
-Tested on: Apple M1 Pro, 16GB RAM
+
 
 | Operation | Time | Notes |
 |-----------|------|-------|
