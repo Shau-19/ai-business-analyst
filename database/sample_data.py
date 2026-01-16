@@ -1,8 +1,5 @@
 # database/sample_data.py
-"""
-Generate sample business database for testing
-Creates realistic business data: employees, sales, products, customers
-"""
+
 import sys, os
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,16 +10,6 @@ from utils.logger import logger
 
 
 def create_sample_database(db_path: str):
-    """
-    Create sample business database with realistic data
-    
-    Tables:
-    - employees: Company employees
-    - departments: Organizational departments
-    - products: Product catalog
-    - customers: Customer information
-    - sales: Sales transactions
-    """
     
     logger.info("🏗️  Creating sample business database...")
     
