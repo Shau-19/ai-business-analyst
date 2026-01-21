@@ -1,9 +1,4 @@
-# mcp/mcp_server.py
-"""
-Model Context Protocol (MCP) Server Implementation
-Standard protocol for connecting LLMs to external systems
-Based on: https://spec.modelcontextprotocol.io/specification/
-"""
+
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass
 from datetime import datetime
