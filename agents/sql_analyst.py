@@ -1,9 +1,4 @@
-# agents/sql_analyst.py
-"""
-SQL Analyst Agent - Multilingual Business Analyst
-Handles natural language questions, generates SQL, executes queries,
-and explains results in the user's language
-"""
+
 from typing import Dict, Any
 from langchain_groq import ChatGroq
 from langchain.prompts import PromptTemplate
@@ -17,15 +12,7 @@ from utils.logger import logger, log_section
 
 
 class SQLAnalystAgent:
-    """
-    Multilingual SQL Analyst Agent
-    
-    Capabilities:
-    - Detect question language
-    - Generate SQL from natural language
-    - Execute queries
-    - Explain results in original language
-    """
+   
     
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
