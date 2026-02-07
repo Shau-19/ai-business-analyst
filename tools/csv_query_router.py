@@ -1,8 +1,6 @@
-# tools/csv_query_router.py
-"""
-CSV Query Router - Intelligently routes queries to SQL, RAG, or HYBRID
-Determines whether a query needs precise calculations, semantic understanding, or both
-"""
+'''Rotes the queries to SQL , RAG or HYBRID vased on usecases , like if precise calculations
+then SQL, if deep understanding then RAG , if both then Hybrid'''
+
 import re
 from typing import Literal
 from utils.logger import logger
@@ -12,14 +10,7 @@ QueryRoute = Literal["SQL", "RAG", "HYBRID"]
 
 
 class CSVQueryRouter:
-    """
-    Intelligent router for CSV queries
-    
-    Routes based on query patterns:
-    - SQL: Precise calculations, aggregations, filtering
-    - RAG: Semantic understanding, summaries, insights  
-    - HYBRID: Combines both (e.g., "Why did X happen?")
-    """
+    '''Router for determining how to handle CSV queries - SQL, RAG, or HYBRID'''
     
     # Patterns that indicate need for SQL (precise calculations)
     SQL_PATTERNS = [
@@ -86,16 +77,7 @@ class CSVQueryRouter:
         logger.info("🧭 CSV Query Router initialized")
     
     def route(self, question: str, has_csv_data: bool = False) -> QueryRoute:
-        """
-        Route query to appropriate handler
-        
-        Args:
-            question: Natural language question
-            has_csv_data: Whether session has CSV/Excel data
-        
-        Returns:
-            "SQL", "RAG", or "HYBRID"
-        """
+        '''Routes the query to SQL, RAG, or HYBRID based on patterns'''
         if not has_csv_data:
             return "RAG"  # No CSV data, use normal RAG
         
@@ -142,45 +124,3 @@ class CSVQueryRouter:
         
         return explanations.get(route, "Unknown routing decision")
 
-
-# Quick test function
-def test_router():
-    """Test the CSV query router"""
-    router = CSVQueryRouter()
-    
-    test_cases = [
-        # SQL queries
-        ("How many rows are in the data?", "SQL"),
-        ("What percentage of items are complete?", "SQL"),
-        ("Calculate the average price", "SQL"),
-        ("Show me the top 10 customers by revenue", "SQL"),
-        
-        # RAG queries
-        ("Summarize the main trends in this data", "RAG"),
-        ("What patterns do you see?", "RAG"),
-        ("Explain the key findings", "RAG"),
-        ("Describe the overall situation", "RAG"),
-        
-        # Hybrid queries
-        ("Why did sales drop in March?", "HYBRID"),
-        ("Explain the 25% increase in Q3", "HYBRID"),
-        ("What caused the performance change?", "HYBRID"),
-        ("Analyze the data and explain the trends", "HYBRID"),
-    ]
-    
-    print("\n📊 Testing CSV Query Router\n")
-    correct = 0
-    
-    for question, expected in test_cases:
-        result = router.route(question, has_csv_data=True)
-        match = "✅" if result == expected else "❌"
-        print(f"{match} '{question[:50]}...'")
-        print(f"   Expected: {expected}, Got: {result}\n")
-        if result == expected:
-            correct += 1
-    
-    print(f"Accuracy: {correct}/{len(test_cases)} ({100*correct/len(test_cases):.1f}%)\n")
-
-
-if __name__ == "__main__":
-    test_router()

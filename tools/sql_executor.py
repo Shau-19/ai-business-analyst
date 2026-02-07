@@ -1,8 +1,5 @@
 # tools/sql_executor.py
-"""
-SQL Execution Tool
-Handles SQL query execution and result formatting
-"""
+'''Handles execution of SQL queries and formatting results for the SQL Analyst Agent.'''
 import pandas as pd
 from typing import Dict, Any
 from database.db_manager import DatabaseManager
@@ -18,15 +15,7 @@ class SQLExecutor:
         logger.info("🔧 SQL Executor initialized")
     
     def clean_sql(self, sql: str) -> str:
-        """
-        Clean SQL query by removing markdown and comments
-        
-        Args:
-            sql: Raw SQL query
-        
-        Returns:
-            Cleaned SQL query
-        """
+        '''Raw SQL -> Cleaned SQL (removes markdown, comments, extra whitespace)'''
         # Remove markdown code blocks
         sql = re.sub(r'```sql\s*', '', sql, flags=re.IGNORECASE)
         sql = re.sub(r'```\s*', '', sql)
@@ -42,15 +31,7 @@ class SQLExecutor:
         return sql
     
     def execute_query(self, sql: str) -> Dict[str, Any]:
-        """
-        Execute SQL query and return formatted results
-        
-        Args:
-            sql: SQL query string
-        
-        Returns:
-            Dictionary with results and metadata
-        """
+        '''SQL string -> Query result dict (success, data, error)'''
         try:
             # Clean the SQL
             cleaned_sql = self.clean_sql(sql)
@@ -82,15 +63,7 @@ class SQLExecutor:
             }
     
     def format_results_as_text(self, result: Dict[str, Any]) -> str:
-        """
-        Format query results as human-readable text
-        
-        Args:
-            result: Query result dictionary
-        
-        Returns:
-            Formatted text string
-        """
+        '''Query result dict -> Formatted text for agent response'''
         if not result["success"]:
             return f"❌ Error: {result['error']}"
         

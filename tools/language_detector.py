@@ -1,8 +1,6 @@
-# tools/language_detector.py
-"""
-Language detection tool
-Detects the language of input text
-"""
+'''Detects language of input text using langdetect library, with support for multiple languages 
+and graceful fallback to English if detection fails.'''
+
 from langdetect import detect, LangDetectException
 from typing import Optional
 from utils.logger import logger
@@ -36,15 +34,7 @@ class LanguageDetector:
     }
     
     def detect_language(self, text: str) -> Optional[str]:
-        """
-        Detect language of text
-        
-        Args:
-            text: Input text
-        
-        Returns:
-            Language code (e.g., 'en', 'es', 'fr') or None if detection fails
-        """
+        '''Detect lang (Input_tex -> lang_code(en,fr,hi, etc)'''
         try:
             lang_code = detect(text)
             logger.info(f"🌍 Detected language: {self.get_language_name(lang_code)} ({lang_code})")
@@ -54,25 +44,9 @@ class LanguageDetector:
             return 'en'
     
     def get_language_name(self, lang_code: str) -> str:
-        """
-        Get full language name from code
-        
-        Args:
-            lang_code: Language code (e.g., 'en')
-        
-        Returns:
-            Full language name (e.g., 'English')
-        """
+        '''Lang_code -> Full language name'''
         return self.LANGUAGE_NAMES.get(lang_code, lang_code.upper())
     
     def is_supported(self, lang_code: str) -> bool:
-        """
-        Check if language is supported
-        
-        Args:
-            lang_code: Language code
-        
-        Returns:
-            True if supported, False otherwise
-        """
+        '''Check if lang_code is valid or not'''
         return lang_code in self.LANGUAGE_NAMES

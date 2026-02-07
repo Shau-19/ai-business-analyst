@@ -1,27 +1,37 @@
 ======================================================================
-MULTILINGUAL HYBRID NLP SYSTEM - EVALUATION REPORT
+PRODUCTION RAG SYSTEM - EVALUATION REPORT
+BM25 + FAISS + Cross-Encoder Reranking
 ======================================================================
 
-Evaluation Date: 2026-01-12T11:41:33.315345
+Evaluation Date: 2026-02-07T13:04:16.828451
+System Version: 3.0 - BM25+FAISS+Reranking
 
 OVERALL PERFORMANCE
 ----------------------------------------------------------------------
-Routing Accuracy:        83.3%
+Routing Accuracy:        76.9%
 Language Detection:      90.9%
-Query Success Rate:      100.0%
-Avg Response Time:       1.54s
+Query Success Rate:      0.0%
+Avg Response Time:       0.09s
 Languages Supported:     9
+
+RETRIEVAL ARCHITECTURE
+----------------------------------------------------------------------
+Method: hybrid_bm25_faiss_reranking
+Stages: 3
+Stage 1: retrieve@10 (BM25+FAISS ensemble)
+Stage 2: rerank@3 (Cross-Encoder)
+Weights: BM25=0.5, FAISS=0.5
 
 ROUTING ACCURACY DETAILS
 ----------------------------------------------------------------------
-Correct: 10/12
-Accuracy: 83.3%
+Correct: 10/13
+Accuracy: 76.9%
 
 Confusion Matrix:
                 SQL    Document    Hybrid
 sql             5       0          0
-document        0       5          0
-hybrid          0       2          0
+document        3       2          0
+hybrid          0       0          3
 
 MULTILINGUAL SUPPORT
 ----------------------------------------------------------------------

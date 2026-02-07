@@ -1,9 +1,10 @@
 {
-  "timestamp": "2026-01-12T11:41:33.315345",
+  "timestamp": "2026-02-07T13:04:16.828451",
+  "system_version": "3.0 - BM25+FAISS+Reranking",
   "routing_accuracy": {
-    "accuracy": 83.33333333333334,
+    "accuracy": 76.92307692307693,
     "correct": 10,
-    "total": 12,
+    "total": 13,
     "detailed_results": [
       {
         "query": "How many employees are in the database?",
@@ -44,8 +45,8 @@
       {
         "query": "What budget was approved in the strategic plan?",
         "expected": "document",
-        "predicted": "document",
-        "correct": true
+        "predicted": "sql",
+        "correct": false
       },
       {
         "query": "Summarize the performance review document",
@@ -56,26 +57,32 @@
       {
         "query": "What's the status distribution in the roadmap file?",
         "expected": "document",
-        "predicted": "document",
-        "correct": true
+        "predicted": "sql",
+        "correct": false
       },
       {
         "query": "List recommendations from the uploaded report",
         "expected": "document",
-        "predicted": "document",
+        "predicted": "sql",
+        "correct": false
+      },
+      {
+        "query": "Explain what AAVIS score means and show top 5 districts",
+        "expected": "hybrid",
+        "predicted": "hybrid",
         "correct": true
       },
       {
-        "query": "Compare database sales with targets in uploaded file",
+        "query": "What factors contribute to high vulnerability? Show districts above 2.5",
         "expected": "hybrid",
-        "predicted": "document",
-        "correct": false
+        "predicted": "hybrid",
+        "correct": true
       },
       {
-        "query": "How do actual employee counts match hiring plan document?",
+        "query": "Compare AAVIS vs CAGI correlation and provide examples",
         "expected": "hybrid",
-        "predicted": "document",
-        "correct": false
+        "predicted": "hybrid",
+        "correct": true
       }
     ],
     "confusion_matrix": {
@@ -85,14 +92,14 @@
         "hybrid": 0
       },
       "document": {
-        "sql": 0,
-        "document": 5,
+        "sql": 3,
+        "document": 2,
         "hybrid": 0
       },
       "hybrid": {
         "sql": 0,
-        "document": 2,
-        "hybrid": 0
+        "document": 0,
+        "hybrid": 3
       }
     }
   },
@@ -181,47 +188,69 @@
       }
     ]
   },
-  "document_analytics": {},
+  "retrieval_performance": {
+    "config": {
+      "method": "hybrid_bm25_faiss_reranking",
+      "initial_k": 10,
+      "rerank_k": 3,
+      "bm25_weight": 0.5,
+      "faiss_weight": 0.5,
+      "cross_encoder": "ms-marco-MiniLM-L-6-v2"
+    },
+    "stages": 3,
+    "expected_precision": "~92%",
+    "advantages": [
+      "BM25 catches exact terms (IDs, acronyms)",
+      "FAISS understands semantic meaning",
+      "Cross-encoder provides precise reranking"
+    ]
+  },
   "performance_metrics": {
-    "success_rate": 100.0,
-    "average_response_time": 1.5370229482650757,
+    "success_rate": 0.0,
+    "average_response_time": 0.08960908651351929,
     "total_queries": 4,
     "detailed_results": [
       {
         "query": "How many employees are there?",
-        "success": true,
-        "routing": "sql",
-        "response_time": 1.622448205947876,
-        "has_answer": true
+        "success": false,
+        "routing": "unknown",
+        "retrieval_method": "N/A",
+        "response_time": 0.006894826889038086,
+        "has_answer": false
       },
       {
         "query": "What is the average salary?",
-        "success": true,
-        "routing": "sql",
-        "response_time": 1.356316328048706,
-        "has_answer": true
+        "success": false,
+        "routing": "unknown",
+        "retrieval_method": "N/A",
+        "response_time": 0.0056743621826171875,
+        "has_answer": false
       },
       {
         "query": "¿Cuántos empleados hay?",
-        "success": true,
-        "routing": "sql",
-        "response_time": 1.5278661251068115,
-        "has_answer": true
+        "success": false,
+        "routing": "unknown",
+        "retrieval_method": "N/A",
+        "response_time": 0.22209644317626953,
+        "has_answer": false
       },
       {
         "query": "Combien d'employés?",
-        "success": true,
-        "routing": "sql",
-        "response_time": 1.6414611339569092,
-        "has_answer": true
+        "success": false,
+        "routing": "unknown",
+        "retrieval_method": "N/A",
+        "response_time": 0.12377071380615234,
+        "has_answer": false
       }
     ]
   },
   "overall_scores": {
-    "routing_accuracy": 83.33333333333334,
+    "routing_accuracy": 76.92307692307693,
     "language_detection": 90.9090909090909,
-    "success_rate": 100.0,
-    "avg_response_time": 1.5370229482650757,
-    "languages_supported": 9
+    "success_rate": 0.0,
+    "avg_response_time": 0.08960908651351929,
+    "languages_supported": 9,
+    "retrieval_method": "hybrid_bm25_faiss_reranking",
+    "retrieval_stages": 3
   }
 }
