@@ -495,31 +495,3 @@ Answer in {language_name}:"""
         }
 
 
-# ====================================================================
-# USAGE EXAMPLE
-# ====================================================================
-"""
-Example usage:
-
-    from database import DatabaseManager
-    
-    # Initialize
-    db = DatabaseManager()
-    analyst = SQLAnalystAgent(db)
-    
-    # Analyze a question
-    result = analyst.analyze(
-        question="show me a bar chart of revenue by month",
-        allowed_tables=["sales_report_h1_2025"]
-    )
-    
-    # Access results
-    print(result['explanation'])  # Business insights
-    print(result['data'])          # Raw data
-    print(result['plot'])          # Chart specification
-    
-Expected behavior:
-- Months will be sorted Jan→Dec (not Apr→Feb alphabetically)
-- Chart will be BAR (not line, because user said "bar chart")
-- Output will be concise (<100 words)
-"""

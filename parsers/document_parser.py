@@ -1,8 +1,4 @@
-# parsers/document_parser.py
-"""
-Document Parser - Parse multiple document formats
-Supports: Excel, CSV, PDF, Word documents
-"""
+
 import pandas as pd
 import PyPDF2
 from docx import Document as DocxDocument
@@ -92,15 +88,7 @@ class DocumentParser:
     
     @staticmethod
     def parse_csv(file_path: str) -> List[Document]:
-        """
-        Parse CSV file
         
-        Args:
-            file_path: Path to CSV file
-        
-        Returns:
-            List of LangChain Document objects
-        """
         documents = []
         df = pd.read_csv(file_path)
         filename = Path(file_path).name
@@ -147,15 +135,7 @@ class DocumentParser:
     
     @staticmethod
     def parse_pdf(file_path: str) -> List[Document]:
-        """
-        Parse PDF file
         
-        Args:
-            file_path: Path to PDF file
-        
-        Returns:
-            List of LangChain Document objects
-        """
         documents = []
         filename = Path(file_path).name
         
@@ -200,15 +180,7 @@ class DocumentParser:
     
     @staticmethod
     def parse_docx(file_path: str) -> List[Document]:
-        """
-        Parse Word document
         
-        Args:
-            file_path: Path to DOCX file
-        
-        Returns:
-            List of LangChain Document objects
-        """
         doc = DocxDocument(file_path)
         documents = []
         filename = Path(file_path).name

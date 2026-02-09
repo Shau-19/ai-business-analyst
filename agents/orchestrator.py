@@ -330,31 +330,7 @@ Classification:"""
     # ================================================================
     
     def _classify_query(self, question: str, conversation_id: str = None) -> str:
-        """
-        Classify query into SQL, DOCUMENT, or HYBRID
         
-        Priority Order:
-        1. HYBRID indicators (HIGHEST PRIORITY - NEW!)
-           - Detects "definition + data" patterns
-           - Detects comparison/correlation requests
-           
-        2. CSV router recommendations
-           - For structured data (CSV/Excel)
-           - Distinguishes calculations vs semantic understanding
-           
-        3. Keyword detection
-           - Document-specific vs SQL-specific words
-           
-        4. LLM classification (FALLBACK)
-           - Uses GPT for ambiguous cases
-        
-        Args:
-            question: User's natural language question
-            conversation_id: Session ID for context
-            
-        Returns:
-            "SQL", "DOCUMENT", or "HYBRID"
-        """
         # ========================================================
         # STEP 1: GET SESSION CONTEXT
         # ========================================================
@@ -499,26 +475,7 @@ Classification:"""
     # ================================================================
     
     async def route_query(self, question: str, conversation_id: str = None) -> Dict[str, Any]:
-        """
-        Main routing method - directs queries to appropriate agents
         
-        Flow:
-        1. Classify query (SQL/DOCUMENT/HYBRID)
-        2. Route to appropriate agent(s)
-        3. Combine results if HYBRID
-        4. Return formatted response
-        
-        Args:
-            question: User's natural language question
-            conversation_id: Session ID for document context
-            
-        Returns:
-            Dictionary with:
-            - success: bool
-            - answer/explanation: Response text
-            - routing: "sql", "document", or "hybrid"
-            - agent: Which agent(s) handled it
-        """
         log_section("ORCHESTRATING QUERY")
         logger.info(f"❓ Question: {question}")
         logger.info(f"💬 Session: {conversation_id or 'None'}")
@@ -701,35 +658,3 @@ Classification:"""
             }
         }
 
-
-# ====================================================================
-# USAGE EXAMPLE
-# ====================================================================
-"""
-Example usage:
-
-    from database import DatabaseManager
-    
-    # Initialize
-    db = DatabaseManager()
-    orchestrator = OrchestratorAgent(db)
-    
-    # Route a query
-    result = await orchestrator.route_query(
-        question="Explain what AAVIS means and show top 5 districts",
-        conversation_id="session-123"
-    )
-    
-    # Access results
-    print(result['routing'])  # "hybrid"
-    print(result['answer'])   # Combined SQL + RAG response
-    
-Expected behavior for HYBRID queries:
-- "Explain X and show top 5" → HYBRID (definition + data)
-- "Compare A and B correlation" → HYBRID (comparison)
-- "What factors contribute to Y?" → HYBRID (causal explanation)
-- "What does X mean? List districts" → HYBRID (definition + list)
-
-The orchestrator now prioritizes HYBRID detection BEFORE CSV routing,
-ensuring questions that need both agents actually get routed to both.
-"""

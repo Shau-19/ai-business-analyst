@@ -1,8 +1,4 @@
-# parsers/hybrid_csv_processor.py
-"""
-Hybrid CSV Processor - Loads CSV/Excel into BOTH SQL and RAG
-Enables both precise calculations AND semantic understanding
-"""
+
 import pandas as pd
 import re
 from pathlib import Path
@@ -16,10 +12,6 @@ from config import CSV_TABLE_PREFIX
 
 
 class HybridCSVProcessor:
-    """
-    Process CSV/Excel files for hybrid querying
-    Loads into SQL for precise calculations AND RAG for semantic understanding
-    """
     
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
@@ -27,16 +19,11 @@ class HybridCSVProcessor:
         logger.info("📊 Hybrid CSV Processor initialized")
     
     def is_structured_file(self, filename: str) -> bool:
-        """Check if file is CSV/Excel (structured data)"""
+        
         return filename.lower().endswith(('.csv', '.xlsx', '.xls'))
     
     def process_file(self, file_path: str, conversation_id: str) -> Dict[str, Any]:
-        """
-        Process CSV/Excel file with hybrid approach
         
-        Returns:
-            Dict with SQL table name and RAG documents
-        """
         filename = Path(file_path).name
         
         if not self.is_structured_file(filename):
@@ -67,11 +54,11 @@ class HybridCSVProcessor:
         }
         
         logger.info(f"""
-✅ Hybrid Processing Complete: {filename}
-   📊 SQL Table: {sql_table} ({metadata['row_count']} rows)
-   📄 RAG Chunks: {len(rag_docs)} documents
-   ✨ Capabilities: SQL calculations + Semantic understanding
-        """)
+                ✅ Hybrid Processing Complete: {filename}
+                📊 SQL Table: {sql_table} ({metadata['row_count']} rows)
+                📄 RAG Chunks: {len(rag_docs)} documents
+                ✨ Capabilities: SQL calculations + Semantic understanding
+                    """)
         
         return result
     
@@ -105,7 +92,7 @@ class HybridCSVProcessor:
             raise
     
     def _parse_to_rag(self, file_path: str) -> List[Document]:
-        """Parse CSV/Excel to RAG documents"""
+        
         
         try:
             # Use existing document parser
@@ -122,7 +109,7 @@ class HybridCSVProcessor:
             raise
     
     def _generate_table_name(self, file_path: str, conversation_id: str) -> str:
-        """Generate SQL table name for uploaded file"""
+        
         
         # Get base name without extension
         base_name = Path(file_path).stem
@@ -197,16 +184,6 @@ class HybridCSVProcessor:
 # Convenience function
 def process_csv_hybrid(file_path: str, conversation_id: str, 
                        db_manager: DatabaseManager) -> Dict[str, Any]:
-    """
-    Convenience function to process CSV/Excel in hybrid mode
     
-    Args:
-        file_path: Path to CSV/Excel file
-        conversation_id: Session ID
-        db_manager: Database manager instance
-    
-    Returns:
-        Processing result with SQL table and RAG documents
-    """
     processor = HybridCSVProcessor(db_manager)
     return processor.process_file(file_path, conversation_id)
