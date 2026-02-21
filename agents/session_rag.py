@@ -50,7 +50,7 @@ class SessionAwareRAGAgent:
     """
     
     def __init__(self, base_vector_store_path: str = "./data/vector_stores",
-                 db_manager: DatabaseManager = None):
+                 db_manager: DatabaseManager = None, sql_executor=None):
         """Initialize RAG agent with hybrid search and reranking"""
         
         # Storage setup
@@ -63,7 +63,7 @@ class SessionAwareRAGAgent:
         
         # Hybrid CSV processor
         if ENABLE_HYBRID_CSV and db_manager:
-            self.csv_processor = HybridCSVProcessor(db_manager)
+            self.csv_processor = HybridCSVProcessor(db_manager, sql_executor=sql_executor)
             logger.info("✅ Hybrid CSV processing enabled")
         else:
             self.csv_processor = None
