@@ -1,4 +1,3 @@
-
 import pandas as pd
 import re
 from pathlib import Path
@@ -13,17 +12,16 @@ from config import CSV_TABLE_PREFIX
 
 class HybridCSVProcessor:
     
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: DatabaseManager, sql_executor=None):
         self.db = db_manager
         self.doc_parser = DocumentParser()
+        self.sql_executor = sql_executor
         logger.info("📊 Hybrid CSV Processor initialized")
     
     def is_structured_file(self, filename: str) -> bool:
-        
         return filename.lower().endswith(('.csv', '.xlsx', '.xls'))
     
     def process_file(self, file_path: str, conversation_id: str) -> Dict[str, Any]:
-        
         filename = Path(file_path).name
         
         if not self.is_structured_file(filename):
@@ -32,13 +30,8 @@ class HybridCSVProcessor:
         logger.info(f"📊 Processing structured file: {filename}")
         logger.info(f"   Mode: HYBRID (SQL + RAG)")
         
-        # Step 1: Import to SQL for precise calculations
         sql_table = self._import_to_sql(file_path, conversation_id)
-        
-        # Step 2: Parse to RAG for semantic understanding
         rag_docs = self._parse_to_rag(file_path)
-        
-        # Step 3: Get metadata
         metadata = self._extract_metadata(file_path)
         
         result = {
@@ -63,9 +56,6 @@ class HybridCSVProcessor:
         return result
     
     def _import_to_sql(self, file_path: str, conversation_id: str) -> str:
-        """Import CSV/Excel to SQL database"""
-        
-        # Read file
         try:
             if file_path.endswith('.csv'):
                 df = pd.read_csv(file_path)
@@ -75,16 +65,19 @@ class HybridCSVProcessor:
             logger.error(f"❌ Failed to read file: {e}")
             raise
         
-        # Generate table name
         table_name = self._generate_table_name(file_path, conversation_id)
         
-        # Import to database
         try:
             conn = self.db.get_connection()
             df.to_sql(table_name, conn, if_exists='replace', index=False)
             conn.close()
             
             logger.info(f"   ✅ SQL Import: {table_name} ({len(df)} rows, {len(df.columns)} columns)")
+
+            if self.sql_executor is not None:
+                self.sql_executor.index_table(df, table_name)
+                logger.info(f"   📇 Value index built for '{table_name}'")
+
             return table_name
             
         except Exception as e:
@@ -92,10 +85,7 @@ class HybridCSVProcessor:
             raise
     
     def _parse_to_rag(self, file_path: str) -> List[Document]:
-        
-        
         try:
-            # Use existing document parser
             if file_path.endswith('.csv'):
                 docs = self.doc_parser.parse_csv(file_path)
             else:
@@ -109,26 +99,14 @@ class HybridCSVProcessor:
             raise
     
     def _generate_table_name(self, file_path: str, conversation_id: str) -> str:
-        
-        
-        # Get base name without extension
         base_name = Path(file_path).stem
-        
-        # Sanitize: only alphanumeric and underscore
         sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', base_name).lower()
-        
-        # Add prefix and session ID
         table_name = f"{CSV_TABLE_PREFIX}{conversation_id[:8]}_{sanitized}"
-        
-        # Ensure valid SQL identifier (max 63 chars for PostgreSQL)
         if len(table_name) > 63:
             table_name = table_name[:63]
-        
         return table_name
     
     def _extract_metadata(self, file_path: str) -> Dict[str, Any]:
-        """Extract metadata from CSV/Excel"""
-        
         try:
             if file_path.endswith('.csv'):
                 df = pd.read_csv(file_path)
@@ -148,24 +126,15 @@ class HybridCSVProcessor:
             return {}
     
     def get_uploaded_tables(self, conversation_id: str) -> List[str]:
-        """Get list of SQL tables for this session"""
-        
         all_tables = self.db.list_tables()
         prefix = f"{CSV_TABLE_PREFIX}{conversation_id[:8]}_"
-        
         session_tables = [t for t in all_tables if t.startswith(prefix)]
-        
         logger.info(f"📊 Found {len(session_tables)} uploaded tables for session")
         return session_tables
     
     def get_table_info(self, table_name: str) -> Dict[str, Any]:
-        """Get information about uploaded table"""
-        
         try:
-            # Get sample data
             sample_df = self.db.get_table_sample(table_name, limit=5)
-            
-            # Get full count
             count_df = self.db.execute_query(f"SELECT COUNT(*) as count FROM {table_name}")
             row_count = count_df.iloc[0]['count']
             
@@ -181,9 +150,7 @@ class HybridCSVProcessor:
             return {}
 
 
-# Convenience function
-def process_csv_hybrid(file_path: str, conversation_id: str, 
+def process_csv_hybrid(file_path: str, conversation_id: str,
                        db_manager: DatabaseManager) -> Dict[str, Any]:
-    
     processor = HybridCSVProcessor(db_manager)
     return processor.process_file(file_path, conversation_id)
