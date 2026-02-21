@@ -17,6 +17,7 @@ Author: AI Business Analyst System
 Version: 3.0 (Production with Hybrid Fix)
 """
 
+
 from typing import Dict, Any
 import re
 from langchain_groq import ChatGroq
@@ -80,7 +81,7 @@ class OrchestratorAgent(A2AAgent):
         # ============================================================
         self.registry = A2ARegistry()
         self.sql_agent = SQLAnalystAgent(db_manager)
-        self.rag_agent = SessionAwareRAGAgent(db_manager=db_manager)
+        self.rag_agent = SessionAwareRAGAgent(db_manager=db_manager, sql_executor=self.sql_agent.sql_executor)
         
         # Initialize optional CSV router
         if CSV_ROUTER_AVAILABLE:
