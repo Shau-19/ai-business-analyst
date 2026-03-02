@@ -1,4 +1,4 @@
-Routing priorities:
+"""Routing priorities:
   0.5  Forecast keywords + CSV present  → FORECAST  (A2A → forecast_agent)
   0    No uploads                        → GENERAL   (LLM direct)
   1    Text/PDF/DOCX only                → DOCUMENT  (A2A → rag_agent)
