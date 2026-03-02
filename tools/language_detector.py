@@ -1,3 +1,4 @@
+
 '''Detects language of input text using langdetect library, with support for multiple languages 
 and graceful fallback to English if detection fails.'''
 
