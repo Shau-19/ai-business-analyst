@@ -1,3 +1,4 @@
+
 """
 Smart Query Orchestrator v5.0
 ==============================
@@ -198,9 +199,8 @@ Question: {question}""",
         ))
 
         async def handle_forecast(message: A2AMessage) -> Dict[str, Any]:
-            question  = message.payload.get("question", "")
-            periods   = message.payload.get("periods", 6)
-            value_col = message.payload.get("value_col")  # explicit column from UI
+            question = message.payload.get("question", "")
+            periods  = message.payload.get("periods", 6)
 
             # Parse period count from question text (e.g. "next 12 months" → 12)
             m = re.search(r'(\d+)\s*(month|week|quarter|year|period)', question.lower())
@@ -211,7 +211,6 @@ Question: {question}""",
                 question=question,
                 conversation_id=message.payload.get("conversation_id", ""),
                 periods=periods,
-                value_col=value_col,
             )
 
         agent.register_handler(MessageType.QUERY, handle_forecast)
@@ -439,7 +438,7 @@ Question: {question}""",
 
     # ── Main routing method ───────────────────────────────────────────────────
 
-    async def route_query(self, question: str, conversation_id: str = None, value_col: str = None) -> Dict[str, Any]:
+    async def route_query(self, question: str, conversation_id: str = None) -> Dict[str, Any]:
         log_section("ORCHESTRATING QUERY")
         logger.info(f"❓  Question: {question}")
         logger.info(f"💬  Session:  {conversation_id or 'None'}")
@@ -453,7 +452,7 @@ Question: {question}""",
                 message  = await self.send_message(
                     to_agent="forecast_agent",
                     message_type=MessageType.QUERY,
-                    payload={"question": question, "conversation_id": conversation_id, "value_col": value_col},
+                    payload={"question": question, "conversation_id": conversation_id},
                 )
                 response = await self.registry.route_message(message)
                 result   = response.payload
@@ -500,6 +499,25 @@ Question: {question}""",
                     "routing_reason": "Document/semantic query",
                 })
                 return result
+
+            # ── GENERAL ──────────────────────────────────────────────────────
+            elif classification == "GENERAL":
+                logger.info("💬  GENERAL: direct LLM response")
+                try:
+                    answer = self.llm.invoke(question).content.strip()
+                except Exception:
+                    answer = "I am ANALYST, an AI business intelligence system. Upload a CSV or document and ask me data questions!"
+                return {
+                    "success":        True,
+                    "routing":        "general",
+                    "answer":         answer,
+                    "explanation":    answer,
+                    "question":       question,
+                    "data":           [],
+                    "row_count":      0,
+                    "agent":          "llm",
+                    "routing_reason": "Conversational or general knowledge query",
+                }
 
             # ── SQL ───────────────────────────────────────────────────────────
             elif classification == "SQL":

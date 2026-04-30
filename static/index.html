@@ -1423,8 +1423,12 @@ async function runSilentQuery(question) {
       headers: {'Content-Type':'application/json','X-Api-Key':API_KEY},
       body:    JSON.stringify({ question, conversation_id: currentConversationId })
     });
+    if (!res.ok) {
+      console.warn('Silent query failed:', res.status, question);
+      return { success: false, error: `HTTP ${res.status}` };
+    }
     return await res.json();
-  } catch(e) { return { success: false }; }
+  } catch(e) { return { success: false, error: e.message }; }
 }
 
 function buildSmartQueries(numCols, dateCols, catCols) {

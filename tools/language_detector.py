@@ -33,8 +33,41 @@ class LanguageDetector:
         'pl': 'Polish'
     }
     
+    # Unicode range checks for CJK scripts — langdetect is unreliable for short text
+    @staticmethod
+    def _script_detect(text: str) -> Optional[str]:
+        """Fast script-based detection for CJK and Arabic before langdetect."""
+        import unicodedata
+        cjk_k, cjk_j, cjk_c, arab, dev = 0, 0, 0, 0, 0
+        for ch in text:
+            cp = ord(ch)
+            if 0xAC00 <= cp <= 0xD7A3 or 0x3130 <= cp <= 0x318F:  # Hangul
+                cjk_k += 1
+            elif 0x3040 <= cp <= 0x30FF or 0x31F0 <= cp <= 0x31FF:  # Hiragana/Katakana
+                cjk_j += 1
+            elif 0x4E00 <= cp <= 0x9FFF or 0x3400 <= cp <= 0x4DBF:  # CJK unified
+                cjk_c += 1
+            elif 0x0600 <= cp <= 0x06FF:  # Arabic
+                arab += 1
+            elif 0x0900 <= cp <= 0x097F:  # Devanagari (Hindi)
+                dev += 1
+        total = len(text.replace(" ", "")) or 1
+        if cjk_k / total > 0.15: return "ko"
+        if cjk_j / total > 0.15: return "ja"
+        if arab  / total > 0.15: return "ar"
+        if dev   / total > 0.10: return "hi"
+        # CJK unified — likely Chinese if no Hangul/Kana
+        if cjk_c / total > 0.15: return "zh-cn"
+        return None
+
     def detect_language(self, text: str) -> Optional[str]:
-        '''Detect lang (Input_tex -> lang_code(en,fr,hi, etc)'''
+        '''Detect lang (Input_text -> lang_code). Script-first for CJK/Arabic.'''
+        # Priority 1: fast script detection (no false positives for CJK/Arabic/Hindi)
+        script = self._script_detect(text)
+        if script:
+            logger.info(f"🌍 Detected language (script): {self.get_language_name(script)} ({script})")
+            return script
+        # Priority 2: langdetect for Latin-script languages
         try:
             lang_code = detect(text)
             logger.info(f"🌍 Detected language: {self.get_language_name(lang_code)} ({lang_code})")
