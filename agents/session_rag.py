@@ -1,26 +1,23 @@
-# agents/session_rag.py
+
 """
-Session-Aware RAG Agent - Production Ready with Hybrid Search
-=============================================================
-Three-stage retrieval: BM25 + Semantic → Ensemble → Reranking
+Session-Aware RAG Agent
+=======================
+Three-stage hybrid retrieval: BM25 (lexical) + FAISS (semantic) → ensemble
+→ cross-encoder reranking with dual-threshold hallucination guards.
 
-Architecture:
-- Stage 1: Hybrid retrieval (BM25 lexical + FAISS semantic)
-- Stage 2: Ensemble fusion (combine both signals)
-- Stage 3: Cross-encoder reranking (top 3 from 10 candidates)
-
-Why This Matters:
-- BM25: Catches exact terms (acronyms, names, IDs)
-- FAISS: Understands meaning and context
-- Cross-encoder: Precise relevance scoring
-- Result: Best of all approaches (~92% precision@3)
-
-Version: 4.0 (Production - Hybrid + Reranking)
+Key design decisions:
+  - Every chunk tagged with source_type ("csv" or "document") at ingest time
+  - Per-source vocabulary built after ingest to enable orchestrator routing
+  - CSV column names pinned into csv vocab to prevent overlap with doc text
+  - Rerank threshold guard: returns "not available" rather than hallucinating
+  - Lazy query expansion: only fires when top rerank score is poor
 """
 
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import shutil
+import re
+from collections import Counter
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -28,10 +25,12 @@ from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
-from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
-from langchain.schema import BaseRetriever, Document
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.retrievers import BaseRetriever
+from langchain.schema import Document
 from sentence_transformers import CrossEncoder
+from pydantic import ConfigDict
 
 from parsers.document_parser import DocumentParser
 from parsers.hybrid_csv_processor import HybridCSVProcessor
@@ -41,173 +40,179 @@ from config import settings, ENABLE_HYBRID_CSV
 from utils.logger import logger, log_section
 
 
+# ── Pydantic v2 compatible pre-retrieved retriever ───────────────────────────
+
+class PreRetrievedRetriever(BaseRetriever):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    docs: List[Document]
+
+    def _get_relevant_documents(self, query: str) -> List[Document]:
+        return self.docs
+
+    async def _aget_relevant_documents(self, query: str) -> List[Document]:
+        return self.docs
+
+
+# ── Rerank threshold ──────────────────────────────────────────────────────────
+# If the top reranked chunk scores below this, nothing relevant was found.
+# Returning "not available" is safer than hallucinating an answer.
+RERANK_RELEVANCE_THRESHOLD = -10.0  # base threshold (single-doc sessions)
+
+
 class SessionAwareRAGAgent:
     """
-    Production RAG with Hybrid Search + Reranking
-    =============================================
-    Combines lexical (BM25) and semantic (FAISS) retrieval,
-    then reranks for maximum precision.
+    Production RAG with BM25+FAISS ensemble retrieval, cross-encoder reranking,
+    source-type tagging, dynamic vocabulary building, and anti-hallucination guards.
     """
-    
-    def __init__(self, base_vector_store_path: str = "./data/vector_stores",
-                 db_manager: DatabaseManager = None):
-        """Initialize RAG agent with hybrid search and reranking"""
-        
-        # Storage setup
+
+    def __init__(
+        self,
+        base_vector_store_path: str = "./data/vector_stores",
+        db_manager: DatabaseManager = None,
+        sql_executor=None,
+    ):
         self.base_vector_store_path = Path(base_vector_store_path)
         self.base_vector_store_path.mkdir(parents=True, exist_ok=True)
-        
-        # Parsers
-        self.parser = DocumentParser()
+
+        self.parser            = DocumentParser()
         self.language_detector = LanguageDetector()
-        
-        # Hybrid CSV processor
+
         if ENABLE_HYBRID_CSV and db_manager:
-            self.csv_processor = HybridCSVProcessor(db_manager)
-            logger.info("✅ Hybrid CSV processing enabled")
+            self.csv_processor = HybridCSVProcessor(db_manager, sql_executor=sql_executor)
+            logger.info("✅  Hybrid CSV processing enabled")
         else:
             self.csv_processor = None
-        
-        # Text splitters (different strategies for different content)
+
+        # Larger chunks for structured data, smaller for prose
         self.document_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000, chunk_overlap=200,
-            separators=["\n\n", "\n", ". ", " ", ""]
+            separators=["\n\n", "\n", ". ", " ", ""],
         )
-        
         self.structured_splitter = RecursiveCharacterTextSplitter(
             chunk_size=10000, chunk_overlap=50,
-            separators=["\n\n", "\n"]
+            separators=["\n\n", "\n"],
         )
-        
-        # Embeddings model
-        logger.info("📄 Loading embeddings model...")
+
+        logger.info("📄  Loading embeddings model...")
         self.embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2",
             model_kwargs={'device': 'cpu'},
-            encode_kwargs={'normalize_embeddings': True}
+            encode_kwargs={'normalize_embeddings': True},
         )
-        
-        # Cross-encoder for reranking
-        logger.info("🎯 Loading cross-encoder for reranking...")
+
+        logger.info("🎯  Loading cross-encoder for reranking...")
         self.cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
-        
-        # Retrieval configuration
-        self.INITIAL_RETRIEVAL_K = 10  # Get 10 candidates from hybrid search
-        self.RERANK_TOP_K = 3          # Rerank to best 3
-        self.BM25_WEIGHT = 0.5         # 50% BM25, 50% FAISS
-        self.FAISS_WEIGHT = 0.5
-        
-        logger.info(f"📊 Hybrid config: BM25({self.BM25_WEIGHT}) + FAISS({self.FAISS_WEIGHT}) → rerank@{self.RERANK_TOP_K}")
-        
-        # LLM
+
+        self.INITIAL_RETRIEVAL_K = 10
+        self.RERANK_TOP_K        = 3
+        self.BM25_WEIGHT         = 0.5
+        self.FAISS_WEIGHT        = 0.5
+
+        logger.info(
+            f"📊  Hybrid config: BM25({self.BM25_WEIGHT}) + "
+            f"FAISS({self.FAISS_WEIGHT}) → rerank@{self.RERANK_TOP_K}"
+        )
+
         self.llm = ChatGroq(
             api_key=settings.GROQ_API_KEY,
             model=settings.LLM_MODEL,
-            temperature=0.1
+            temperature=0.1,
         )
-        
-        # Session storage
+
         self.session_stores: Dict[str, Dict[str, Any]] = {}
-        
-        logger.info("🤖 RAG Agent initialized with hybrid search + reranking")
-    
+        logger.info("🤖  RAG Agent initialized")
+
+    # ── Session management ────────────────────────────────────────────────────
+
     def _get_session_path(self, conversation_id: str) -> Path:
-        """Get session's vector store path"""
-        if conversation_id is None:
-            conversation_id = "default_session"
-        return self.base_vector_store_path / conversation_id
-    
+        return self.base_vector_store_path / (conversation_id or "default_session")
+
     def _is_structured_file(self, filename: str) -> bool:
-        """Check if file is CSV/Excel"""
         return filename.lower().endswith(('.csv', '.xlsx', '.xls'))
-    
+
+    def _create_empty_session(self) -> Dict[str, Any]:
+        return {
+            "vectorstore":     None,
+            "documents":       [],
+            "loaded_files":    [],
+            "csv_tables":      [],
+            "total_chunks":    0,
+            "total_documents": 0,
+            "source_vocab":    None,   # populated by _build_source_vocabulary()
+        }
+
     def get_or_create_session(self, conversation_id: str) -> Dict[str, Any]:
-        """Load existing session or create new one"""
         if conversation_id not in self.session_stores:
             session_path = self._get_session_path(conversation_id)
-            
-            # Try loading existing session
+
             if session_path.exists() and (session_path / "index.faiss").exists():
                 try:
-                    logger.info(f"📂 Loading session: {conversation_id}")
+                    logger.info(f"📂  Loading session: {conversation_id}")
                     vectorstore = FAISS.load_local(
                         str(session_path), self.embeddings,
-                        allow_dangerous_deserialization=True
+                        allow_dangerous_deserialization=True,
                     )
-                    
-                    self.session_stores[conversation_id] = {
-                        "vectorstore": vectorstore,
-                        "documents": [],  # Store for BM25
-                        "qa_chain": None,
-                        "loaded_files": [],
-                        "csv_tables": [],
-                        "total_chunks": vectorstore.index.ntotal
-                    }
-                    logger.info(f"✅ Loaded: {vectorstore.index.ntotal} vectors")
+                    session = self._create_empty_session()
+                    session["vectorstore"]  = vectorstore
+                    session["total_chunks"] = vectorstore.index.ntotal
+                    self.session_stores[conversation_id] = session
+                    logger.info(f"✅  Loaded: {vectorstore.index.ntotal} vectors")
                 except Exception as e:
-                    logger.warning(f"⚠️ Load error: {e}")
+                    logger.warning(f"⚠️  Load error: {e} — creating fresh session")
                     self.session_stores[conversation_id] = self._create_empty_session()
             else:
-                logger.info(f"🆕 New session: {conversation_id}")
+                logger.info(f"🆕  New session: {conversation_id}")
                 self.session_stores[conversation_id] = self._create_empty_session()
-        
+
         return self.session_stores[conversation_id]
-    
-    def _create_empty_session(self) -> Dict[str, Any]:
-        """Create empty session structure"""
-        return {
-            "vectorstore": None,
-            "documents": [],
-            "qa_chain": None,
-            "loaded_files": [],
-            "csv_tables": [],
-            "total_chunks": 0
-        }
-    
+
+    # ── Document loading ──────────────────────────────────────────────────────
+
     def load_documents(self, conversation_id: str, file_paths: List[str]) -> Dict[str, Any]:
-        """Load documents with hybrid processing"""
         log_section(f"LOADING DOCUMENTS: {conversation_id}")
-        
         session = self.get_or_create_session(conversation_id)
-        regular_documents, structured_documents = [], []
-        loaded_files_info, csv_tables = [], []
-        
-        # Parse all files
+        regular_docs, structured_docs = [], []
+        loaded_files_info = []
+
         for file_path in file_paths:
             if not Path(file_path).exists():
-                logger.error(f"❌ Not found: {file_path}")
+                logger.error(f"❌  Not found: {file_path}")
                 continue
-            
+
             filename = Path(file_path).name
-            ext = Path(file_path).suffix.lower()
-            
+            ext      = Path(file_path).suffix.lower()
+
             try:
-                # Hybrid CSV/Excel processing
                 if self._is_structured_file(filename) and self.csv_processor:
-                    logger.info(f"📊 HYBRID: {filename}")
+                    logger.info(f"📊  HYBRID ingest: {filename}")
                     result = self.csv_processor.process_file(file_path, conversation_id)
-                    structured_documents.extend(result['rag_documents'])
-                    
-                    csv_tables.append({
-                        "filename": filename,
-                        "table_name": result['sql_table'],
-                        "metadata": result['metadata']
-                    })
-                    
-                    loaded_files_info.append({
-                        "filename": filename, "format": ext, "type": "hybrid",
-                        "sql_table": result['sql_table'],
-                        "rag_chunks": len(result['rag_documents']),
-                        "capabilities": result['capabilities']
-                    })
-                    
+
+                    # Read column names so they can be pinned in vocab later
+                    try:
+                        import pandas as _pd
+                        col_names = list(_pd.read_csv(file_path, nrows=0).columns)
+                    except Exception:
+                        col_names = []
+
+                    for doc in result['rag_documents']:
+                        doc.metadata["source_type"] = "csv"
+                        doc.metadata["source"]      = filename
+                        doc.metadata["columns"]     = col_names
+
+                    structured_docs.extend(result['rag_documents'])
                     session["loaded_files"].append(filename)
                     session["csv_tables"].append(result['sql_table'])
-                    logger.info(f"✅ HYBRID: {len(result['rag_documents'])} chunks")
-                
-                # Regular document processing
+                    loaded_files_info.append({
+                        "filename":   filename,
+                        "format":     ext,
+                        "type":       "hybrid",
+                        "sql_table":  result['sql_table'],
+                        "rag_chunks": len(result['rag_documents']),
+                    })
+                    logger.info(f"✅  HYBRID: {len(result['rag_documents'])} chunks")
+
                 else:
-                    logger.info(f"📄 DOCUMENT: {filename}")
+                    logger.info(f"📄  DOCUMENT ingest: {filename}")
                     if ext == '.pdf':
                         docs = self.parser.parse_pdf(file_path)
                     elif ext == '.docx':
@@ -215,402 +220,457 @@ class SessionAwareRAGAgent:
                     elif ext == '.txt':
                         docs = self.parser.parse_txt(file_path)
                     else:
-                        logger.warning(f"⚠️ Unsupported: {ext}")
+                        logger.warning(f"⚠️  Unsupported format: {ext}")
                         continue
-                    
-                    regular_documents.extend(docs)
-                    loaded_files_info.append({
-                        "filename": filename, "format": ext,
-                        "type": "document", "chunks": len(docs)
-                    })
+
+                    for doc in docs:
+                        doc.metadata["source_type"] = "document"
+                        doc.metadata["source"]      = filename
+
+                    regular_docs.extend(docs)
                     session["loaded_files"].append(filename)
-                    logger.info(f"✅ Parsed: {len(docs)} chunks")
-                
+                    loaded_files_info.append({
+                        "filename": filename,
+                        "format":   ext,
+                        "type":     "document",
+                        "chunks":   len(docs),
+                    })
+                    logger.info(f"✅  Parsed: {len(docs)} chunks")
+
             except Exception as e:
-                logger.error(f"❌ Error {filename}: {e}")
-        
-        if not regular_documents and not structured_documents:
+                logger.error(f"❌  Error processing {filename}: {e}")
+
+        if not regular_docs and not structured_docs:
             return {"success": False, "message": "No documents loaded"}
-        
-        # Split documents
-        logger.info("✂️ Splitting chunks...")
+
+        logger.info("✂️  Splitting chunks...")
         split_docs = []
-        
-        if regular_documents:
-            chunks = self.document_splitter.split_documents(regular_documents)
+
+        if regular_docs:
+            chunks = self.document_splitter.split_documents(regular_docs)
+            for chunk in chunks:
+                chunk.metadata.setdefault("source_type", "document")
             split_docs.extend(chunks)
-            logger.info(f"📄 Document chunks: {len(chunks)}")
-        
-        if structured_documents:
-            chunks = self.structured_splitter.split_documents(structured_documents)
+            logger.info(f"📄  Document chunks: {len(chunks)}")
+
+        if structured_docs:
+            chunks = self.structured_splitter.split_documents(structured_docs)
+            for chunk in chunks:
+                chunk.metadata.setdefault("source_type", "csv")
             split_docs.extend(chunks)
-            logger.info(f"📊 Structured chunks: {len(chunks)}")
-        
-        logger.info(f"✅ Total chunks: {len(split_docs)}")
-        
-        # Limit to prevent memory issues
+            logger.info(f"📊  Structured chunks: {len(chunks)}")
+
         MAX_CHUNKS = 5000
         if len(split_docs) > MAX_CHUNKS:
-            logger.warning(f"⚠️ Limiting to {MAX_CHUNKS} chunks")
+            logger.warning(f"⚠️  Capping at {MAX_CHUNKS} chunks (was {len(split_docs)})")
             split_docs = split_docs[:MAX_CHUNKS]
-        
-        # Store documents for BM25
-        session["documents"] = split_docs
-        
-        # Create/update vector store in batches
+
+        logger.info(f"✅  Total chunks: {len(split_docs)}")
+        session["documents"].extend(split_docs)
+
+        # Build / extend vector store in batches
         batch_size = 500
-        total_batches = (len(split_docs) - 1) // batch_size + 1
-        
-        if session["vectorstore"] is None:
-            logger.info("🔢 Creating vector store...")
-            for i in range(0, len(split_docs), batch_size):
-                batch = split_docs[i:i+batch_size]
-                batch_num = i // batch_size + 1
-                
-                if i == 0:
-                    session["vectorstore"] = FAISS.from_documents(batch, self.embeddings)
-                else:
-                    session["vectorstore"].add_documents(batch)
-                logger.info(f"   ✅ Batch {batch_num}/{total_batches}")
-        else:
-            logger.info("🔢 Adding to vector store...")
-            for i in range(0, len(split_docs), batch_size):
-                batch = split_docs[i:i+batch_size]
-                batch_num = i // batch_size + 1
+        logger.info("🔢  Building vector store...")
+        for i in range(0, len(split_docs), batch_size):
+            batch = split_docs[i:i + batch_size]
+            if session["vectorstore"] is None:
+                session["vectorstore"] = FAISS.from_documents(batch, self.embeddings)
+            else:
                 session["vectorstore"].add_documents(batch)
-                logger.info(f"   ✅ Batch {batch_num}/{total_batches}")
-        
-        total_vectors = session["vectorstore"].index.ntotal
-        session["total_chunks"] = total_vectors
-        
-        # Persist to disk
+            logger.info(f"   ✅  Batch {i // batch_size + 1}")
+
+        total_vectors              = session["vectorstore"].index.ntotal
+        session["total_chunks"]    = total_vectors
+        session["total_documents"] = len(session["loaded_files"])
+
         session_path = self._get_session_path(conversation_id)
         session_path.mkdir(parents=True, exist_ok=True)
         session["vectorstore"].save_local(str(session_path))
-        logger.info(f"💾 Saved: {total_vectors} vectors")
-        
+        logger.info(f"💾  Saved: {total_vectors} vectors")
+
+        # Build per-source vocabulary for orchestrator routing
+        self._build_source_vocabulary(session)
+
         return {
-            "success": True,
+            "success":         True,
             "conversation_id": conversation_id,
-            "files_loaded": loaded_files_info,
-            "csv_tables": csv_tables,
-            "total_chunks": len(split_docs),
-            "total_vectors": total_vectors,
-            "message": f"Loaded {len(loaded_files_info)} files"
+            "files_loaded":    loaded_files_info,
+            "total_chunks":    len(split_docs),
+            "total_vectors":   total_vectors,
         }
-    
+
+    # ── Dynamic vocabulary builder ────────────────────────────────────────────
+
+    def _build_source_vocabulary(self, session: dict) -> None:
+        """
+        Build per-source unique vocabularies from chunk content.
+
+        Words that appear in BOTH sources are considered ambiguous and excluded.
+        CSV column names are pinned directly into csv vocab so queries that
+        mention column names (e.g. "AttendancePct by department") always route
+        to SQL even if those terms also appear contextually in document text.
+
+        Result stored in session["source_vocab"]:
+          "csv"      → terms exclusive to CSV chunks
+          "document" → terms exclusive to document chunks
+          "overlap"  → ambiguous terms (for debugging)
+        """
+        STOPWORDS = {
+            'the', 'a', 'an', 'is', 'in', 'of', 'to', 'and', 'or', 'for', 'with',
+            'from', 'at', 'by', 'on', 'are', 'was', 'be', 'this', 'that', 'it',
+            'as', 'we', 'our', 'has', 'have', 'had', 'not', 'but', 'if', 'so',
+            'its', 'can', 'all', 'any', 'one', 'two', 'per', 'will', 'been',
+            'more', 'also', 'than', 'when', 'what', 'how', 'which', 'who',
+            'they', 'them', 'their', 'there', 'here', 'each', 'both', 'some',
+            'into', 'over', 'after', 'about', 'up', 'out', 'do', 'did',
+            'were', 'would', 'could', 'should', 'may', 'might', 'shall',
+            'row', 'file', 'column', 'data', 'value', 'table', 'page',
+            'source', 'type', 'total', 'number', 'name', 'date', 'time',
+        }
+
+        csv_vocab = Counter()
+        doc_vocab = Counter()
+
+        for doc in session.get("documents", []):
+            source_type = doc.metadata.get("source_type", "")
+            words = re.findall(r'\b[a-zA-Z]{3,}\b', doc.page_content.lower())
+            filtered = [w for w in words if w not in STOPWORDS]
+            if source_type == "csv":
+                csv_vocab.update(filtered)
+            elif source_type == "document":
+                doc_vocab.update(filtered)
+
+        csv_terms = set(csv_vocab.keys())
+        doc_terms = set(doc_vocab.keys())
+
+        # Pin column name tokens directly into csv_terms.
+        # This ensures queries referencing column names always route to SQL
+        # even when the same words appear contextually in document text.
+        pinned = set()
+        for doc in session.get("documents", []):
+            if doc.metadata.get("source_type") == "csv":
+                for col in doc.metadata.get("columns", []):
+                    tokens = re.findall(r'[a-zA-Z]{3,}', col.lower())
+                    csv_terms.update(tokens)
+                    pinned.update(tokens)
+
+        # Compute overlap but exclude pinned tokens (CSV always wins)
+        overlap    = (csv_terms & doc_terms) - pinned
+        unique_csv = csv_terms - overlap
+        unique_doc = doc_terms - overlap
+
+        session["source_vocab"] = {
+            "csv":      unique_csv,
+            "document": unique_doc,
+            "overlap":  overlap,
+        }
+
+        logger.info(
+            f"📚  Vocab built — CSV unique: {len(unique_csv)}, "
+            f"DOC unique: {len(unique_doc)}, "
+            f"Overlap (ambiguous): {len(overlap)}"
+        )
+
+    # ── Hybrid retrieval ──────────────────────────────────────────────────────
+
     def _create_hybrid_retriever(self, session: Dict[str, Any]) -> EnsembleRetriever:
-        """
-        Create hybrid retriever combining BM25 (lexical) + FAISS (semantic)
-        
-        Why hybrid:
-        - BM25 catches exact term matches (IDs, acronyms, names)
-        - FAISS understands semantic meaning and context
-        - Ensemble combines both signals with weighted fusion
-        """
-        # BM25 retriever (keyword-based, good for exact matches)
-        bm25_retriever = BM25Retriever.from_documents(session["documents"])
-        bm25_retriever.k = self.INITIAL_RETRIEVAL_K
-        
-        # FAISS retriever (semantic, good for meaning)
-        faiss_retriever = session["vectorstore"].as_retriever(
+        bm25   = BM25Retriever.from_documents(session["documents"])
+        bm25.k = self.INITIAL_RETRIEVAL_K
+        faiss  = session["vectorstore"].as_retriever(
             search_kwargs={"k": self.INITIAL_RETRIEVAL_K}
         )
-        
-        # Ensemble: weighted combination
-        ensemble = EnsembleRetriever(
-            retrievers=[bm25_retriever, faiss_retriever],
-            weights=[self.BM25_WEIGHT, self.FAISS_WEIGHT]
+        return EnsembleRetriever(
+            retrievers=[bm25, faiss],
+            weights=[self.BM25_WEIGHT, self.FAISS_WEIGHT],
         )
-        
-        return ensemble
-    
-    def _rerank_documents(self, query: str, documents: list) -> list:
+
+    def _expand_query(self, question: str) -> str:
         """
-        Rerank documents using cross-encoder
-        
-        Cross-encoder scores query-document pairs with full attention,
-        giving more accurate relevance than bi-encoder embeddings.
+        Expand a low-scoring query with synonyms and document-style phrasing.
+        Only triggered when the top rerank score falls below EXPANSION_TRIGGER.
+        Combined with the original question to preserve intent.
         """
-        pairs = [[query, doc.page_content] for doc in documents]
+        try:
+            prompt = (
+                "A user asked this question but the document uses different terminology.\n"
+                "Generate 6-10 keywords/phrases covering:\n"
+                "1. Direct synonyms of the question terms\n"
+                "2. How a formal business document would phrase this topic\n"
+                "3. Related section headers a document might use\n"
+                "Output ONLY the keywords, comma-separated, no explanation.\n\n"
+                f"Question: {question}\n\nKeywords:"
+            )
+            expanded = self.llm.invoke(prompt).content.strip()
+            logger.info(f"🔄  Query expanded: {expanded}")
+            return f"{question} {expanded}"
+        except Exception as e:
+            logger.warning(f"⚠️  Query expansion failed: {e}")
+            return question
+
+    def _rerank_documents(self, query: str, documents: List[Document]) -> List[Document]:
+        pairs  = [[query, doc.page_content] for doc in documents]
         scores = self.cross_encoder.predict(pairs)
-        doc_score_pairs = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
-        
-        # Take top K and add scores to metadata
-        reranked_docs = []
-        for doc, score in doc_score_pairs[:self.RERANK_TOP_K]:
+        ranked = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
+
+        reranked = []
+        for doc, score in ranked[:self.RERANK_TOP_K]:
             doc.metadata['rerank_score'] = float(score)
-            reranked_docs.append(doc)
-        
-        scores_str = [f'{d.metadata["rerank_score"]:.3f}' for d in reranked_docs]
-        logger.info(f"🎯 Reranked: {scores_str}")
-        
-        return reranked_docs
-    
-    def query(self, conversation_id: str, question: str, language: str = None) -> Dict[str, Any]:
+            reranked.append(doc)
+
+        score_str = [f'{d.metadata["rerank_score"]:.3f}' for d in reranked]
+        logger.info(f"🎯  Reranked scores: {score_str}")
+        return reranked
+
+    # ── Main query pipeline ───────────────────────────────────────────────────
+
+    def query(
+        self,
+        conversation_id: str,
+        question: str,
+        language: str = None,
+    ) -> Dict[str, Any]:
         """
-        Query with three-stage retrieval:
-        1. Hybrid search (BM25 + FAISS) → 10 candidates
-        2. Cross-encoder rerank → top 3
-        3. LLM generation with top 3 context
+        Three-stage retrieval pipeline with anti-hallucination guards:
+          1. Hybrid (BM25 + FAISS) → 10 candidates
+          2. Cross-encoder rerank  → top 3
+          3. Dual-threshold guard  → return "not available" if irrelevant
+          4. LLM generation with top-3 context only
         """
         session = self.get_or_create_session(conversation_id)
-        
+
         if not session["vectorstore"]:
             return {
                 "success": False,
-                "error": "No documents loaded",
-                "answer": "Please upload documents first."
+                "error":   "No documents loaded",
+                "answer":  "Please upload documents first.",
             }
-        
+
         log_section(f"QUERYING: {conversation_id}")
-        logger.info(f"❓ {question}")
-        
+        logger.info(f"❓  {question}")
+
         try:
             if not language:
                 language = self.language_detector.detect_language(question)
-            
-            has_structured = self.has_csv_data(conversation_id)
-            logger.info(f"📊 Has CSV: {has_structured}")
-            
-            # Stage 1: Hybrid retrieval (BM25 + FAISS)
-            logger.info(f"🔍 Stage 1: Hybrid search (BM25 + semantic)")
-            hybrid_retriever = self._create_hybrid_retriever(session)
-            initial_docs = hybrid_retriever.get_relevant_documents(question)
-            
-            # Deduplicate (ensemble might return duplicates)
-            seen = set()
-            unique_docs = []
+
+            has_csv = self.has_csv_data(conversation_id)
+
+            # Stage 1: hybrid retrieval
+            logger.info("🔍  Stage 1: BM25 + FAISS ensemble")
+            retriever    = self._create_hybrid_retriever(session)
+            initial_docs = retriever.invoke(question)
+
+            # Deduplicate by content prefix
+            seen, unique_docs = set(), []
             for doc in initial_docs:
-                doc_id = doc.page_content[:100]  # Use first 100 chars as ID
-                if doc_id not in seen:
-                    seen.add(doc_id)
+                key = doc.page_content[:100]
+                if key not in seen:
+                    seen.add(key)
                     unique_docs.append(doc)
-            
             initial_docs = unique_docs[:self.INITIAL_RETRIEVAL_K]
-            logger.info(f"   Retrieved {len(initial_docs)} unique candidates")
-            
-            # Stage 2: Reranking
-            logger.info(f"🎯 Stage 2: Cross-encoder reranking")
-            reranked_docs = self._rerank_documents(question, initial_docs)
-            
-            # Stage 3: Generate answer
-            qa_chain = self._create_qa_chain_with_docs(
-                reranked_docs, question, has_structured
-            )
-            result = qa_chain.invoke({"query": question})
-            
-            # Format response
+            logger.info(f"   {len(initial_docs)} unique candidates")
+
+            # Stage 2: cross-encoder rerank
+            logger.info("🎯  Stage 2: Cross-encoder reranking")
+            reranked = self._rerank_documents(question, initial_docs)
+
+            # Lazy query expansion — only when top score is poor.
+            # Handles inferential queries that don't match document phrasing.
+            EXPANSION_TRIGGER = -8.0
+            if reranked and reranked[0].metadata.get("rerank_score", 0) < EXPANSION_TRIGGER:
+                logger.info(
+                    f"🔄  Low rerank score "
+                    f"({reranked[0].metadata['rerank_score']:.3f}) — expanding query"
+                )
+                expanded_q    = self._expand_query(question)
+                expanded_docs = retriever.invoke(expanded_q)
+
+                seen_keys = {doc.page_content[:100] for doc in initial_docs}
+                for doc in expanded_docs:
+                    key = doc.page_content[:100]
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        initial_docs.append(doc)
+
+                reranked = self._rerank_documents(question, initial_docs)
+                logger.info("✅  Re-ranked after expansion")
+
+            # Dual-threshold hallucination guard.
+            # Both top and average must be below threshold to block —
+            # prevents false negatives while blocking truly irrelevant queries.
+            if reranked:
+                all_scores = [d.metadata.get("rerank_score", 0.0) for d in reranked]
+                top_score  = all_scores[0]
+                avg_score  = sum(all_scores) / len(all_scores)
+
+                # Dynamic threshold: relax slightly for multi-doc sessions.
+                # More docs = noisier vector space = scores naturally lower.
+                session_info   = self.get_session_status(conversation_id)
+                doc_count      = session_info.get("total_documents", 1)
+                # Relax by 0.5 per extra doc beyond the first, max relax = -2.0
+                relax          = min(2.0, max(0.0, (doc_count - 1) * 0.5))
+                effective_threshold = RERANK_RELEVANCE_THRESHOLD - relax
+
+                logger.info(
+                    f"📊  Rerank — top: {top_score:.3f}, "
+                    f"avg: {avg_score:.3f}, threshold: {effective_threshold:.1f} "
+                    f"(docs: {doc_count}, relax: -{relax:.1f})"
+                )
+
+                if top_score < effective_threshold and avg_score < effective_threshold:
+                    logger.info("🚫  Both scores below threshold — not available")
+                    return {
+                        "success":          True,
+                        "answer":           "This information is not available in the uploaded documents.",
+                        "sources":          [],
+                        "language":         language,
+                        "source_count":     0,
+                        "conversation_id":  conversation_id,
+                        "retrieval_method": "hybrid_bm25_faiss_reranking",
+                        "not_found":        True,
+                    }
+
+            # Stage 3: generate answer from top-3 context
+            answer  = self._generate_answer(question, reranked, has_csv, language)
             sources = []
-            for doc in reranked_docs:
-                source_info = {
-                    "source": doc.metadata.get("source", "unknown"),
-                    "type": doc.metadata.get("type", "unknown"),
-                    "preview": doc.page_content[:150] + "...",
-                    "relevance_score": doc.metadata.get("rerank_score", 0.0)
+            for doc in reranked:
+                src = {
+                    "source":          doc.metadata.get("source", "unknown"),
+                    "type":            doc.metadata.get("source_type", "unknown"),
+                    "preview":         doc.page_content[:150] + "...",
+                    "relevance_score": doc.metadata.get("rerank_score", 0.0),
                 }
                 if "page" in doc.metadata:
-                    source_info["page"] = doc.metadata["page"]
-                sources.append(source_info)
-            
-            answer = result.get("result", "No answer").strip()
-            
-            # Add source attribution
-            if sources and "Source" not in answer:
-                source_files = list(set([s["source"] for s in sources]))
-                if len(source_files) == 1:
-                    answer += f"\n\n*Source: {source_files[0]}*"
-                else:
-                    answer += f"\n\n*Sources: {', '.join(source_files)}*"
-            
-            logger.info(f"✅ Answer generated ({len(sources)} sources)")
-            
+                    src["page"] = doc.metadata["page"]
+                sources.append(src)
+
+            source_files = list({s["source"] for s in sources})
+            if source_files and "Source" not in answer:
+                suffix = (
+                    f"\n\n*Source: {source_files[0]}*"
+                    if len(source_files) == 1
+                    else f"\n\n*Sources: {', '.join(source_files)}*"
+                )
+                answer += suffix
+
+            logger.info(f"✅  Answer generated ({len(sources)} sources)")
+
             return {
-                "success": True,
-                "answer": answer,
-                "sources": sources,
-                "language": language,
-                "source_count": len(sources),
-                "conversation_id": conversation_id,
-                "retrieval_method": "hybrid_bm25_faiss_reranking"
+                "success":          True,
+                "answer":           answer,
+                "sources":          sources,
+                "language":         language,
+                "source_count":     len(sources),
+                "conversation_id":  conversation_id,
+                "retrieval_method": "hybrid_bm25_faiss_reranking",
             }
-        
+
         except Exception as e:
-            logger.error(f"❌ Query error: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "answer": f"Error: {str(e)}"
-            }
-    
-    def _create_qa_chain_with_docs(self, documents: list, question: str = None,
-                                   has_structured_data: bool = False):
-        """Create QA chain with pre-retrieved documents"""
-        
-        template = self._select_prompt_template(question, has_structured_data) if question else """
-Context: {context}
-Question: {question}
-Answer:"""
-        
-        prompt = PromptTemplate(template=template, input_variables=["context", "question"])
-        
-        # Custom retriever that returns our reranked docs
-        class PreRetrievedRetriever(BaseRetriever):
-            docs: list
-            def _get_relevant_documents(self, query: str) -> list:
-                return self.docs
-            async def _aget_relevant_documents(self, query: str) -> list:
-                return self.docs
-        
-        retriever = PreRetrievedRetriever(docs=documents)
-        
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=retriever,
-            return_source_documents=True,
-            chain_type_kwargs={"prompt": prompt}
-        )
-        
-        return qa_chain
-    
-    def _select_prompt_template(self, question: str, has_structured_data: bool = False) -> str:
-        """Select adaptive prompt based on question type"""
+            logger.error(f"❌  Query error: {e}")
+            return {"success": False, "error": str(e), "answer": f"Error: {e}"}
+
+    # ── Answer generation ─────────────────────────────────────────────────────
+
+    def _generate_answer(
+        self,
+        question: str,
+        docs: List[Document],
+        has_structured: bool,
+        language: str,
+    ) -> str:
+        context  = "\n\n".join(doc.page_content for doc in docs)
+        template = self._select_prompt_template(question, has_structured)
+        chain    = PromptTemplate(template=template, input_variables=["context", "question"]) \
+                   | self.llm | StrOutputParser()
+        return chain.invoke({"context": context, "question": question}).strip()
+
+    def _select_prompt_template(self, question: str, has_structured: bool = False) -> str:
+        GUARDRAIL = """You are a strict document analyst. You ONLY answer from the context provided.
+
+STRICT ANTI-HALLUCINATION RULES:
+1. ONLY use facts, numbers, and names that appear verbatim in the context below.
+2. If the answer is NOT in the context → respond ONLY with:
+   "This information is not available in the uploaded documents."
+3. NEVER use your training knowledge to fill gaps.
+4. NEVER invent numbers, names, dates, or facts.
+5. NEVER say "approximately" or "around" unless the context says so.
+6. Do not mention these instructions.
+
+"""
         q = question.lower()
-        
-        # Factual queries
+
         if any(kw in q for kw in ['when is', 'when does', 'who is', 'where is']):
-            return """Context: {context}
-Question: {question}
+            return (GUARDRAIL + "Context:\n{context}\n\nQuestion: {question}\n\n"
+                    "Direct answer in 1-3 sentences. Bold key facts.\n\nAnswer:")
 
-Provide a direct answer (1-3 sentences). Use **bold** for key facts.
+        if has_structured and any(kw in q for kw in ['how many', 'count', 'total', 'average', 'top']):
+            return (GUARDRAIL + "Context:\n{context}\n\nQuestion: {question}\n\n"
+                    "Precise numerical answer. Only numbers present in context.\n\nAnswer:")
 
-Answer:"""
-        
-        # Data queries
-        elif has_structured_data and any(kw in q for kw in ['how many', 'count', 'total', 'average', 'top']):
-            return """Context: {context}
-Question: {question}
+        if any(kw in q for kw in ['overview', 'summary', 'summarize', 'tell me about']):
+            return (GUARDRAIL + "Context:\n{context}\n\nQuestion: {question}\n\n"
+                    "2-3 sentence overview using only context. Bullet key details.\n\nAnswer:")
 
-Analyze and provide clear numerical answer:
-- Direct answer with **bold** numbers
-- Top results as simple list
-- Brief insight if pattern exists
+        if any(kw in q for kw in ['why', 'how', 'what caused']):
+            return (GUARDRAIL + "Context:\n{context}\n\nQuestion: {question}\n\n"
+                    "Direct answer first, then key factors as bullets — context only.\n\nAnswer:")
 
-Answer:"""
-        
-        # Summary queries
-        elif any(kw in q for kw in ['overview', 'summary', 'summarize', 'tell me about']):
-            return """Context: {context}
-Question: {question}
+        if any(kw in q for kw in ['list', 'what are', 'show me']):
+            return (GUARDRAIL + "Context:\n{context}\n\nQuestion: {question}\n\n"
+                    "Brief intro, then bullet list with actual values from context only.\n\nAnswer:")
 
-Provide natural summary:
-- 2-3 sentence overview
-- **Bold headings** for topics
-- Bullets for lists
+        return (GUARDRAIL + "Context:\n{context}\n\nQuestion: {question}\n\n"
+                "Answer concisely using only context. Bold key facts.\n\nAnswer:")
 
-Answer:"""
-        
-        # Analytical queries
-        elif any(kw in q for kw in ['why', 'how', 'what caused']):
-            return """Context: {context}
-Question: {question}
+    # ── Utility ───────────────────────────────────────────────────────────────
 
-Explain clearly:
-- Direct answer first
-- Key factors as bullets
-- **Bold** for drivers
-
-Answer:"""
-        
-        # List queries
-        elif any(kw in q for kw in ['list', 'what are', 'show me']):
-            return """Context: {context}
-Question: {question}
-
-Format:
-- Brief intro
-- Bullet list with details
-- **Bold** for critical info
-
-Answer:"""
-        
-        # Default
-        else:
-            return """Context: {context}
-Question: {question}
-
-Guidelines:
-- Simple question → simple answer
-- Complex question → organized detail
-- **Bold** for key facts
-- Bullets for lists
-- Be conversational
-
-Answer:"""
-    
     def has_csv_data(self, conversation_id: str) -> bool:
-        """Check if session has CSV data"""
-        session = self.get_or_create_session(conversation_id)
-        return len(session.get("csv_tables", [])) > 0
-    
+        return len(self.get_or_create_session(conversation_id).get("csv_tables", [])) > 0
+
     def get_csv_tables(self, conversation_id: str) -> List[str]:
-        """Get CSV table names"""
-        session = self.get_or_create_session(conversation_id)
-        return session.get("csv_tables", [])
-    
+        return self.get_or_create_session(conversation_id).get("csv_tables", [])
+
     def get_session_status(self, conversation_id: str) -> Dict[str, Any]:
-        """Get session status"""
         session = self.get_or_create_session(conversation_id)
         return {
-            "conversation_id": conversation_id,
-            "status": "active" if session["vectorstore"] else "idle",
-            "loaded_files": session["loaded_files"],
-            "csv_tables": session.get("csv_tables", []),
-            "has_csv_data": len(session.get("csv_tables", [])) > 0,
-            "total_documents": len(session["loaded_files"]),
-            "total_vectors": session["total_chunks"],
-            "vectorstore_ready": session["vectorstore"] is not None,
+            "conversation_id":    conversation_id,
+            "status":             "active" if session["vectorstore"] else "idle",
+            "loaded_files":       session["loaded_files"],
+            "csv_tables":         session.get("csv_tables", []),
+            "has_csv_data":       len(session.get("csv_tables", [])) > 0,
+            "total_documents":    session.get("total_documents", len(session["loaded_files"])),
+            "total_vectors":      session["total_chunks"],
+            "vectorstore_ready":  session["vectorstore"] is not None,
+            "source_vocab_ready": session.get("source_vocab") is not None,
             "retrieval_config": {
-                "method": "hybrid_bm25_faiss_reranking",
-                "initial_k": self.INITIAL_RETRIEVAL_K,
-                "rerank_k": self.RERANK_TOP_K,
-                "bm25_weight": self.BM25_WEIGHT,
-                "faiss_weight": self.FAISS_WEIGHT
-            }
+                "method":           "hybrid_bm25_faiss_reranking",
+                "initial_k":        self.INITIAL_RETRIEVAL_K,
+                "rerank_k":         self.RERANK_TOP_K,
+                "bm25_weight":      self.BM25_WEIGHT,
+                "faiss_weight":     self.FAISS_WEIGHT,
+                "rerank_threshold": RERANK_RELEVANCE_THRESHOLD,
+            },
         }
-    
+
     def delete_session(self, conversation_id: str):
-        """Delete session data"""
         try:
-            if conversation_id in self.session_stores:
-                del self.session_stores[conversation_id]
-            
-            session_path = self._get_session_path(conversation_id)
-            if session_path.exists():
-                shutil.rmtree(session_path)
-                logger.info(f"🗑️ Deleted: {conversation_id}")
+            self.session_stores.pop(conversation_id, None)
+            path = self._get_session_path(conversation_id)
+            if path.exists():
+                shutil.rmtree(path)
+                logger.info(f"🗑️  Deleted session: {conversation_id}")
         except Exception as e:
-            logger.error(f"❌ Delete error: {e}")
-    
-    def get_all_sessions(self) -> List[Dict[str, Any]]:
-        """Get all session statuses"""
-        return [self.get_session_status(cid) for cid in self.session_stores.keys()]
-    
+            logger.error(f"❌  Delete error: {e}")
+
     def get_global_stats(self) -> Dict[str, Any]:
-        """Get global statistics"""
-        total_sessions = len(self.session_stores)
-        total_vectors = sum(s["total_chunks"] for s in self.session_stores.values())
-        active_sessions = sum(1 for s in self.session_stores.values() if s["vectorstore"])
-        
+        total   = len(self.session_stores)
+        active  = sum(1 for s in self.session_stores.values() if s["vectorstore"])
+        vectors = sum(s["total_chunks"] for s in self.session_stores.values())
         return {
-            "total_sessions": total_sessions,
-            "active_sessions": active_sessions,
-            "total_vectors": total_vectors,
-            "base_path": str(self.base_vector_store_path),
-            "retrieval_method": "hybrid_bm25_faiss_reranking",
+            "total_sessions":      total,
+            "active_sessions":     active,
+            "total_vectors":       vectors,
+            "base_path":           str(self.base_vector_store_path),
+            "retrieval_method":    "hybrid_bm25_faiss_reranking",
             "initial_retrieval_k": self.INITIAL_RETRIEVAL_K,
-            "rerank_k": self.RERANK_TOP_K,
-            "bm25_weight": self.BM25_WEIGHT,
-            "faiss_weight": self.FAISS_WEIGHT
+            "rerank_k":            self.RERANK_TOP_K,
         }
