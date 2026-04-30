@@ -1,1531 +1,1719 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Business Analyst | Session-Aware RAG</title>
-    
-    <!-- Chart.js for chart rendering -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    
-    <!-- Marked.js for markdown rendering -->
-    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-        :root {
-            /* Light theme (default) */
-            --bg-gradient-start: #667eea;
-            --bg-gradient-end: #764ba2;
-            --sidebar-bg: rgba(255, 255, 255, 0.98);
-            --sidebar-border: rgba(255, 255, 255, 0.3);
-            --main-bg: rgba(255, 255, 255, 0.95);
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --message-user-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --message-assistant-bg: #f3f4f6;
-            --input-bg: white;
-            --input-border: #e5e7eb;
-            --card-bg: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            --shadow-color: rgba(0, 0, 0, 0.1);
-        }
-
-        [data-theme="dark"] {
-            --bg-gradient-start: #1a1a2e;
-            --bg-gradient-end: #16213e;
-            --sidebar-bg: rgba(30, 30, 46, 0.98);
-            --sidebar-border: rgba(255, 255, 255, 0.1);
-            --main-bg: rgba(26, 26, 40, 0.95);
-            --text-primary: #e5e7eb;
-            --text-secondary: #9ca3af;
-            --message-user-bg: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            --message-assistant-bg: #2d2d44;
-            --input-bg: #1e1e2e;
-            --input-border: #374151;
-            --card-bg: linear-gradient(135deg, #2d2d44 0%, #262638 100%);
-            --shadow-color: rgba(0, 0, 0, 0.3);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            height: 100vh;
-            display: flex;
-            overflow: hidden;
-            position: relative;
-            transition: background 0.3s ease;
-        }
-
-        /* Animated background particles */
-        body::before {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 40% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
-            pointer-events: none;
-            animation: float 20s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-
-        /* Theme Toggle Button */
-        .theme-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            background: var(--sidebar-bg);
-            border: 2px solid var(--input-border);
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px var(--shadow-color);
-        }
-
-        .theme-toggle:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 20px var(--shadow-color);
-        }
-
-        .theme-toggle::before {
-            content: '🌙';
-            font-size: 24px;
-        }
-
-        [data-theme="dark"] .theme-toggle::before {
-            content: '☀️';
-        }
-
-        .sidebar {
-            width: 320px;
-            background: var(--sidebar-bg);
-            backdrop-filter: blur(20px);
-            box-shadow: 4px 0 24px var(--shadow-color);
-            display: flex;
-            flex-direction: column;
-            z-index: 10;
-            border-right: 1px solid var(--sidebar-border);
-            transition: background 0.3s ease;
-        }
-
-        .sidebar-header {
-            padding: 24px;
-            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .sidebar-header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-            animation: pulse 3s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-
-        .sidebar-header h2 {
-            font-size: 1.3em;
-            margin-bottom: 8px;
-            font-weight: 700;
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .sidebar-header p {
-            font-size: 0.85em;
-            opacity: 0.9;
-            position: relative;
-            font-weight: 400;
-        }
-
-        .new-chat-btn {
-            width: 100%;
-            padding: 14px;
-            background: white;
-            color: #667eea;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 16px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-size: 0.95em;
-            box-shadow: 0 4px 12px var(--shadow-color);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .new-chat-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .conversations-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-        }
-
-        .conversations-list::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .conversations-list::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 10px;
-        }
-
-        .conversation-item {
-            padding: 16px;
-            margin: 8px 0;
-            background: var(--card-bg);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-left: 4px solid transparent;
-        }
-
-        .conversation-item:hover {
-            transform: translateX(4px);
-            border-left-color: #667eea;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-        }
-
-        .conversation-item.active {
-            border-left-color: #667eea;
-            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
-        }
-
-        .conversation-title {
-            font-weight: 600;
-            font-size: 0.95em;
-            margin-bottom: 8px;
-            color: var(--text-primary);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .conversation-meta {
-            font-size: 0.75em;
-            color: var(--text-secondary);
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .doc-badge {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.7em;
-            font-weight: 600;
-        }
-
-        .sidebar-footer {
-            padding: 16px;
-            background: var(--card-bg);
-            border-top: 1px solid var(--input-border);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-
-        .stat-item {
-            background: var(--main-bg);
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 1.5em;
-            font-weight: 700;
-            color: #667eea;
-        }
-
-        .stat-label {
-            font-size: 0.75em;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: var(--main-bg);
-            backdrop-filter: blur(20px);
-            margin: 20px;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px var(--shadow-color);
-            overflow: hidden;
-            transition: background 0.3s ease;
-        }
-
-        .chat-header {
-            padding: 20px 32px;
-            background: var(--sidebar-bg);
-            border-bottom: 2px solid var(--input-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .chat-header h1 {
-            font-size: 1.5em;
-            font-weight: 700;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .session-info {
-            font-size: 0.85em;
-            color: var(--text-secondary);
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .session-badge {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.9em;
-        }
-
-        /* Persistent File List Bar */
-        .files-bar {
-            padding: 8px 32px;
-            background: var(--sidebar-bg);
-            border-bottom: 1px solid var(--input-border);
-            display: none;
-            max-height: 60px;
-            overflow-x: auto;
-            overflow-y: hidden;
-        }
-
-        .files-bar.has-files {
-            display: block;
-        }
-
-        .files-bar::-webkit-scrollbar {
-            height: 4px;
-        }
-
-        .files-bar::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 10px;
-        }
-
-        .files-list {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .file-chip {
-            background: var(--card-bg);
-            padding: 6px 12px;
-            border-radius: 20px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.8em;
-            white-space: nowrap;
-            border: 1px solid var(--input-border);
-        }
-
-        .file-chip-icon {
-            font-size: 1.1em;
-        }
-
-        .file-chip-name {
-            color: var(--text-primary);
-            font-weight: 500;
-            max-width: 150px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .file-chip-status {
-            font-size: 0.9em;
-        }
-
-        .status-processing {
-            animation: pulse-animation 1.5s infinite;
-        }
-
-        @keyframes pulse-animation {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .chat-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 32px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .chat-messages::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .chat-messages::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-        }
-
-        .message {
-            max-width: 75%;
-            padding: 16px 20px;
-            border-radius: 16px;
-            animation: slideIn 0.3s ease-out;
-            position: relative;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .message-user {
-            align-self: flex-end;
-            background: var(--message-user-bg);
-            color: white;
-            border-bottom-right-radius: 4px;
-        }
-
-        .message-assistant {
-            align-self: flex-start;
-            background: var(--message-assistant-bg);
-            color: var(--text-primary);
-            border-bottom-left-radius: 4px;
-            box-shadow: 0 2px 8px var(--shadow-color);
-        }
-
-        /* ENHANCED MARKDOWN CONTENT STYLES */
-        .message-content {
-            line-height: 1.7;
-            word-wrap: break-word;
-        }
-
-        /* Remove default paragraph margins from first/last elements */
-        .message-content > *:first-child {
-            margin-top: 0 !important;
-        }
-
-        .message-content > *:last-child {
-            margin-bottom: 0 !important;
-        }
-
-        .message-content h1,
-        .message-content h2,
-        .message-content h3,
-        .message-content h4,
-        .message-content h5,
-        .message-content h6 {
-            margin-top: 12px;
-            margin-bottom: 8px;
-            font-weight: 700;
-            color: var(--text-primary);
-            line-height: 1.3;
-        }
-
-        .message-content h1 { font-size: 1.6em; }
-        .message-content h2 { font-size: 1.4em; }
-        .message-content h3 { font-size: 1.2em; }
-        .message-content h4 { font-size: 1.1em; }
-        .message-content h5 { font-size: 1.05em; }
-        .message-content h6 { font-size: 1em; }
-
-        .message-content p {
-            margin-bottom: 10px;
-            margin-top: 10px;
-        }
-
-        .message-content strong,
-        .message-content b {
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .message-content em,
-        .message-content i {
-            font-style: italic;
-        }
-
-        .message-content ul,
-        .message-content ol {
-            margin-left: 24px;
-            margin-bottom: 12px;
-            margin-top: 8px;
-            padding-left: 0;
-        }
-
-        .message-content li {
-            margin-bottom: 6px;
-            line-height: 1.6;
-            padding-left: 4px;
-        }
-
-        .message-content ul li {
-            list-style-type: disc;
-        }
-
-        .message-content ul ul li {
-            list-style-type: circle;
-        }
-
-        .message-content ol li {
-            list-style-type: decimal;
-        }
-
-        .message-content code {
-            background: rgba(0, 0, 0, 0.08);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', Consolas, monospace;
-            font-size: 0.9em;
-        }
-
-        [data-theme="dark"] .message-content code {
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .message-content pre {
-            background: rgba(0, 0, 0, 0.05);
-            padding: 12px 16px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 12px 0;
-        }
-
-        .message-content pre code {
-            background: transparent;
-            padding: 0;
-        }
-
-        [data-theme="dark"] .message-content pre {
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .message-content blockquote {
-            border-left: 4px solid #667eea;
-            padding-left: 16px;
-            margin: 12px 0;
-            color: var(--text-secondary);
-            font-style: italic;
-        }
-
-        .message-content a {
-            color: #667eea;
-            text-decoration: underline;
-        }
-
-        .message-content a:hover {
-            color: #764ba2;
-        }
-
-        .message-content hr {
-            border: none;
-            border-top: 2px solid var(--input-border);
-            margin: 16px 0;
-        }
-
-        .message-content table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 12px 0;
-        }
-
-        .message-content th,
-        .message-content td {
-            border: 1px solid var(--input-border);
-            padding: 8px 12px;
-            text-align: left;
-        }
-
-        .message-content th {
-            background: var(--card-bg);
-            font-weight: 600;
-        }
-
-        .message-meta {
-            font-size: 0.75em;
-            opacity: 0.7;
-            margin-top: 8px;
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .routing-badge {
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 0.85em;
-        }
-
-        .badge-sql {
-            background: #10b981;
-            color: white;
-        }
-
-        .badge-document {
-            background: #3b82f6;
-            color: white;
-        }
-
-        .badge-hybrid {
-            background: #f59e0b;
-            color: white;
-        }
-
-        /* CHART CONTAINER STYLES */
-        .chart-container {
-            margin: 20px 0;
-            padding: 20px;
-            background: var(--input-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 12px var(--shadow-color);
-        }
-
-        .chart-container canvas {
-            max-width: 100%;
-            max-height: 400px;
-        }
-
-        .chart-download-btn {
-            margin-top: 12px;
-            padding: 8px 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.85em;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-
-        .chart-download-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
-        /* INPUT AREA */
-        .input-area {
-            padding: 20px 32px;
-            background: var(--sidebar-bg);
-            border-top: 2px solid var(--input-border);
-        }
-
-        .input-container {
-            display: flex;
-            gap: 12px;
-            align-items: flex-end;
-        }
-
-        .upload-btn {
-            padding: 14px;
-            background: var(--input-bg);
-            border: 2px solid var(--input-border);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 1.3em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 48px;
-            height: 48px;
-        }
-
-        .upload-btn:hover {
-            background: var(--card-bg);
-            border-color: #667eea;
-            transform: translateY(-2px);
-        }
-
-        .upload-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        #messageInput {
-            flex: 1;
-            padding: 14px 20px;
-            border: 2px solid var(--input-border);
-            border-radius: 12px;
-            font-size: 0.95em;
-            resize: none;
-            font-family: inherit;
-            background: var(--input-bg);
-            color: var(--text-primary);
-            transition: all 0.3s;
-            max-height: 120px;
-        }
-
-        #messageInput:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        #sendBtn {
-            padding: 14px 28px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 0.95em;
-            min-width: 80px;
-        }
-
-        #sendBtn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        #sendBtn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .input-hint {
-            font-size: 0.8em;
-            color: var(--text-secondary);
-            margin-top: 8px;
-            text-align: center;
-        }
-
-        .notification {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            padding: 16px 24px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px var(--shadow-color);
-            z-index: 1001;
-            animation: slideInRight 0.3s ease-out;
-            font-weight: 500;
-        }
-
-        @keyframes slideInRight {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        .notification.success {
-            background: #10b981;
-            color: white;
-        }
-
-        .notification.error {
-            background: #ef4444;
-            color: white;
-        }
-
-        .notification.info {
-            background: #3b82f6;
-            color: white;
-        }
-
-        #fileInput {
-            display: none;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 280px;
-            }
-
-            .main-content {
-                margin: 10px;
-            }
-
-            .message {
-                max-width: 90%;
-            }
-
-            .file-chip-name {
-                max-width: 100px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ANALYST — Session-Aware RAG</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#07080d;--surface:#0c0d14;--surface2:#111320;--surface3:#151826;
+      --border:#1c1f2e;--border2:#252840;
+      --accent:#4ade80;--accent2:#86efac;--accent-dim:#1a4a28;
+      --blue:#38bdf8;--blue-dim:#0c2d3e;
+      --yellow:#fbbf24;--red:#f87171;--red-dim:#3b0f0f;
+      --purple:#a78bfa;--purple-dim:#2d1f4a;
+      --muted:#4a5066;--muted2:#6b7291;
+      --text:#d4d8f0;--text-dim:#8890b0;
+      --fm:'IBM Plex Mono',monospace;--fs:'IBM Plex Sans',sans-serif;
+      --hh:54px;--sb:28px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{font-size:18px;}
+    html,body{height:100%;overflow:hidden;}
+    body{font-family:var(--fs);font-size:1rem;background:var(--bg);color:var(--text);line-height:1.55;}
+    body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.022) 2px,rgba(0,0,0,.022) 4px);pointer-events:none;z-index:9000;}
+    ::-webkit-scrollbar{width:4px;height:4px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+    /* ─── LAUNCH SCREEN ─────────────────────── */
+    #launchScreen{
+      position:fixed;inset:0;background:var(--bg);z-index:8000;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      transition:opacity .65s ease,transform .65s ease;
+    }
+    #launchScreen.hiding{opacity:0;transform:scale(1.05);pointer-events:none;}
+    .ls-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:52px 52px;opacity:.3;}
+    .ls-glow{position:absolute;width:560px;height:560px;border-radius:50%;background:radial-gradient(circle,rgba(74,222,128,.07) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;animation:glowpulse 3.2s ease-in-out infinite;}
+    @keyframes glowpulse{0%,100%{opacity:.6;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}}
+    .ls-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:26px;}
+    .ls-logo{width:60px;height:60px;display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+    .ls-logo span{border-radius:3px;background:var(--accent);animation:flicker 2s infinite;}
+    .ls-logo span:nth-child(2){animation-delay:.25s;background:var(--blue);}
+    .ls-logo span:nth-child(3){animation-delay:.5s;background:var(--blue);}
+    .ls-logo span:nth-child(4){animation-delay:.75s;background:var(--accent);}
+    @keyframes flicker{0%,100%{opacity:1}50%{opacity:.45}}
+    .ls-title{font-family:var(--fm);font-size:2.8rem;font-weight:600;letter-spacing:.15em;color:var(--text);}
+    .ls-title em{color:var(--accent);font-style:normal;}
+    .ls-sub{font-family:var(--fm);font-size:.72rem;color:var(--muted2);letter-spacing:.1em;}
+    .ls-boot{font-family:var(--fm);font-size:.72rem;width:340px;text-align:left;min-height:100px;}
+    .boot-line{opacity:0;animation:bfade .3s ease forwards;padding:2px 0;}
+    .boot-line.ok{color:var(--accent);}
+    .boot-line.info{color:var(--blue);}
+    .boot-line.sys{color:var(--text-dim);}
+    @keyframes bfade{to{opacity:1}}
+    .ls-divider{width:260px;height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent);}
+    .ls-feats{display:flex;gap:26px;font-family:var(--fm);font-size:.7rem;color:var(--muted);}
+    .ls-feat{display:flex;align-items:center;gap:7px;}
+    .ls-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);}
+    .ls-dot.b{background:var(--blue);}
+    .ls-dot.y{background:var(--yellow);}
+    .ls-dot.p{background:var(--purple);}
+    .ls-btn{margin-top:6px;background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:15px 44px;font-family:var(--fm);font-size:.95rem;font-weight:600;cursor:pointer;letter-spacing:.08em;transition:all .2s;position:relative;overflow:hidden;}
+    .ls-btn::before{content:'';position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .25s ease;}
+    .ls-btn:hover:not(:disabled)::before{transform:scaleX(1);}
+    .ls-btn:hover:not(:disabled){color:var(--bg);}
+    .ls-btn:disabled{opacity:.4;cursor:not-allowed;}
+    .ls-btn span{position:relative;z-index:1;}
+    .ls-ver{font-family:var(--fm);font-size:.63rem;color:var(--muted);letter-spacing:.05em;}
+
+    /* ─── MAIN APP ─────────────────────── */
+    #mainApp{display:flex;flex-direction:column;height:100vh;opacity:0;transition:opacity .5s ease .12s;}
+    #mainApp.visible{opacity:1;}
+    #appLayout{display:flex;flex:1;overflow:hidden;min-height:0;}
+
+    /* ─── HEADER ────────────────────────── */
+    #header{height:var(--hh);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:stretch;padding:0 0 0 16px;flex-shrink:0;}
+    .h-brand{display:flex;align-items:center;gap:12px;padding-right:18px;border-right:1px solid var(--border);flex-shrink:0;}
+    .h-logo{width:26px;height:26px;display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+    .h-logo span{border-radius:1px;background:var(--accent);animation:flicker 4s infinite;}
+    .h-logo span:nth-child(2){animation-delay:.3s;background:var(--blue);}
+    .h-logo span:nth-child(3){animation-delay:.6s;background:var(--blue);}
+    .h-logo span:nth-child(4){animation-delay:.9s;background:var(--accent);}
+    .h-name{font-family:var(--fm);font-weight:600;font-size:.9rem;letter-spacing:.12em;color:var(--text);}
+    .h-tag{font-family:var(--fm);font-size:.6rem;color:var(--muted);letter-spacing:.06em;}
+    .h-session{display:flex;align-items:center;padding:0 18px;gap:14px;border-right:1px solid var(--border);}
+    .h-slabel{font-family:var(--fm);font-size:.65rem;color:var(--muted);letter-spacing:.07em;}
+    .h-sid{font-family:var(--fm);font-size:.65rem;color:var(--accent);}
+    .h-files{display:flex;align-items:center;gap:7px;padding:0 18px;overflow-x:auto;scrollbar-width:none;flex:1;}
+    .h-files::-webkit-scrollbar{display:none;}
+    .file-chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;padding:4px 10px;font-family:var(--fm);font-size:.65rem;color:var(--text-dim);white-space:nowrap;flex-shrink:0;}
+    .fc-icon{color:var(--accent);}
+    .fc-status{font-size:.58rem;}
+    .fc-proc{animation:blink 1s infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .h-right{display:flex;align-items:center;gap:10px;padding:0 16px;border-left:1px solid var(--border);margin-left:auto;flex-shrink:0;}
+    .stat-pill{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:5px 12px;font-family:var(--fm);font-size:.65rem;color:var(--muted2);}
+    .stat-val{color:var(--accent);font-weight:600;}
+    .atw{position:relative;}
+    .atbtn{width:38px;height:38px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted2);transition:all .15s;}
+    .atbtn:hover{border-color:var(--accent);color:var(--accent);}
+    .atbtn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+    .attip{position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(-50%);background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:7px 13px;font-family:var(--fm);font-size:.63rem;color:var(--text-dim);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300;}
+    .attip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
+    .atw:hover .attip{opacity:1;}
+    .atbtn.nosess{animation:nosessflash .55s ease;}
+    @keyframes nosessflash{0%,100%{border-color:var(--border2);color:var(--muted2)}35%,65%{border-color:var(--red);color:var(--red)}}
+    .new-chat-btn{background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:7px 15px;font-family:var(--fm);font-size:.7rem;font-weight:600;cursor:pointer;letter-spacing:.05em;transition:all .15s;}
+    .new-chat-btn:hover{background:var(--accent);color:var(--bg);}
+
+    /* ─── SIDEBAR ───────────────────────── */
+    #sidebar{width:248px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface);flex-shrink:0;}
+    .sb-label{font-family:var(--fm);font-size:.6rem;color:var(--muted);letter-spacing:.1em;padding:12px 14px 8px;border-bottom:1px solid var(--border);}
+    #convList{flex:1;overflow-y:auto;padding:7px;}
+    .conv-item{padding:11px 12px;border-radius:3px;cursor:pointer;border-left:2px solid transparent;transition:all .15s;margin-bottom:3px;}
+    .conv-item:hover{background:var(--surface2);border-left-color:var(--border2);}
+    .conv-item.active{background:var(--surface2);border-left-color:var(--accent);}
+    .conv-title{font-size:.82rem;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px;}
+    .conv-meta{font-family:var(--fm);font-size:.6rem;color:var(--muted);display:flex;gap:8px;align-items:center;}
+    .doc-badge{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);padding:1px 5px;border-radius:2px;font-size:.54rem;}
+
+    /* ─── TABS ───────────────────────────── */
+    #tabNav{display:flex;align-items:stretch;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;padding:0;}
+    .tab-btn{padding:0 26px;height:38px;background:transparent;border:none;font-family:var(--fm);font-size:.67rem;font-weight:600;letter-spacing:.08em;color:var(--muted2);cursor:pointer;position:relative;transition:color .15s;border-bottom:2px solid transparent;margin-bottom:-1px;}
+    .tab-btn:hover{color:var(--text);}
+    .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+    .tab-btn.tab-forecast.active{color:var(--purple);border-bottom-color:var(--purple);}
+    .tab-btn .tb-badge{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:2px;background:var(--accent-dim);color:var(--accent);font-size:.55rem;margin-left:7px;}
+    .tab-panel{display:none;flex:1;overflow:hidden;flex-direction:column;}
+    .tab-panel.active{display:flex;}
+
+    /* ─── CHAT PANEL — critical fix ──────── */
+    #panelChat{flex:1;overflow:hidden;}
+    #chatMain{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);height:100%;}
+
+    .toolbar{height:42px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:14px;flex-shrink:0;}
+    .tlabel{font-family:var(--fm);font-size:.6rem;color:var(--muted);letter-spacing:.1em;}
+    .rdot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+    .rdot.sql{background:var(--accent);}
+    .rdot.doc{background:var(--blue);}
+    .rdot.hyb{background:var(--yellow);}
+    .rdot.fct{background:var(--purple);}
+    .rtxt{font-family:var(--fm);font-size:.67rem;}
+
+    #chatMessages{flex:1;overflow-y:auto;padding:30px 36px;display:flex;flex-direction:column;gap:2px;}
+    .sess-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;opacity:.5;}
+    .sess-ph-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:42px;height:42px;}
+    .sess-ph-grid span{border-radius:2px;background:var(--accent);}
+    .sess-ph-grid span:nth-child(2),.sess-ph-grid span:nth-child(3){background:var(--blue);}
+    .sess-ph-title{font-family:var(--fm);font-size:.93rem;color:var(--text-dim);letter-spacing:.07em;}
+    .sess-ph-sub{font-size:.82rem;color:var(--muted);text-align:center;max-width:360px;}
+    .msg-group{display:flex;flex-direction:column;gap:3px;margin-bottom:22px;animation:msgin .22s ease;}
+    @keyframes msgin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .msg-hdr{font-family:var(--fm);font-size:.6rem;color:var(--muted);display:flex;align-items:center;gap:10px;padding:0 4px;margin-bottom:6px;}
+    .msg-role{letter-spacing:.06em;}
+    .msg-role.user{color:var(--blue);}
+    .msg-role.assistant{color:var(--accent);}
+    .rtag{border-radius:2px;padding:1px 6px;font-size:.55rem;font-weight:600;letter-spacing:.05em;}
+    .rtag-sql{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);}
+    .rtag-doc{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);}
+    .rtag-hyb{background:#2d1e05;color:var(--yellow);border:1px solid var(--yellow);}
+    .rtag-fct{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple);}
+    .msg-bubble{padding:15px 19px;border-radius:3px;max-width:82%;font-size:.95rem;line-height:1.78;position:relative;}
+    .msg-bubble.user{align-self:flex-end;background:var(--blue-dim);border:1px solid var(--blue);border-right:3px solid var(--blue);color:var(--text);font-family:var(--fm);font-size:.82rem;}
+    .msg-bubble.assistant{align-self:flex-start;background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--accent);color:var(--text);}
+    .msg-bubble.user::before{content:'> ';font-family:var(--fm);color:var(--blue);}
+    .mc{word-wrap:break-word;}
+    .mc>*:first-child{margin-top:0!important;}
+    .mc>*:last-child{margin-bottom:0!important;}
+    .mc h1,.mc h2,.mc h3{font-family:var(--fm);margin-top:16px;margin-bottom:9px;color:var(--accent2);font-size:.95em;letter-spacing:.04em;}
+    .mc p{margin-bottom:9px;margin-top:9px;}
+    .mc strong{color:var(--accent2);font-weight:600;}
+    .mc em{color:var(--text-dim);font-style:italic;}
+    .mc ul,.mc ol{margin-left:22px;margin-bottom:10px;}
+    .mc li{margin-bottom:5px;}
+    .mc ul li{list-style-type:none;}
+    .mc ul li::before{content:'→ ';color:var(--accent);font-family:var(--fm);font-size:.85em;}
+    .mc code{background:var(--surface3);border:1px solid var(--border2);padding:2px 6px;border-radius:2px;font-family:var(--fm);font-size:.88em;color:var(--blue);}
+    .mc pre{background:var(--surface3);border:1px solid var(--border2);padding:13px 16px;border-radius:3px;overflow-x:auto;margin:12px 0;}
+    .mc pre code{background:transparent;border:none;padding:0;}
+    .mc blockquote{border-left:2px solid var(--accent);padding-left:14px;margin:12px 0;color:var(--muted2);}
+    .mc table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.9em;}
+    .mc th,.mc td{border:1px solid var(--border2);padding:8px 13px;}
+    .mc th{background:var(--surface3);color:var(--accent2);font-family:var(--fm);font-size:.8em;}
+    .mc hr{border:none;border-top:1px solid var(--border2);margin:16px 0;}
+    .chart-box{margin:14px 0;padding:18px;background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--accent);border-radius:3px;}
+    .chart-box canvas{max-width:100%;max-height:400px;}
+    .chart-dl{margin-top:12px;padding:6px 14px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:3px;cursor:pointer;font-family:var(--fm);font-size:.67rem;font-weight:600;transition:all .15s;}
+    .chart-dl:hover{background:var(--accent);color:var(--bg);}
+
+    /* ─── INPUT AREA ────────────────────── */
+    #inputArea{background:var(--surface);border-top:1px solid var(--border);padding:15px 22px;flex-shrink:0;}
+    .input-row{display:flex;gap:10px;align-items:flex-end;}
+    .iatw{position:relative;flex-shrink:0;}
+    .iatbtn{width:46px;height:46px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted2);transition:all .15s;}
+    .iatbtn:hover{border-color:var(--accent);color:var(--accent);}
+    .iatbtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+    .iattip{position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(-50%);background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:8px 13px;font-family:var(--fm);font-size:.63rem;color:var(--text-dim);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300;}
+    .iattip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
+    .iatw:hover .iattip{opacity:1;}
+    #messageInput{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:var(--fm);font-size:.82rem;padding:12px 14px;resize:none;outline:none;max-height:130px;transition:border .15s;line-height:1.5;}
+    #messageInput:focus{border-color:var(--accent);}
+    #messageInput::placeholder{color:var(--muted);}
+    #sendBtn{background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:12px 22px;font-family:var(--fm);font-size:.75rem;font-weight:600;cursor:pointer;letter-spacing:.06em;transition:all .15s;height:46px;white-space:nowrap;}
+    #sendBtn:hover:not(:disabled){background:var(--accent);color:var(--bg);}
+    #sendBtn:disabled{opacity:.4;cursor:not-allowed;}
+    .input-hint{font-family:var(--fm);font-size:.6rem;color:var(--muted);margin-top:8px;letter-spacing:.04em;display:flex;align-items:center;gap:12px;}
+    .ih-sep{color:var(--border2);}
+
+    /* ─── STATUS BAR ────────────────────── */
+    #statusBar{height:var(--sb);background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:18px;font-family:var(--fm);font-size:.6rem;color:var(--muted);letter-spacing:.05em;flex-shrink:0;}
+    .sb-item{display:flex;align-items:center;gap:7px;}
+    .sb-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 2.5s infinite;}
+    .sb-sep{color:var(--border2);}
+    .notif{position:fixed;bottom:54px;right:18px;padding:11px 18px;border-radius:3px;font-family:var(--fm);font-size:.73rem;z-index:9001;animation:nfin .2s ease;display:flex;align-items:center;gap:10px;max-width:360px;}
+    @keyframes nfin{from{transform:translateX(120px);opacity:0}to{transform:translateX(0);opacity:1}}
+    .notif.success{background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);}
+    .notif.error{background:var(--red-dim);border:1px solid var(--red);color:var(--red);}
+    .notif.info{background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);}
+    #fileInput{display:none;}
+
+    /* ─── DASHBOARD ──────────────────────── */
+    #dashPanel{background:var(--bg);display:flex;flex-direction:column;overflow:hidden;}
+    #dashPromptBar{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 18px;flex-shrink:0;}
+    .db-prompt-row{display:flex;gap:9px;align-items:center;}
+    #dashPromptInput{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:var(--fm);font-size:.8rem;padding:9px 13px;outline:none;transition:border .15s;}
+    #dashPromptInput:focus{border-color:var(--accent);}
+    #dashPromptInput::placeholder{color:var(--muted);}
+    #dashGenBtn{background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:9px 20px;font-family:var(--fm);font-size:.72rem;font-weight:600;cursor:pointer;letter-spacing:.06em;transition:all .15s;white-space:nowrap;}
+    #dashGenBtn:hover:not(:disabled){background:var(--accent);color:var(--bg);}
+    #dashGenBtn:disabled{opacity:.4;cursor:not-allowed;}
+    .db-hint{font-family:var(--fm);font-size:.59rem;color:var(--muted);margin-top:6px;letter-spacing:.03em;}
+    #dashArea{flex:1;overflow-y:auto;padding:16px 18px;}
+    #dashEmpty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;opacity:.45;}
+    .de-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:40px;height:40px;}
+    .de-grid span{border-radius:2px;}
+    .de-grid span:nth-child(1){background:var(--accent);}
+    .de-grid span:nth-child(2){background:var(--blue);}
+    .de-grid span:nth-child(3){background:var(--yellow);}
+    .de-grid span:nth-child(4){background:var(--accent);}
+    .de-title{font-family:var(--fm);font-size:.88rem;color:var(--text-dim);letter-spacing:.07em;}
+    .de-sub{font-size:.78rem;color:var(--muted);text-align:center;max-width:380px;line-height:1.7;}
+    .de-examples{display:flex;flex-direction:column;gap:6px;margin-top:2px;}
+    .de-ex{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:7px 14px;font-family:var(--fm);font-size:.65rem;color:var(--muted2);cursor:pointer;transition:all .15s;letter-spacing:.03em;}
+    .de-ex:hover{border-color:var(--accent);color:var(--accent);}
+    #dashLoading{display:none;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:16px;}
+    .dl-logo{width:32px;height:32px;display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+    .dl-logo span{border-radius:2px;background:var(--accent);animation:flicker 1s infinite;}
+    .dl-logo span:nth-child(2){animation-delay:.15s;background:var(--blue);}
+    .dl-logo span:nth-child(3){animation-delay:.3s;background:var(--blue);}
+    .dl-logo span:nth-child(4){animation-delay:.45s;background:var(--accent);}
+    .dl-txt{font-family:var(--fm);font-size:.72rem;color:var(--muted2);letter-spacing:.07em;}
+    .dl-steps{display:flex;flex-direction:column;gap:4px;width:240px;}
+    .dl-step{font-family:var(--fm);font-size:.61rem;color:var(--muted);opacity:0;transition:opacity .3s;}
+    .dl-step.lit{opacity:1;color:var(--accent);}
+    #dashBoard{display:none;}
+    .db-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+    .db-title{font-family:var(--fm);font-size:.82rem;font-weight:600;color:var(--text);letter-spacing:.05em;}
+    .db-subtitle{font-family:var(--fm);font-size:.58rem;color:var(--muted);margin-top:3px;}
+    .db-actions{display:flex;gap:7px;}
+    .db-act-btn{background:transparent;border:1px solid var(--border2);color:var(--muted2);border-radius:3px;padding:5px 12px;font-family:var(--fm);font-size:.6rem;cursor:pointer;transition:all .15s;letter-spacing:.04em;}
+    .db-act-btn:hover{border-color:var(--accent);color:var(--accent);}
+    #dbGrid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:min-content;gap:12px;}
+    .dbc{background:var(--surface);border:1px solid var(--border2);border-radius:4px;overflow:hidden;animation:kpiin .35s ease both;position:relative;}
+    @keyframes kpiin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .dbc.span2{grid-column:span 2;}
+    .dbc.span3{grid-column:span 3;}
+    .dbc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:.7;}
+    .dbc.c-blu::after{background:var(--blue);}
+    .dbc.c-yel::after{background:var(--yellow);}
+    .dbc.c-red::after{background:var(--red);}
+    .dbc.c-pur::after{background:#a78bfa;}
+    .dbc-kpi{padding:14px 16px 12px;}
+    .dbc-kpi .dbc-lbl{font-family:var(--fm);font-size:.58rem;color:var(--muted);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;}
+    .dbc-kpi .dbc-val{font-family:var(--fm);font-size:1.65rem;font-weight:600;color:var(--accent);line-height:1;margin-bottom:5px;}
+    .dbc-kpi.c-blu .dbc-val{color:var(--blue);}
+    .dbc-kpi.c-yel .dbc-val{color:var(--yellow);}
+    .dbc-kpi.c-red .dbc-val{color:var(--red);}
+    .dbc-kpi.c-pur .dbc-val{color:#a78bfa;}
+    .dbc-kpi .dbc-sub{font-family:var(--fm);font-size:.6rem;color:var(--muted);line-height:1.4;}
+    .dbc-kpi .dbc-spark{margin-top:10px;height:38px;}
+    .dbc-kpi .dbc-spark canvas{width:100%!important;height:38px!important;}
+    .dbc-chart{display:flex;flex-direction:column;}
+    .dbc-ch{padding:11px 14px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+    .dbc-ch-title{font-family:var(--fm);font-size:.65rem;font-weight:600;color:var(--text-dim);letter-spacing:.04em;}
+    .dbc-ch-meta{display:flex;align-items:center;gap:7px;}
+    .dbc-ch-dl{background:transparent;border:none;color:var(--muted);font-family:var(--fm);font-size:.6rem;cursor:pointer;padding:2px 4px;transition:color .15s;}
+    .dbc-ch-dl:hover{color:var(--accent);}
+    .dbc-canvas{padding:0 10px 12px;flex:1;}
+    .dbc-canvas canvas{width:100%!important;height:220px!important;}
+    .dbc.span2 .dbc-canvas canvas,.dbc.span3 .dbc-canvas canvas{height:260px!important;}
+    .dbc-ch-switcher{display:flex;gap:3px;align-items:center;}
+    .cts-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:2px;padding:2px 7px;font-family:var(--fm);font-size:.52rem;cursor:pointer;transition:all .15s;letter-spacing:.03em;line-height:1.4;}
+    .cts-btn:hover{border-color:var(--muted2);color:var(--text-dim);}
+    .cts-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+    .dbc-insight{padding:14px 16px;grid-column:span 3;}
+    .dbc-insight .is-lbl{font-family:var(--fm);font-size:.58rem;color:var(--accent);letter-spacing:.1em;margin-bottom:10px;}
+    .dbc-insight .is-body{display:flex;flex-direction:column;gap:6px;}
+    .dbc-insight .is-line{font-size:.82rem;line-height:1.6;color:var(--text-dim);padding-left:4px;}
+
+    /* ─── FORECAST TAB ───────────────────── */
+    #forecastPanel{background:var(--bg);display:flex;flex-direction:column;overflow:hidden;}
+    #forecastBar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 18px;flex-shrink:0;}
+    .fc-bar-title{font-family:var(--fm);font-size:.65rem;font-weight:600;color:var(--purple);letter-spacing:.1em;margin-bottom:10px;}
+    .fc-controls{display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
+    .fc-select{background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:var(--fm);font-size:.75rem;padding:8px 12px;outline:none;cursor:pointer;transition:border .15s;min-width:160px;}
+    .fc-select:focus{border-color:var(--purple);}
+    option{background:var(--surface2);}
+    .fc-periods{display:flex;gap:4px;align-items:center;}
+    .fc-per-lbl{font-family:var(--fm);font-size:.63rem;color:var(--muted);white-space:nowrap;}
+    .period-btn{background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:2px;padding:4px 11px;font-family:var(--fm);font-size:.65rem;cursor:pointer;transition:all .15s;}
+    .period-btn:hover{border-color:var(--purple);color:var(--purple);}
+    .period-btn.active{background:var(--purple-dim);border-color:var(--purple);color:var(--purple);}
+    #fcRunBtn{background:var(--purple-dim);border:1px solid var(--purple);color:var(--purple);border-radius:3px;padding:9px 22px;font-family:var(--fm);font-size:.72rem;font-weight:600;cursor:pointer;letter-spacing:.06em;transition:all .15s;white-space:nowrap;margin-left:auto;}
+    #fcRunBtn:hover:not(:disabled){background:var(--purple);color:var(--bg);}
+    #fcRunBtn:disabled{opacity:.4;cursor:not-allowed;}
+    .fc-hint{font-family:var(--fm);font-size:.59rem;color:var(--muted);margin-top:8px;letter-spacing:.03em;}
+    #forecastArea{flex:1;overflow-y:auto;padding:18px;}
+    #fcEmpty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:18px;opacity:.45;}
+    .fce-icon{width:48px;height:48px;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:3px;}
+    .fce-icon span{border-radius:1px;}
+    .fce-icon span:nth-child(1){background:transparent;}
+    .fce-icon span:nth-child(2){background:transparent;}
+    .fce-icon span:nth-child(3){background:var(--purple);opacity:.5;}
+    .fce-icon span:nth-child(4){background:transparent;}
+    .fce-icon span:nth-child(5){background:var(--purple);opacity:.7;}
+    .fce-icon span:nth-child(6){background:var(--purple);}
+    .fce-icon span:nth-child(7){background:var(--purple);opacity:.3;}
+    .fce-icon span:nth-child(8){background:var(--purple);opacity:.6;}
+    .fce-icon span:nth-child(9){background:var(--purple);}
+    .fce-title{font-family:var(--fm);font-size:.88rem;color:var(--text-dim);letter-spacing:.07em;}
+    .fce-sub{font-size:.78rem;color:var(--muted);text-align:center;max-width:380px;line-height:1.7;}
+    #fcLoading{display:none;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:16px;}
+    .fcl-logo{width:32px;height:32px;display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+    .fcl-logo span{border-radius:2px;background:var(--purple);animation:flicker 1s infinite;}
+    .fcl-logo span:nth-child(2){animation-delay:.2s;}
+    .fcl-logo span:nth-child(3){animation-delay:.4s;}
+    .fcl-logo span:nth-child(4){animation-delay:.6s;}
+    .fcl-txt{font-family:var(--fm);font-size:.72rem;color:var(--muted2);letter-spacing:.07em;}
+    .fcl-steps{display:flex;flex-direction:column;gap:5px;width:260px;}
+    .fcl-step{font-family:var(--fm);font-size:.61rem;color:var(--muted);opacity:0;transition:opacity .3s;}
+    .fcl-step.lit{opacity:1;color:var(--purple);}
+    #fcResult{display:none;animation:msgin .3s ease;}
+    .fc-result-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+    .fc-result-title{font-family:var(--fm);font-size:.8rem;font-weight:600;color:var(--purple);letter-spacing:.05em;}
+    .fc-result-meta{font-family:var(--fm);font-size:.58rem;color:var(--muted);margin-top:3px;}
+    .fc-result-actions{display:flex;gap:7px;}
+    .fc-act-btn{background:transparent;border:1px solid var(--border2);color:var(--muted2);border-radius:3px;padding:5px 12px;font-family:var(--fm);font-size:.6rem;cursor:pointer;transition:all .15s;letter-spacing:.04em;}
+    .fc-act-btn:hover{border-color:var(--purple);color:var(--purple);}
+    .fc-kpi-strip{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+    .fc-kpi{background:var(--surface);border:1px solid var(--border2);border-radius:3px;padding:10px 16px;flex:1;min-width:120px;position:relative;overflow:hidden;}
+    .fc-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--purple);}
+    .fc-kpi-lbl{font-family:var(--fm);font-size:.56rem;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:5px;}
+    .fc-kpi-val{font-family:var(--fm);font-size:1.3rem;font-weight:600;color:var(--purple);line-height:1;}
+    .fc-kpi-sub{font-family:var(--fm);font-size:.56rem;color:var(--muted);margin-top:4px;}
+    .fc-chart-card{background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--purple);border-radius:3px;padding:16px;margin-bottom:14px;}
+    .fc-chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+    .fc-chart-title{font-family:var(--fm);font-size:.67rem;font-weight:600;color:var(--text-dim);letter-spacing:.04em;}
+    .fc-chart-legend{display:flex;gap:14px;}
+    .fc-leg-item{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:.58rem;color:var(--muted);}
+    .fc-leg-dot{width:8px;height:2px;border-radius:1px;}
+    .fc-chart-canvas{height:280px;position:relative;}
+    .fc-chart-canvas canvas{width:100%!important;height:100%!important;}
+    .fc-anomaly-card{background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--red);border-radius:3px;padding:14px 16px;}
+    .fc-anomaly-title{font-family:var(--fm);font-size:.63rem;font-weight:600;color:var(--red);letter-spacing:.06em;margin-bottom:10px;}
+    .fc-anomaly-none{font-family:var(--fm);font-size:.65rem;color:var(--accent);padding:8px 0;}
+    .fc-anomaly-table{width:100%;border-collapse:collapse;font-family:var(--fm);font-size:.65rem;}
+    .fc-anomaly-table th{color:var(--muted);font-weight:500;text-align:left;padding:5px 10px;border-bottom:1px solid var(--border);}
+    .fc-anomaly-table td{color:var(--text-dim);padding:5px 10px;border-bottom:1px solid var(--border);}
+    .fc-anomaly-table tr:last-child td{border-bottom:none;}
+    .anom-badge{background:var(--red-dim);color:var(--red);border:1px solid var(--red);padding:1px 6px;border-radius:2px;font-size:.55rem;}
+    .fc-insight-card{background:var(--surface);border:1px solid var(--border2);border-radius:3px;padding:14px 16px;margin-top:14px;}
+    .fc-insight-lbl{font-family:var(--fm);font-size:.58rem;color:var(--purple);letter-spacing:.1em;margin-bottom:10px;}
+    .fc-insight-body{font-size:.85rem;color:var(--text-dim);line-height:1.7;}
+
+    .stream-cursor{display:inline-block;width:2px;height:1.1em;background:var(--accent);margin-left:1px;animation:cur-blink .65s steps(1) infinite;vertical-align:text-bottom;border-radius:1px;}
+    @keyframes cur-blink{0%,100%{opacity:1}50%{opacity:0}}
+
+    @media(max-width:900px){#dbGrid{grid-template-columns:repeat(2,1fr);}.dbc.span3{grid-column:span 2;}}
+    @media(max-width:640px){#dbGrid{grid-template-columns:1fr;}.dbc.span2,.dbc.span3{grid-column:span 1;}#sidebar{display:none;}}
+  </style>
 </head>
 <body>
-    <!-- Theme Toggle Button -->
-    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode"></div>
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2>🤖 AI Analyst</h2>
-            <p>Session-Aware Intelligence</p>
-            <button class="new-chat-btn" onclick="newChat()">➕ New Chat</button>
+<!-- ══ LAUNCH SCREEN ════════════════════════════════════ -->
+<div id="launchScreen">
+  <div class="ls-grid"></div>
+  <div class="ls-glow"></div>
+  <div class="ls-inner">
+    <div class="ls-logo"><span></span><span></span><span></span><span></span></div>
+    <div>
+      <div class="ls-title">ANAL<em>YST</em></div>
+    </div>
+    <div class="ls-sub">SESSION-AWARE BUSINESS INTELLIGENCE</div>
+    <div class="ls-boot" id="lsBoot"></div>
+    <div class="ls-divider"></div>
+    <div class="ls-feats">
+      <div class="ls-feat"><div class="ls-dot"></div>SQL ROUTING</div>
+      <div class="ls-feat"><div class="ls-dot b"></div>DOC RAG</div>
+      <div class="ls-feat"><div class="ls-dot y"></div>CHARTS</div>
+      <div class="ls-feat"><div class="ls-dot p"></div>FORECAST</div>
+    </div>
+    <button class="ls-btn" id="lsBtn" onclick="startApp()" disabled>
+      <span id="lsBtnTxt">INITIALIZING…</span>
+    </button>
+    <div class="ls-ver">ANALYST v2.1 &nbsp;·&nbsp; READY WHEN YOU ARE</div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ════════════════════════════════════════ -->
+<div id="mainApp">
+
+  <header id="header">
+    <div class="h-brand">
+      <div class="h-logo"><span></span><span></span><span></span><span></span></div>
+      <div>
+        <div class="h-name">ANALYST</div>
+        <div class="h-tag">SESSION-AWARE RAG</div>
+      </div>
+    </div>
+    <div class="h-session">
+      <span class="h-slabel">SESSION</span>
+      <span class="h-sid" id="currentSessionBadge">—</span>
+    </div>
+    <div class="h-files" id="filesBar">
+      <div class="file-chip" style="opacity:.4;color:var(--muted);"><span class="fc-icon">○</span>no documents loaded</div>
+    </div>
+    <div class="h-right">
+      <div class="stat-pill"><span>CHATS</span><span class="stat-val" id="totalChats">0</span></div>
+      <div class="stat-pill"><span>DOCS</span><span class="stat-val" id="sessionDocs">0</span></div>
+      <div class="atw">
+        <button class="atbtn" id="hAtBtn" onclick="onAttach('h')">
+          <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <div class="attip" id="hAtTip">Attach documents to session</div>
+      </div>
+      <input type="file" id="fileInput" multiple accept=".xlsx,.csv,.pdf,.docx,.txt">
+      <button class="new-chat-btn" onclick="newChat()">+ NEW CHAT</button>
+    </div>
+  </header>
+
+  <div id="tabNav">
+    <button class="tab-btn active" id="tabChat" onclick="switchTab('chat')">CHAT</button>
+    <button class="tab-btn" id="tabDash" onclick="switchTab('dash')">DASHBOARD<span class="tb-badge">β</span></button>
+
+  </div>
+
+  <div id="appLayout">
+    <aside id="sidebar">
+      <div class="sb-label">CONVERSATIONS</div>
+      <div id="convList">
+        <div style="padding:20px 12px;font-family:var(--fm);font-size:.65rem;color:var(--muted);">Loading…</div>
+      </div>
+    </aside>
+
+    <!-- ── CHAT PANEL ───────────────────────────── -->
+    <div class="tab-panel active" id="panelChat">
+      <main id="chatMain">
+        <div class="toolbar">
+          <span class="tlabel">ROUTING</span>
+          <div class="rdot sql"></div><span class="rtxt" style="color:var(--accent);">SQL</span>
+          <div class="rdot doc"></div><span class="rtxt" style="color:var(--blue);">DOC</span>
+          <div class="rdot hyb"></div><span class="rtxt" style="color:var(--yellow);">HYBRID</span>
+          <div class="rdot fct"></div><span class="rtxt" style="color:var(--purple);">FORECAST</span>
+          <span style="margin-left:auto;font-family:var(--fm);font-size:.6rem;color:var(--muted);">CTRL+ENTER TO SEND</span>
         </div>
-
-        <div class="conversations-list" id="conversationsList">
-            <div style="padding:30px;text-align:center;color:#6b7280;">
-                Loading conversations...
+        <div id="chatMessages">
+          <div class="sess-ph" id="sessPh">
+            <div class="sess-ph-grid"><span></span><span></span><span></span><span></span></div>
+            <div class="sess-ph-title">ANALYST / READY</div>
+            <div class="sess-ph-sub">Create a new chat to begin — attach documents and query your data with natural language</div>
+          </div>
+        </div>
+        <div id="inputArea">
+          <div class="input-row">
+            <div class="iatw">
+              <button class="iatbtn" id="iAtBtn" onclick="onAttach('i')">
+                <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+              </button>
+              <div class="iattip" id="iAtTip">Attach documents to session</div>
             </div>
+            <textarea id="messageInput" placeholder="query your data… or try 'forecast sales for next 6 months'" rows="2"></textarea>
+            <button id="sendBtn" onclick="sendMessage()">SEND →</button>
+          </div>
+          <div class="input-hint">
+            <span>📎 ATTACH DOCS</span><span class="ih-sep">·</span>
+            <span>CHARTS SUPPORTED</span><span class="ih-sep">·</span>
+            <span>FORECAST ENABLED</span><span class="ih-sep">·</span>
+            <span>CTRL+ENTER TO SEND</span>
+          </div>
         </div>
-
-        <div class="sidebar-footer">
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-value" id="totalChats">0</div>
-                    <div class="stat-label">Total Chats</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="sessionDocs">0</div>
-                    <div class="stat-label">Session Docs</div>
-                </div>
-            </div>
-        </div>
+      </main>
     </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="chat-header">
-            <h1>💬 Chat</h1>
-            <div class="session-info">
-                <span class="session-badge" id="currentSessionBadge">No Session</span>
+    <!-- ── DASHBOARD PANEL ──────────────────────── -->
+    <div class="tab-panel" id="panelDash">
+      <div id="dashPanel">
+        <div id="dashPromptBar">
+          <div class="db-prompt-row">
+            <input id="dashPromptInput" type="text" placeholder="e.g. &quot;show revenue trend, top products by sales, and monthly churn rate&quot;"/>
+            <button id="dashGenBtn" onclick="generateDashboard()">⊞ GENERATE →</button>
+          </div>
+          <div class="db-hint">Describe what you want to see — the system will generate charts + KPI cards from your uploaded data</div>
+        </div>
+        <div id="dashArea">
+          <div id="dashEmpty">
+            <div class="de-grid"><span></span><span></span><span></span><span></span></div>
+            <div class="de-title">DASHBOARD MAKER</div>
+            <div class="de-sub">Describe your dashboard in plain English. The system will query your data and build charts automatically.</div>
+            <div class="de-examples">
+              <div class="de-ex" onclick="setPrompt('show total revenue by month with average deal size and churn rate')">→ show total revenue by month with average deal size and churn rate</div>
+              <div class="de-ex" onclick="setPrompt('top 5 products by revenue, monthly sales trend, and overall totals')">→ top 5 products by revenue, monthly sales trend, and overall totals</div>
+              <div class="de-ex" onclick="setPrompt('revenue breakdown, deal count per month, and key performance numbers')">→ revenue breakdown, deal count per month, and key performance numbers</div>
             </div>
-        </div>
-
-        <!-- Persistent Files Bar -->
-        <div class="files-bar" id="filesBar">
-            <div class="files-list" id="filesList"></div>
-        </div>
-
-        <div class="chat-container">
-            <div class="chat-messages" id="chatMessages">
-                <div style="text-align:center;padding:60px 20px;color:var(--text-secondary);">
-                    <div style="font-size:3em;margin-bottom:20px;">👋</div>
-                    <h2 style="font-weight:600;margin-bottom:12px;color:var(--text-primary);">Welcome to AI Business Analyst</h2>
-                    <p>Create a new chat or select an existing one to get started</p>
-                </div>
+          </div>
+          <div id="dashLoading">
+            <div class="dl-logo"><span></span><span></span><span></span><span></span></div>
+            <div class="dl-txt">BUILDING DASHBOARD…</div>
+            <div class="dl-steps">
+              <div class="dl-step" id="dlS1">→ parsing your request</div>
+              <div class="dl-step" id="dlS2">→ querying data sources</div>
+              <div class="dl-step" id="dlS3">→ computing metrics</div>
+              <div class="dl-step" id="dlS4">→ rendering charts</div>
             </div>
-        </div>
-
-        <div class="input-area">
-            <div class="input-container">
-                <button class="upload-btn" id="uploadBtn" onclick="triggerFileUpload()" title="Upload documents">
-                    📎
-                </button>
-                <input type="file" id="fileInput" multiple accept=".xlsx,.csv,.pdf,.docx,.txt">
-                
-                <textarea 
-                    id="messageInput" 
-                    placeholder="Ask anything about your data..." 
-                    rows="2"
-                ></textarea>
-                <button id="sendBtn" onclick="sendMessage()">Send</button>
+          </div>
+          <div id="dashBoard">
+            <div class="db-header">
+              <div>
+                <div class="db-title" id="dbTitle">DASHBOARD</div>
+                <div class="db-subtitle" id="dbSubtitle"></div>
+              </div>
+              <div class="db-actions">
+                <button class="db-act-btn" onclick="downloadFullDashboard()" id="dlFullBtn">⬇ DOWNLOAD PDF</button>
+                <button class="db-act-btn" onclick="resetDashboard()">⟳ REBUILD</button>
+              </div>
             </div>
-            <div class="input-hint">💡 Ctrl+Enter to send • Click 📎 to upload docs • Charts supported!</div>
+            <div id="dbGrid"></div>
+          </div>
         </div>
+      </div>
     </div>
 
-    <script>
-        // ============================================
-        // GLOBAL STATE
-        // ============================================
-        let currentUserId = 'user_' + Math.random().toString(36).substr(2, 9);
-        let currentConversationId = null;
-        let isLoading = false;
-        let chartInstances = {};
-
-        // ============================================
-        // THEME MANAGEMENT
-        // ============================================
-        function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            showNotification('success', `✨ ${newTheme === 'dark' ? 'Dark' : 'Light'} mode activated`);
-        }
-
-        // Load saved theme
-        (function() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        })();
-
-        // ============================================
-        // ENHANCED MARKDOWN RENDERING
-        // ============================================
-        function renderMarkdown(text) {
-            if (!text) return '';
-            
-            try {
-                // Clean up the text before parsing
-                let cleanedText = text.trim();
-                
-                // Ensure proper line breaks for markdown
-                cleanedText = cleanedText.replace(/\r\n/g, '\n');
-                
-                // Configure marked with proper options
-                marked.setOptions({
-                    breaks: true,          // Convert \n to <br>
-                    gfm: true,             // GitHub Flavored Markdown
-                    headerIds: false,
-                    mangle: false,
-                    pedantic: false
-                });
-                
-                // Parse markdown to HTML
-                const html = marked.parse(cleanedText);
-                
-                console.log('Markdown input:', cleanedText.substring(0, 200));
-                console.log('Rendered HTML:', html.substring(0, 200));
-                
-                return html;
-            } catch (error) {
-                console.error('Markdown parsing error:', error);
-                console.error('Failed text:', text);
-                
-                // Fallback: manual markdown rendering
-                return fallbackMarkdownRender(text);
-            }
-        }
-
-        // Fallback renderer if marked.js fails
-        function fallbackMarkdownRender(text) {
-            let html = text;
-            
-            // Bold
-            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-            
-            // Italic
-            html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-            html = html.replace(/_(.+?)_/g, '<em>$1</em>');
-            
-            // Headings
-            html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-            html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-            html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-            
-            // Lists - preserve structure
-            html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-            html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-            
-            // Line breaks
-            html = html.replace(/\n/g, '<br>');
-            
-            return html;
-        }
-
-        // ============================================
-        // CHART RENDERING FUNCTIONS
-        // ============================================
-        function renderChart(plotData, messageId) {
-            const container = document.createElement('div');
-            container.className = 'chart-container';
-            
-            const canvas = document.createElement('canvas');
-            const canvasId = 'chart-' + messageId + '-' + Date.now();
-            canvas.id = canvasId;
-            
-            container.appendChild(canvas);
-            
-            const downloadBtn = document.createElement('button');
-            downloadBtn.className = 'chart-download-btn';
-            downloadBtn.innerHTML = '📥 Download Chart';
-            downloadBtn.onclick = () => downloadChart(canvas, plotData.title);
-            container.appendChild(downloadBtn);
-            
-            setTimeout(() => {
-                createChart(canvas, plotData, canvasId);
-            }, 100);
-            
-            return container;
-        }
-
-        function createChart(canvas, plotData, canvasId) {
-            const ctx = canvas.getContext('2d');
-            
-            if (chartInstances[canvasId]) {
-                chartInstances[canvasId].destroy();
-            }
-            
-            const config = {
-                type: plotData.type,
-                data: {
-                    labels: plotData.x,
-                    datasets: [{
-                        label: plotData.y_label,
-                        data: plotData.y,
-                        backgroundColor: getChartColors(plotData.type, plotData.x.length),
-                        borderColor: getChartBorderColors(plotData.type, plotData.x.length),
-                        borderWidth: 2,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: plotData.title,
-                            font: { size: 16, weight: 'bold' },
-                            padding: { top: 10, bottom: 20 }
-                        },
-                        legend: {
-                            display: plotData.type === 'pie' || plotData.type === 'doughnut',
-                            position: 'bottom'
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            padding: 12,
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) label += ': ';
-                                    label += formatNumber(context.parsed.y || context.parsed);
-                                    return label;
-                                }
-                            }
-                        }
-                    },
-                    scales: plotData.type !== 'pie' && plotData.type !== 'doughnut' ? {
-                        x: {
-                            title: {
-                                display: true,
-                                text: plotData.x_label,
-                                font: { size: 13, weight: 'bold' }
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: plotData.y_label,
-                                font: { size: 13, weight: 'bold' }
-                            },
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return formatNumber(value);
-                                }
-                            }
-                        }
-                    } : {}
-                }
-            };
-            
-            chartInstances[canvasId] = new Chart(ctx, config);
-        }
-
-        function getChartColors(chartType, count) {
-            const colors = [
-                'rgba(54, 162, 235, 0.7)', 'rgba(255, 99, 132, 0.7)',
-                'rgba(75, 192, 192, 0.7)', 'rgba(255, 206, 86, 0.7)',
-                'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)',
-                'rgba(199, 199, 199, 0.7)', 'rgba(83, 102, 255, 0.7)'
-            ];
-            
-            if (chartType === 'pie' || chartType === 'doughnut') {
-                return colors.slice(0, count);
-            }
-            return colors[0];
-        }
-
-        function getChartBorderColors(chartType, count) {
-            const borderColors = [
-                'rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)',
-                'rgba(75, 192, 192, 1)', 'rgba(255, 206, 86, 1)',
-                'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)',
-                'rgba(199, 199, 199, 1)', 'rgba(83, 102, 255, 1)'
-            ];
-            
-            if (chartType === 'pie' || chartType === 'doughnut') {
-                return borderColors.slice(0, count);
-            }
-            return borderColors[0];
-        }
-
-        function formatNumber(num) {
-            if (typeof num !== 'number') return num;
-            
-            if (num >= 1000000) {
-                return (num / 1000000).toFixed(1) + 'M';
-            } else if (num >= 1000) {
-                return (num / 1000).toFixed(1) + 'K';
-            }
-            
-            return num.toLocaleString();
-        }
-
-        function downloadChart(canvas, title) {
-            const link = document.createElement('a');
-            link.download = (title || 'chart').replace(/[^a-z0-9]/gi, '_') + '.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            showNotification('success', '📥 Chart downloaded!');
-        }
-
-        // ============================================
-        // FILE UPLOAD HANDLING
-        // ============================================
-        function triggerFileUpload() {
-            if (!currentConversationId) {
-                showNotification('error', '⚠️ Please create or select a chat first');
-                return;
-            }
-            document.getElementById('fileInput').click();
-        }
-
-        document.getElementById('fileInput').addEventListener('change', async (e) => {
-            await handleFiles(e.target.files);
-            e.target.value = '';
-        });
-
-        async function handleFiles(files) {
-            if (!currentConversationId) {
-                showNotification('error', '⚠️ Please create or select a chat first');
-                return;
-            }
-
-            const formData = new FormData();
-            const fileNames = [];
-            
-            Array.from(files).forEach(file => {
-                if (file.size > 10 * 1024 * 1024) {
-                    showNotification('error', `⚠️ ${file.name} exceeds 10MB limit`);
-                    return;
-                }
-                formData.append('files', file);
-                fileNames.push(file.name);
-            });
-
-            if (fileNames.length === 0) return;
-
-            try {
-                displayFiles(fileNames.map(name => ({ name, status: 'processing' })));
-                showNotification('info', `📤 Uploading ${fileNames.length} file(s)...`);
-                
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    headers: {
-                        'X-Conversation-ID': currentConversationId
-                    },
-                    body: formData
-                });
-
-                const result = await response.json();
-                
-                if (result.success || result.loaded_files) {
-                    showNotification('success', `✅ ${result.loaded_files?.length || 0} files uploaded`);
-                    displayFiles(result.loaded_files.map(name => ({ name, status: 'ready' })));
-                    updateSessionStats();
-                } else {
-                    showNotification('error', `❌ Upload failed: ${result.error || 'Unknown error'}`);
-                    displayFiles([]);
-                }
-            } catch (error) {
-                showNotification('error', `❌ Upload error: ${error.message}`);
-                displayFiles([]);
-            }
-        }
-
-        function displayFiles(files) {
-            const filesBar = document.getElementById('filesBar');
-            const filesList = document.getElementById('filesList');
-            
-            if (!files || files.length === 0) {
-                filesBar.classList.remove('has-files');
-                filesList.innerHTML = '';
-                return;
-            }
-
-            filesBar.classList.add('has-files');
-            filesList.innerHTML = '';
-            
-            files.forEach(file => {
-                const chip = createFileChip(file);
-                filesList.appendChild(chip);
-            });
-        }
-
-        function createFileChip(file) {
-            const chip = document.createElement('div');
-            chip.className = 'file-chip';
-            
-            const filename = typeof file === 'string' ? file : file.name;
-            const status = file.status || 'ready';
-            
-            const statusIcon = status === 'processing' ? '⏳' : '✅';
-            const statusClass = status === 'processing' ? 'status-processing' : '';
-            
-            chip.innerHTML = `
-                <span class="file-chip-icon">${getFileIcon(filename)}</span>
-                <span class="file-chip-name">${filename}</span>
-                <span class="file-chip-status ${statusClass}">${statusIcon}</span>
-            `;
-            
-            return chip;
-        }
-
-        function getFileIcon(filename) {
-            const ext = filename.split('.').pop().toLowerCase();
-            return {
-                xlsx: '📊', 
-                csv: '📈', 
-                pdf: '📕', 
-                docx: '📄', 
-                txt: '📝'
-            }[ext] || '📁';
-        }
-
-        function updateUploadState() {
-            const uploadBtn = document.getElementById('uploadBtn');
-            const hasConversation = currentConversationId !== null;
-            uploadBtn.disabled = !hasConversation;
-            
-            if (!hasConversation) {
-                displayFiles([]);
-            }
-        }
-
-        // ============================================
-        // CHAT MANAGEMENT
-        // ============================================
-        async function newChat() {
-            try {
-                const response = await fetch('/conversations', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-User-ID': currentUserId
-                    },
-                    body: JSON.stringify({user_id: currentUserId, title: 'New Chat'})
-                });
-                const result = await response.json();
-                if (result.success) {
-                    currentConversationId = result.conversation_id;
-                    clearChat();
-                    loadConversations();
-                    updateUploadState();
-                    updateSessionStats();
-                    updateSessionBadge();
-                    showNotification('success', '✅ New chat created');
-                }
-            } catch (error) {
-                console.error('Failed to create chat:', error);
-                showNotification('error', '❌ Failed to create chat');
-            }
-        }
-
-        async function loadConversations() {
-            try {
-                const response = await fetch('/conversations', {
-                    headers: {'X-User-ID': currentUserId}
-                });
-                const result = await response.json();
-                const list = document.getElementById('conversationsList');
-                list.innerHTML = '';
-
-                if (result.conversations.length === 0) {
-                    list.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-secondary);font-weight:500;">No chats yet<br><small style="font-size:0.85em;margin-top:8px;display:block;">Click "New Chat" to start</small></div>';
-                    return;
-                }
-
-                result.conversations.forEach(conv => {
-                    const item = document.createElement('div');
-                    item.className = 'conversation-item' + 
-                        (conv.conversation_id === currentConversationId ? ' active' : '');
-                    
-                    const docBadge = conv.documents > 0 ? 
-                        `<span class="doc-badge">📄 ${conv.documents}</span>` : '';
-                    
-                    item.innerHTML = `
-                        <div class="conversation-title">${conv.title}</div>
-                        <div class="conversation-meta">
-                            <span>${conv.message_count} msgs</span>
-                            ${docBadge}
-                            <span>${formatDate(conv.updated_at)}</span>
-                        </div>
-                    `;
-                    item.onclick = () => loadConversation(conv.conversation_id);
-                    list.appendChild(item);
-                });
-
-                document.getElementById('totalChats').textContent = result.conversations.length;
-            } catch (error) {
-                console.error('Load error:', error);
-            }
-        }
-
-        async function loadConversation(id) {
-            try {
-                const response = await fetch(`/conversations/${id}`);
-                const result = await response.json();
-                if (result.success) {
-                    currentConversationId = id;
-                    const msgs = document.getElementById('chatMessages');
-                    msgs.innerHTML = '';
-                    result.conversation.messages.forEach(m => {
-                        addMessageToUI(m.role, m.content, m.routing, m.metadata);
-                    });
-                    loadConversations();
-                    updateUploadState();
-                    updateSessionStats();
-                    updateSessionBadge();
-                }
-            } catch (error) {
-                console.error('Load conversation error:', error);
-            }
-        }
-
-        async function updateSessionStats() {
-            if (!currentConversationId) {
-                document.getElementById('sessionDocs').textContent = '0';
-                displayFiles([]);
-                return;
-            }
-
-            try {
-                const response = await fetch(`/conversations/${currentConversationId}/documents`);
-                const result = await response.json();
-                if (result.success) {
-                    document.getElementById('sessionDocs').textContent = result.total_documents;
-                    
-                    if (result.documents && result.documents.length > 0) {
-                        displayFiles(result.documents.map(name => ({ name, status: 'ready' })));
-                    } else {
-                        displayFiles([]);
-                    }
-                }
-            } catch (error) {
-                console.error('Stats error:', error);
-            }
-        }
-
-        function updateSessionBadge() {
-            const badge = document.getElementById('currentSessionBadge');
-            if (currentConversationId) {
-                badge.textContent = `Session: ${currentConversationId.substring(0, 8)}...`;
-            } else {
-                badge.textContent = 'No Session';
-            }
-        }
-
-        // ============================================
-        // MESSAGE HANDLING
-        // ============================================
-        async function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const message = input.value.trim();
-            if (!message || isLoading) return;
-
-            if (!currentConversationId) {
-                showNotification('error', '⚠️ Please create or select a chat first');
-                return;
-            }
-
-            addMessageToUI('user', message);
-            input.value = '';
-            isLoading = true;
-            document.getElementById('sendBtn').disabled = true;
-
-            try {
-                const response = await fetch('/query', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-User-ID': currentUserId
-                    },
-                    body: JSON.stringify({
-                        question: message,
-                        conversation_id: currentConversationId
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    addMessageToUI('assistant', result.explanation || result.answer || 'No answer', result.routing, null, result.plot);
-                    loadConversations();
-                } else {
-                    addMessageToUI('assistant', `❌ Error: ${result.error}`);
-                }
-            } catch (error) {
-                addMessageToUI('assistant', `❌ Error: ${error.message}`);
-            } finally {
-                isLoading = false;
-                document.getElementById('sendBtn').disabled = false;
-            }
-        }
-
-        function addMessageToUI(role, content, routing, metadata, plotData) {
-            const msgs = document.getElementById('chatMessages');
-            const div = document.createElement('div');
-            div.className = `message message-${role}`;
-            
-            const messageId = Date.now();
-            
-            // Create content container
-            const contentContainer = document.createElement('div');
-            
-            // Add chart if present (BEFORE text)
-            if (plotData) {
-                const chartElement = renderChart(plotData, messageId);
-                contentContainer.appendChild(chartElement);
-            }
-            
-            // Add text content with MARKDOWN RENDERING
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            
-            if (role === 'assistant') {
-                // Render markdown for assistant messages
-                contentDiv.innerHTML = renderMarkdown(content);
-                console.log('Assistant message rendered');
-            } else {
-                // Plain text for user messages
-                contentDiv.textContent = content;
-            }
-            
-            contentContainer.appendChild(contentDiv);
-            
-            // Add metadata
-            let badge = '';
-            if (routing) {
-                const cls = routing === 'sql' ? 'badge-sql' : 
-                           routing === 'document' ? 'badge-document' : 'badge-hybrid';
-                badge = `<span class="routing-badge ${cls}">${routing.toUpperCase()}</span>`;
-            }
-
-            const metaDiv = document.createElement('div');
-            metaDiv.className = 'message-meta';
-            metaDiv.innerHTML = `${new Date().toLocaleTimeString()}${badge}`;
-            
-            div.appendChild(contentContainer);
-            div.appendChild(metaDiv);
-            
-            msgs.appendChild(div);
-            msgs.scrollTop = msgs.scrollHeight;
-        }
-
-        function clearChat() {
-            document.getElementById('chatMessages').innerHTML = `
-                <div style="text-align:center;padding:60px 20px;color:var(--text-secondary);">
-                    <div style="font-size:3em;margin-bottom:20px;">💬</div>
-                    <h2 style="font-weight:600;margin-bottom:12px;color:var(--text-primary);">New Chat Started</h2>
-                    <p>Ask me anything about your data!</p>
+    <!-- ── FORECAST PANEL ───────────────────────── -->
+    <div class="tab-panel" id="panelForecast" style="display:none!important">
+      <div id="forecastPanel">
+        <div id="forecastBar">
+          <div class="fc-bar-title">◈ PROPHET FORECASTING ENGINE — A2A ROUTED</div>
+          <div class="fc-controls">
+            <select id="fcColSelect" class="fc-select">
+              <option value="">— select column to forecast —</option>
+            </select>
+            <div class="fc-periods">
+              <span class="fc-per-lbl">PERIODS:</span>
+              <button class="period-btn" onclick="setPeriod(3,this)">3</button>
+              <button class="period-btn active" onclick="setPeriod(6,this)">6</button>
+              <button class="period-btn" onclick="setPeriod(12,this)">12</button>
+              <button class="period-btn" onclick="setPeriod(24,this)">24</button>
+            </div>
+            <button id="fcRunBtn" onclick="runForecast()">⟳ RUN FORECAST →</button>
+          </div>
+          <div class="fc-hint">Upload a CSV with a date column + numeric columns — select a metric to forecast with confidence intervals and anomaly detection</div>
+        </div>
+        <div id="forecastArea">
+          <div id="fcEmpty">
+            <div class="fce-icon"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="fce-title">FORECAST ENGINE</div>
+            <div class="fce-sub">Upload a CSV, select a numeric column above, choose forecast horizon, and run. Prophet-based time series forecasting with anomaly detection.</div>
+          </div>
+          <div id="fcLoading">
+            <div class="fcl-logo"><span></span><span></span><span></span><span></span></div>
+            <div class="fcl-txt">RUNNING PROPHET FORECAST…</div>
+            <div class="fcl-steps">
+              <div class="fcl-step" id="fcS1">→ routing via A2A to forecast_agent</div>
+              <div class="fcl-step" id="fcS2">→ detecting date + value columns</div>
+              <div class="fcl-step" id="fcS3">→ fitting Prophet model</div>
+              <div class="fcl-step" id="fcS4">→ generating forecast + confidence intervals</div>
+              <div class="fcl-step" id="fcS5">→ detecting anomalies</div>
+            </div>
+          </div>
+          <div id="fcResult">
+            <div class="fc-result-header">
+              <div>
+                <div class="fc-result-title" id="fcResultTitle">FORECAST RESULT</div>
+                <div class="fc-result-meta" id="fcResultMeta"></div>
+              </div>
+              <div class="fc-result-actions">
+                <button class="fc-act-btn" onclick="dlForecastChart()">⬇ EXPORT PNG</button>
+                <button class="fc-act-btn" onclick="resetForecast()">⟳ RESET</button>
+              </div>
+            </div>
+            <div class="fc-kpi-strip" id="fcKpiStrip"></div>
+            <div class="fc-chart-card">
+              <div class="fc-chart-header">
+                <div class="fc-chart-title" id="fcChartTitle">HISTORICAL + FORECAST</div>
+                <div class="fc-chart-legend">
+                  <div class="fc-leg-item"><div class="fc-leg-dot" style="background:#6366f1;"></div>ACTUAL</div>
+                  <div class="fc-leg-item"><div class="fc-leg-dot" style="background:#f59e0b;"></div>FORECAST</div>
+                  <div class="fc-leg-item"><div class="fc-leg-dot" style="background:#a78bfa;height:6px;opacity:.4;"></div>CONFIDENCE</div>
                 </div>
-            `;
-            displayFiles([]);
+              </div>
+              <div class="fc-chart-canvas"><canvas id="fcMainChart"></canvas></div>
+            </div>
+            <div class="fc-anomaly-card">
+              <div class="fc-anomaly-title">⚠ ANOMALY DETECTION</div>
+              <div id="fcAnomalyContent"></div>
+            </div>
+            <div class="fc-insight-card">
+              <div class="fc-insight-lbl">◈ FORECAST INSIGHT</div>
+              <div class="fc-insight-body mc" id="fcInsightBody"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="statusBar">
+    <div class="sb-item"><div class="sb-dot"></div><span>ONLINE</span></div>
+    <span class="sb-sep">·</span>
+    <span id="sbSession">NO SESSION</span>
+    <span class="sb-sep">·</span>
+    <span id="sbForecastStatus" style="color:var(--muted);">FORECAST READY</span>
+    <span style="margin-left:auto;">ANALYST v2.1</span>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+const API_KEY = 'xyz_123';
+let currentUserId='user_'+Math.random().toString(36).substr(2,9);
+let currentConversationId=null;
+let _forecastColumnsLoadedFor=null;
+let isLoading=false;
+let chartInstances={};
+let fcPeriods=6;
+let fcChartInstance=null;
+
+/* ── LAUNCH ─────────────────────────── */
+const BOOT=[
+  {t:'sys',m:'[ ANALYST ] initializing runtime…'},
+  {t:'ok', m:'✓ session engine ready'},
+  {t:'ok', m:'✓ RAG pipeline loaded'},
+  {t:'ok', m:'✓ chart renderer ready'},
+  {t:'ok', m:'✓ Prophet forecast engine loaded'},
+  {t:'info',m:'→ connecting to backend…'},
+];
+async function runBoot(){
+  const c=document.getElementById('lsBoot');
+  for(let i=0;i<BOOT.length;i++){
+    await sleep(320+i*110);
+    const d=document.createElement('div');
+    d.className='boot-line '+BOOT[i].t;
+    d.textContent=BOOT[i].m;
+    c.appendChild(d);
+  }
+  await sleep(380);
+  document.getElementById('lsBtn').disabled=false;
+  document.getElementById('lsBtnTxt').textContent='▷ START SESSION';
+}
+function startApp(){
+  const ls=document.getElementById('launchScreen');
+  ls.classList.add('hiding');
+  setTimeout(()=>{
+    ls.style.display='none';
+    document.getElementById('mainApp').classList.add('visible');
+    loadConversations();
+    updateSessionBadge();
+  },650);
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+window.addEventListener('load',runBoot);
+
+/* ── ATTACH ─────────────────────────── */
+function onAttach(src){
+  if(!currentConversationId){
+    const btnEl=document.getElementById(src==='h'?'hAtBtn':'iAtBtn');
+    const tipEl=document.getElementById(src==='h'?'hAtTip':'iAtTip');
+    btnEl.classList.remove('nosess');void btnEl.offsetWidth;btnEl.classList.add('nosess');
+    btnEl.addEventListener('animationend',()=>btnEl.classList.remove('nosess'),{once:true});
+    const orig=tipEl.textContent;
+    tipEl.textContent='⚠ Start a new session first!';tipEl.style.color='var(--red)';tipEl.style.opacity='1';
+    setTimeout(()=>{tipEl.textContent=orig;tipEl.style.color='';tipEl.style.opacity='';},2200);
+    showNotif('error','⚠ Start a new session first — click + NEW CHAT');
+    return;
+  }
+  document.getElementById('fileInput').click();
+}
+document.getElementById('fileInput').addEventListener('change',async(e)=>{await handleFiles(e.target.files);e.target.value='';});
+
+/* ── FILE UPLOAD ─────────────────────── */
+async function handleFiles(files){
+  if(!currentConversationId){showNotif('error','⚠ Start a new session first');return;}
+  const fd=new FormData();const fnames=[];
+  Array.from(files).forEach(f=>{
+    if(f.size>10*1024*1024){showNotif('error','⚠ '+f.name+' >10MB');return;}
+    fd.append('files',f);fnames.push(f.name);
+  });
+  if(!fnames.length)return;
+  try{
+    displayFiles(fnames.map(n=>({name:n,status:'processing'})));
+    showNotif('info','↑ Uploading '+fnames.length+' file(s)…');
+    const res=await fetch('/upload',{method:'POST',headers:{'X-Conversation-ID':currentConversationId,'X-Api-Key':API_KEY},body:fd});
+    const r=await res.json();
+    if(r.success||r.loaded_files){
+      showNotif('info','⏳ Indexing — please wait…');
+      pollProcessingStatus(currentConversationId,fnames);
+    } else {showNotif('error','✗ '+(r.error||'Upload failed'));displayFiles([]);}
+  } catch(e){showNotif('error','✗ '+e.message);displayFiles([]);}
+}
+function pollProcessingStatus(convId,fnames){
+  let attempts=0;
+  const timer=setInterval(async()=>{
+    attempts++;
+    if(attempts>90){clearInterval(timer);showNotif('error','✗ Indexing timed out');updateSessionStats();return;}
+    try{
+      const res=await fetch('/conversations/'+convId+'/processing-status');
+      if(!res.ok)return;
+      const r=await res.json();
+      if(r.status==='ready'){
+        clearInterval(timer);
+        showNotif('success','✓ '+(r.files?.length||fnames.length)+' file(s) indexed and ready');
+        updateSessionStats();loadConversations();
+        // Only populate forecast columns if the user is still on THIS session.
+        // Prevents auto-query firing on a different (older) session's chat.
+        if(convId===currentConversationId)populateForecastColumns();
+      } else if(r.status==='error'){
+        clearInterval(timer);showNotif('error','✗ Indexing failed: '+(r.error||'unknown error'));displayFiles([]);
+      }
+    }catch(e){}
+  },1000);
+}
+function displayFiles(files){
+  const bar=document.getElementById('filesBar');
+  if(!files||!files.length){bar.innerHTML='<div class="file-chip" style="opacity:.4;color:var(--muted);"><span class="fc-icon">○</span>no documents loaded</div>';return;}
+  bar.innerHTML='';
+  files.forEach(f=>{
+    const fname=typeof f==='string'?f:f.name;
+    const st=f.status||'ready';
+    const chip=document.createElement('div');chip.className='file-chip';
+    chip.innerHTML=`<span class="fc-icon">${ficon(fname)}</span><span>${fname}</span><span class="fc-status ${st==='processing'?'fc-proc':''}">${st==='processing'?'…':'✓'}</span>`;
+    bar.appendChild(chip);
+  });
+}
+function ficon(n){const e=(n.split('.').pop()||'').toLowerCase();return{xlsx:'◈',csv:'◇',pdf:'▣',docx:'▤',txt:'▥'}[e]||'▦';}
+
+/* ── CONVERSATIONS ───────────────────── */
+async function newChat(){
+  try{
+    const res=await fetch('/conversations',{method:'POST',headers:{'Content-Type':'application/json','X-User-ID':currentUserId},body:JSON.stringify({user_id:currentUserId,title:'New Chat'})});
+    const r=await res.json();
+    if(r.success){
+      currentConversationId=r.conversation_id;
+      clearChat();loadConversations();updateSessionStats();updateSessionBadge();
+      
+      showNotif('success','✓ New session started');
+    }
+  } catch(e){showNotif('error','✗ Failed to create chat');}
+}
+async function loadConversations(){
+  try{
+    const res=await fetch('/conversations',{headers:{'X-User-ID':currentUserId}});
+    const r=await res.json();
+    const list=document.getElementById('convList');list.innerHTML='';
+    if(!r.conversations.length){
+      list.innerHTML='<div style="padding:20px 12px;font-family:var(--fm);font-size:.63rem;color:var(--muted);">NO CONVERSATIONS<br><span style="color:var(--border2);">→ click + NEW CHAT</span></div>';
+      return;
+    }
+    r.conversations.forEach(conv=>{
+      const item=document.createElement('div');
+      item.className='conv-item'+(conv.conversation_id===currentConversationId?' active':'');
+      const db=conv.documents>0?`<span class="doc-badge">⊡ ${conv.documents}</span>`:'';
+      item.innerHTML=`<div class="conv-title">${conv.title}</div><div class="conv-meta"><span>${conv.message_count} msgs</span>${db}<span>${fdate(conv.updated_at)}</span></div>`;
+      item.onclick=()=>loadConversation(conv.conversation_id);
+      list.appendChild(item);
+    });
+    document.getElementById('totalChats').textContent=r.conversations.length;
+  } catch(e){console.error(e);}
+}
+async function loadConversation(id){
+  try{
+    const res=await fetch('/conversations/'+id);
+    const r=await res.json();
+    if(r.success){
+      currentConversationId=id;
+      const msgs=document.getElementById('chatMessages');msgs.innerHTML='';
+      r.conversation.messages.forEach(m=>addMsg(m.role,m.content,m.routing,m.metadata));
+      loadConversations();updateSessionStats();updateSessionBadge();
+      populateForecastColumns();
+    }
+  } catch(e){console.error(e);}
+}
+async function updateSessionStats(){
+  if(!currentConversationId){document.getElementById('sessionDocs').textContent='0';displayFiles([]);return;}
+  try{
+    const res=await fetch('/conversations/'+currentConversationId+'/documents');
+    const r=await res.json();
+    if(r.success){
+      document.getElementById('sessionDocs').textContent=r.total_documents;
+      if(r.documents?.length)displayFiles(r.documents.map(n=>({name:n,status:'ready'})));
+      else displayFiles([]);
+    }
+  } catch(e){console.error(e);}
+}
+function updateSessionBadge(){
+  const id=currentConversationId;
+  const s=id?id.substring(0,8).toUpperCase()+'…':'—';
+  document.getElementById('currentSessionBadge').textContent=s;
+  document.getElementById('sbSession').textContent=id?'SESSION '+s:'NO SESSION';
+}
+
+/* ── FORECAST COLUMN POPULATE ────────── */
+async function populateForecastColumns(){
+  if(!currentConversationId)return;
+  // Only re-populate if session changed — prevents tab-switch from re-firing /query
+  if(_forecastColumnsLoadedFor===currentConversationId)return;
+
+  try{
+    const docRes=await fetch('/conversations/'+currentConversationId+'/documents');
+    const docData=await docRes.json();
+    const hasCsv=docData.documents&&docData.documents.some(f=>f.toLowerCase().endsWith('.csv'));
+    if(!hasCsv)return;
+  } catch(e){ return; }
+
+  try{
+    // Use /schema endpoint to get column types — no chat query fired
+    const res=await fetch('/conversations/'+currentConversationId+'/schema');
+    const r=await res.json();
+    const sel=document.getElementById('fcColSelect');
+    sel.innerHTML="<option value=''>— select column to forecast —</option>";
+    if(r.numeric_columns&&r.numeric_columns.length>0){
+      r.numeric_columns.forEach(c=>{
+        const opt=document.createElement('option');opt.value=c;opt.textContent=c;
+        sel.appendChild(opt);
+      });
+      _forecastColumnsLoadedFor=currentConversationId;
+      showNotif('info','◈ '+r.numeric_columns.length+' numeric columns available for forecasting');
+    }
+  } catch(e){
+    // Fallback: if no /schema endpoint yet, show placeholder only
+    console.warn('Schema endpoint not available:', e);
+  }
+}
+
+/* ── FORECAST CONTROLS ───────────────── */
+function setPeriod(n,btn){
+  fcPeriods=n;
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function runForecast(){
+  /* Forecast tab removed — routes through chat instead */
+  if(!currentConversationId){showNotif('error','⚠ Start a session and upload a CSV first');return;}
+  const col=document.getElementById('fcColSelect').value;
+  if(!col){showNotif('error','⚠ Select a column to forecast first');return;}
+  const question=`forecast ${col} for next ${fcPeriods} periods`;
+  // Inject question into chat input and send — forecast renders inline in chat
+  const inp=document.getElementById('chatInput');
+  if(inp){inp.value=question;}
+  switchTab('chat');
+  await sendMessageWithForecast(question, col);
+}
+
+async function sendMessageWithForecast(question, col){
+  if(!currentConversationId)return;
+  addMsg('user', question);
+  await streamForecastToChat(question, col);
+}
+
+async function streamForecastToChat(question, col){
+  const msgs=document.getElementById('chatMessages');
+  const ph=document.getElementById('sessPh');if(ph)ph.remove();
+  // Show typing indicator
+  const group=document.createElement('div');group.className='msg-group';
+  const hdr=document.createElement('div');hdr.className='msg-hdr';
+  hdr.innerHTML=`<span class="msg-role assistant">◈ ANALYST</span><span>${new Date().toLocaleTimeString('en',{hour12:false})}</span><span class="rtag rtag-fct">FORECAST</span>`;
+  const bubble=document.createElement('div');bubble.className='msg-bubble assistant';
+  const cd=document.createElement('div');cd.className='mc';
+  cd.innerHTML='<span class="stream-cursor"></span>';
+  bubble.appendChild(cd);group.appendChild(hdr);group.appendChild(bubble);
+  msgs.appendChild(group);msgs.scrollTop=msgs.scrollHeight;
+  try{
+    const res=await fetch('/query',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Api-Key':API_KEY},
+      body:JSON.stringify({question,conversation_id:currentConversationId,value_col:col||null})
+    });
+    const result=await res.json();
+    // Render inline forecast card in the chat bubble
+    cd.innerHTML='';
+    renderInlineForecast(result, col, bubble, cd);
+    msgs.scrollTop=msgs.scrollHeight;
+  } catch(e){
+    cd.textContent='✗ Forecast failed: '+e.message;
+  }
+}
+
+function renderInlineForecast(result, colName, bubble, cd){
+  const explanation=result.explanation||result.answer||'Forecast complete.';
+  const data=result.data||[];
+  const anomalies=result.anomalies||[];
+  const historical=data.filter(d=>d.actual!==undefined);
+  const forecasted=data.filter(d=>d.forecast!==undefined);
+
+  // ── Short summary first ───────────────────────────────────────────────
+  const shortSummary = explanation.split('.')[0]+'.';
+  const summaryEl=document.createElement('div');
+  summaryEl.className='mc';
+  summaryEl.innerHTML=renderMD(shortSummary);
+  summaryEl.style.marginBottom='10px';
+  cd.appendChild(summaryEl);
+
+  // ── KPI strip ─────────────────────────────────────────────────────────
+  const kpiStrip=document.createElement('div');kpiStrip.className='fc-kpi-strip';
+  if(historical.length){
+    const vals=historical.map(d=>d.actual).filter(v=>v!=null);
+    addFcKpi(kpiStrip,'DATA POINTS',vals.length,'historical records');
+    const avg=(vals.reduce((a,b)=>a+b,0)/vals.length);
+    addFcKpi(kpiStrip,'HISTORICAL AVG',fmtKPI(avg),'average value');
+  }
+  if(forecasted.length){
+    const nextVal=forecasted[0]?.forecast;
+    if(nextVal!=null)addFcKpi(kpiStrip,'NEXT PERIOD',fmtKPI(nextVal),'forecasted value');
+    addFcKpi(kpiStrip,'FORECAST PERIODS',forecasted.length,'periods ahead');
+  }
+  addFcKpi(kpiStrip,'ANOMALIES',anomalies.length,anomalies.length===0?'✓ none':'⚠ detected');
+  cd.appendChild(kpiStrip);
+
+  // ── Chart ─────────────────────────────────────────────────────────────
+  if(data.length){
+    const chartCard=document.createElement('div');chartCard.className='fc-chart-card';
+    chartCard.style.marginTop='10px';
+    const chartTitle=document.createElement('div');chartTitle.className='fc-chart-title';
+    chartTitle.textContent=(colName||'METRIC').toUpperCase()+' — HISTORICAL + FORECAST';
+    const canvasWrap=document.createElement('div');canvasWrap.className='fc-chart-canvas';
+    const cv=document.createElement('canvas');cv.id='inlineFcChart'+Date.now();
+    canvasWrap.appendChild(cv);chartCard.appendChild(chartTitle);chartCard.appendChild(canvasWrap);
+    cd.appendChild(chartCard);
+    buildInlineForecastChart(cv, data);
+  }
+
+  // ── Full insight (collapsible) ────────────────────────────────────────
+  if(explanation){
+    const details=document.createElement('details');details.style.marginTop='8px';
+    const summary=document.createElement('summary');
+    summary.style.cssText='font-family:var(--fm);font-size:.62rem;color:var(--muted);cursor:pointer;padding:4px 0;letter-spacing:.05em;';
+    summary.textContent='◈ FULL FORECAST INSIGHT';
+    const body=document.createElement('div');body.style.marginTop='6px';
+    body.innerHTML=renderMD(explanation);
+    details.appendChild(summary);details.appendChild(body);
+    cd.appendChild(details);
+  }
+
+  showNotif('success','✓ Forecast complete — '+forecasted.length+' periods projected');
+}
+
+function buildInlineForecastChart(cv, data){
+  const historical=data.filter(d=>d.actual!==undefined);
+  const forecasted=data.filter(d=>d.forecast!==undefined);
+  const allDates=[...historical.map(d=>d.date),...forecasted.map(d=>d.date)];
+  const histMap=Object.fromEntries(historical.map(d=>[d.date,d.actual]));
+  const foreMap=Object.fromEntries(forecasted.map(d=>[d.date,d.forecast]));
+  const lowMap=Object.fromEntries(forecasted.map(d=>[d.date,d.lower]));
+  const hiMap=Object.fromEntries(forecasted.map(d=>[d.date,d.upper]));
+  new Chart(cv.getContext('2d'),{
+    type:'line',
+    data:{
+      labels:allDates,
+      datasets:[
+        {label:'Actual',data:allDates.map(d=>histMap[d]??null),borderColor:'#4A9EFF',backgroundColor:'rgba(74,158,255,.08)',pointRadius:3,borderWidth:1.5,tension:.35,spanGaps:false},
+        {label:'Forecast',data:allDates.map(d=>foreMap[d]??null),borderColor:'#F5A623',backgroundColor:'rgba(245,166,35,.08)',borderDash:[4,3],pointRadius:3,borderWidth:1.5,tension:.35,spanGaps:false},
+        {label:'Upper',data:allDates.map(d=>hiMap[d]??null),borderColor:'rgba(245,166,35,.15)',backgroundColor:'rgba(245,166,35,.07)',fill:'+1',pointRadius:0,borderWidth:.5,tension:.35,spanGaps:false},
+        {label:'Lower',data:allDates.map(d=>lowMap[d]??null),borderColor:'rgba(245,166,35,.15)',backgroundColor:'rgba(245,166,35,.07)',fill:false,pointRadius:0,borderWidth:.5,tension:.35,spanGaps:false}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:600},
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(15,15,20,.9)',titleFont:{family:'IBM Plex Mono'},bodyFont:{family:'IBM Plex Mono'},titleColor:'#e2e8f0',bodyColor:'#94a3b8'}},
+      scales:{
+        x:{ticks:{font:{family:'IBM Plex Mono',size:8},color:'#475569',maxRotation:45},grid:{color:'rgba(255,255,255,.03)'}},
+        y:{ticks:{font:{family:'IBM Plex Mono',size:9},color:'#475569'},grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
+  });
+}
+
+function renderForecastResult(result,mcpResult,colName,question){
+  document.getElementById('fcLoading').style.display='none';
+  const explanation=result.explanation||result.answer||(mcpResult.content?.[0]?.text)||'Forecast complete.';
+  const data=result.data||[];
+  const anomalies=result.anomalies||[];
+  document.getElementById('fcResultTitle').textContent='◈ FORECAST — '+(colName||'METRIC').toUpperCase();
+  document.getElementById('fcResultMeta').textContent=new Date().toLocaleString('en',{dateStyle:'medium',timeStyle:'short'})+' · '+fcPeriods+' periods · Prophet model';
+  const kpiStrip=document.getElementById('fcKpiStrip');
+  kpiStrip.innerHTML='';
+  const historical=data.filter(d=>d.actual!==undefined);
+  const forecasted=data.filter(d=>d.forecast!==undefined);
+  if(historical.length){
+    const vals=historical.map(d=>d.actual).filter(v=>v!==null&&v!==undefined);
+    addFcKpi(kpiStrip,'DATA POINTS',vals.length,'historical records');
+    const avg=(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+    addFcKpi(kpiStrip,'HISTORICAL AVG',fmtKPI(parseFloat(avg)),'average value');
+  }
+  if(forecasted.length){
+    const nextVal=forecasted[0]?.forecast;
+    if(nextVal!==undefined)addFcKpi(kpiStrip,'NEXT PERIOD',fmtKPI(nextVal),'forecasted value');
+    addFcKpi(kpiStrip,'FORECAST PERIODS',forecasted.length,'periods ahead');
+  }
+  addFcKpi(kpiStrip,'ANOMALIES',anomalies.length,anomalies.length===0?'✓ none detected':'detected');
+  document.getElementById('fcChartTitle').textContent=(colName||'METRIC').toUpperCase()+' — HISTORICAL + FORECAST';
+  buildForecastChart(data);
+  const anomDiv=document.getElementById('fcAnomalyContent');
+  if(!anomalies.length){
+    anomDiv.innerHTML='<div class="fc-anomaly-none">✓ No anomalies detected — data is within expected bounds.</div>';
+  } else {
+    let tbl=`<table class="fc-anomaly-table"><tr><th>DATE</th><th>ACTUAL VALUE</th><th>STATUS</th></tr>`;
+    anomalies.forEach(a=>{
+      const d=a.ds?String(a.ds).slice(0,10):(a.date||'—');
+      const v=typeof a.y==='number'?fmtKPI(a.y):a.value||'—';
+      tbl+=`<tr><td>${d}</td><td>${v}</td><td><span class="anom-badge">ANOMALY</span></td></tr>`;
+    });
+    tbl+='</table>';
+    anomDiv.innerHTML=tbl;
+  }
+  document.getElementById('fcInsightBody').innerHTML=renderMD(explanation);
+  document.getElementById('fcResult').style.display='block';
+  document.getElementById('sbForecastStatus').textContent='FORECAST COMPLETE';
+  document.getElementById('sbForecastStatus').style.color='var(--accent)';
+  showNotif('success','✓ Forecast complete — '+forecasted.length+' periods projected');
+}
+
+function addFcKpi(container,label,value,sub){
+  const kpi=document.createElement('div');kpi.className='fc-kpi';
+  kpi.innerHTML=`<div class="fc-kpi-lbl">${label}</div><div class="fc-kpi-val">${value}</div><div class="fc-kpi-sub">${sub}</div>`;
+  container.appendChild(kpi);
+}
+
+function buildForecastChart(data){
+  const cv=document.getElementById('fcMainChart');
+  if(fcChartInstance){try{fcChartInstance.destroy();}catch(e){}}
+  const historical=data.filter(d=>d.actual!==undefined);
+  const forecasted=data.filter(d=>d.forecast!==undefined);
+  const allDates=[...historical.map(d=>d.date),...forecasted.map(d=>d.date)];
+  const histMap=Object.fromEntries(historical.map(d=>[d.date,d.actual]));
+  const foreMap=Object.fromEntries(forecasted.map(d=>[d.date,d.forecast]));
+  const lowMap=Object.fromEntries(forecasted.map(d=>[d.date,d.lower]));
+  const hiMap=Object.fromEntries(forecasted.map(d=>[d.date,d.upper]));
+  fcChartInstance=new Chart(cv.getContext('2d'),{
+    type:'line',
+    data:{
+      labels:allDates,
+      datasets:[
+        {label:'Actual',data:allDates.map(d=>histMap[d]??null),borderColor:'#6366f1',borderWidth:2,backgroundColor:'rgba(99,102,241,0.08)',pointRadius:3,pointHoverRadius:5,pointBackgroundColor:'#6366f1',tension:0.3,fill:false},
+        {label:'Forecast',data:allDates.map(d=>foreMap[d]??null),borderColor:'#f59e0b',borderWidth:2,borderDash:[6,3],backgroundColor:'rgba(245,158,11,0.08)',pointRadius:3,pointHoverRadius:5,pointBackgroundColor:'#f59e0b',tension:0.3,fill:false},
+        {label:'Upper bound',data:allDates.map(d=>hiMap[d]??null),borderColor:'rgba(167,139,250,0.3)',borderWidth:1,backgroundColor:'rgba(167,139,250,0.08)',pointRadius:0,tension:0.3,fill:'+1'},
+        {label:'Lower bound',data:allDates.map(d=>lowMap[d]??null),borderColor:'rgba(167,139,250,0.3)',borderWidth:1,backgroundColor:'rgba(167,139,250,0.08)',pointRadius:0,tension:0.3,fill:false}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#0c0d14',borderColor:'#252840',borderWidth:1,titleColor:'#a78bfa',bodyColor:'#d4d8f0',titleFont:{family:"'IBM Plex Mono'",size:11},bodyFont:{family:"'IBM Plex Mono'",size:11},padding:10,filter:(item)=>item.datasetIndex<2}
+      },
+      scales:{
+        x:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:10},maxRotation:45},grid:{color:'rgba(28,31,46,0.8)'},border:{color:'#1c1f2e'}},
+        y:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:10},callback:v=>fmtN(v)},grid:{color:'rgba(28,31,46,0.8)'},border:{color:'#1c1f2e'},beginAtZero:false}
+      }
+    }
+  });
+}
+
+function dlForecastChart(){
+  const cv=document.getElementById('fcMainChart');
+  if(!cv)return;
+  const a=document.createElement('a');
+  a.download='forecast-'+Date.now()+'.png';
+  a.href=cv.toDataURL('image/png');a.click();
+  showNotif('success','↓ Forecast chart exported');
+}
+
+function resetForecast(){
+  document.getElementById('fcResult').style.display='none';
+  document.getElementById('fcEmpty').style.display='flex';
+  document.getElementById('sbForecastStatus').textContent='FORECAST READY';
+  document.getElementById('sbForecastStatus').style.color='var(--muted)';
+  if(fcChartInstance){try{fcChartInstance.destroy();}catch(e){}}
+  fcChartInstance=null;
+}
+
+/* ── MARKDOWN ────────────────────────── */
+function renderMD(text){
+  if(!text)return'';
+  try{
+    marked.setOptions({breaks:true,gfm:true,headerIds:false,mangle:false,pedantic:false});
+    return marked.parse(text.trim().replace(/\r\n/g,'\n'));
+  } catch(e){return text;}
+}
+
+/* ── CHARTS ──────────────────────────── */
+function renderChart(pd,mid){
+  const box=document.createElement('div');box.className='chart-box';
+  const cv=document.createElement('canvas');
+  const cid='chart-'+mid+'-'+Date.now();cv.id=cid;
+  box.appendChild(cv);
+  const dl=document.createElement('button');dl.className='chart-dl';dl.innerHTML='↓ EXPORT PNG';
+  dl.onclick=()=>dlChart(cv,pd.title);box.appendChild(dl);
+  setTimeout(()=>makeChart(cv,pd,cid),100);
+  return box;
+}
+function makeChart(cv,pd,cid){
+  const ctx=cv.getContext('2d');
+  if(chartInstances[cid])chartInstances[cid].destroy();
+  const pal=['#4ade80','#38bdf8','#fbbf24','#f87171','#a78bfa','#fb923c','#34d399','#818cf8'];
+  const isPie=pd.type==='pie'||pd.type==='doughnut';
+  if(pd.series&&pd.data){
+    const datasets=pd.series.map(s=>({label:s.label,data:pd.data.map(row=>row[s.key]??null),borderColor:s.color||'#4ade80',borderWidth:2,backgroundColor:(s.color||'#4ade80')+'22',pointRadius:3,tension:0.3,fill:false}));
+    chartInstances[cid]=new Chart(ctx,{type:'line',data:{labels:pd.data.map(r=>r[pd.x_key||'date']),datasets},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:true,labels:{color:'#8890b0',font:{family:"'IBM Plex Mono'",size:11}}},tooltip:{backgroundColor:'#111320',borderColor:'#252840',borderWidth:1,titleColor:'#a78bfa',bodyColor:'#d4d8f0'}},scales:{x:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:11}},grid:{color:'#1c1f2e'}},y:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:11},callback:v=>fmtN(v)},grid:{color:'#1c1f2e'},beginAtZero:false}}}});
+    return;
+  }
+  chartInstances[cid]=new Chart(ctx,{type:pd.type,data:{labels:pd.x,datasets:[{label:pd.y_label,data:pd.y,backgroundColor:isPie?pal.slice(0,pd.x.length).map(c=>c+'aa'):'#4ade8033',borderColor:isPie?pal.slice(0,pd.x.length):'#4ade80',borderWidth:1.5,tension:0.4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{title:{display:true,text:pd.title,color:'#86efac',font:{family:"'IBM Plex Mono'",size:13,weight:'600'},padding:{bottom:18}},legend:{display:isPie,labels:{color:'#8890b0',font:{family:"'IBM Plex Mono'",size:11}}},tooltip:{backgroundColor:'#111320',borderColor:'#252840',borderWidth:1,titleColor:'#4ade80',bodyColor:'#d4d8f0',titleFont:{family:"'IBM Plex Mono'"},bodyFont:{family:"'IBM Plex Mono'",size:12}}},scales:isPie?{}:{x:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:11}},grid:{color:'#1c1f2e'}},y:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:11},callback:v=>fmtN(v)},grid:{color:'#1c1f2e'},beginAtZero:true}}}});
+}
+function dlChart(cv,title){
+  const a=document.createElement('a');
+  a.download=(title||'chart').replace(/[^a-z0-9]/gi,'_')+'.png';
+  a.href=cv.toDataURL('image/png');a.click();
+  showNotif('success','↓ Chart exported');
+}
+function fmtN(n){
+  if(typeof n!=='number')return n;
+  if(n>=1e6)return(n/1e6).toFixed(1)+'M';
+  if(n>=1e3)return(n/1e3).toFixed(1)+'K';
+  return n.toLocaleString();
+}
+
+/* ── MESSAGING ───────────────────────── */
+async function sendMessage(){
+  const inp=document.getElementById('messageInput');
+  const msg=inp.value.trim();
+  if(!msg||isLoading)return;
+  if(!currentConversationId){showNotif('error','⚠ Start a new session first');return;}
+  addMsg('user',msg);inp.value='';
+  isLoading=true;document.getElementById('sendBtn').disabled=true;
+  try{await streamMessage(msg);loadConversations();}
+  catch(e){addMsg('assistant','✗ Error: '+e.message);}
+  finally{isLoading=false;document.getElementById('sendBtn').disabled=false;}
+}
+
+async function streamMessage(question){
+  const res=await fetch('/query/stream',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-User-ID':currentUserId,'X-Api-Key':API_KEY},
+    body:JSON.stringify({question,conversation_id:currentConversationId})
+  });
+  if(!res.ok)throw new Error('Stream failed: '+res.status);
+  const reader=res.body.getReader();
+  const decoder=new TextDecoder();
+  let bubble=null,contentDiv=null,accText='',buf='';
+  function parseSSE(raw){
+    const evts=[];
+    for(const block of raw.split('\n\n')){
+      let name='message',data='';
+      for(const line of block.split('\n')){
+        if(line.startsWith('event: '))name=line.slice(7).trim();
+        if(line.startsWith('data: '))data=line.slice(6).trim();
+      }
+      if(data)evts.push({name,data});
+    }
+    return evts;
+  }
+  while(true){
+    const {done,value}=await reader.read();
+    if(done)break;
+    buf+=decoder.decode(value,{stream:true});
+    const cut=buf.lastIndexOf('\n\n');
+    if(cut===-1)continue;
+    const complete=buf.slice(0,cut+2);buf=buf.slice(cut+2);
+    for(const {name,data} of parseSSE(complete)){
+      if(name==='meta'){
+        const meta=JSON.parse(data);
+        const msgs=document.getElementById('chatMessages');
+        const ph=document.getElementById('sessPh');if(ph)ph.remove();
+        const group=document.createElement('div');group.className='msg-group';
+        const hdr=document.createElement('div');hdr.className='msg-hdr';
+        let rtag='';
+        if(meta.routing){
+          const isForecast=meta.routing==='forecast';
+          const cls=isForecast?'rtag-fct':meta.routing==='sql'?'rtag-sql':meta.routing==='document'?'rtag-doc':'rtag-hyb';
+          rtag=`<span class="rtag ${cls}">${meta.routing.toUpperCase()}</span>`;
+          if(isForecast){
+            // Store forecast data to render inline card on 'done'
+            window._lastForecastMeta=meta;
+            window._lastForecastData=meta;
+          }
         }
-
-        function showNotification(type, message) {
-            const notif = document.createElement('div');
-            notif.className = `notification ${type}`;
-            notif.textContent = message;
-            document.body.appendChild(notif);
-            setTimeout(() => {
-                notif.style.animation = 'slideInRight 0.3s reverse';
-                setTimeout(() => notif.remove(), 300);
-            }, 2700);
+        hdr.innerHTML=`<span class="msg-role assistant">◈ ANALYST</span><span>${new Date().toLocaleTimeString('en',{hour12:false})}</span>${rtag}`;
+        bubble=document.createElement('div');bubble.className='msg-bubble assistant';
+        if(meta.plot)bubble.appendChild(renderChart(meta.plot,Date.now()));
+        contentDiv=document.createElement('div');contentDiv.className='mc';
+        contentDiv.innerHTML='<span class="stream-cursor"></span>';
+        bubble.appendChild(contentDiv);
+        group.appendChild(hdr);group.appendChild(bubble);
+        msgs.appendChild(group);msgs.scrollTop=msgs.scrollHeight;
+      }
+      else if(name==='token'&&contentDiv){
+        const word=JSON.parse(data);accText+=word;
+        const cur=contentDiv.querySelector('.stream-cursor');
+        contentDiv.insertBefore(document.createTextNode(word),cur);
+        document.getElementById('chatMessages').scrollTop=99999;
+      }
+      else if(name==='done'&&contentDiv){
+        // If this was a forecast response, render the inline forecast card
+        if(window._lastForecastMeta&&window._lastForecastData){
+          contentDiv.innerHTML='';
+          renderInlineForecast(window._lastForecastData,'',bubble,contentDiv);
+          window._lastForecastMeta=null;window._lastForecastData=null;
+        } else {
+          contentDiv.innerHTML=renderMD(accText);
         }
+      }
+      else if(name==='error'){
+        const err=JSON.parse(data);
+        if(contentDiv)contentDiv.textContent='✗ '+(err.error||'Error');
+        else addMsg('assistant','✗ '+(err.error||'Error'));
+      }
+    }
+  }
+}
 
-        function formatDate(dateStr) {
-            const diff = (new Date() - new Date(dateStr)) / 1000;
-            if (diff < 60) return 'Just now';
-            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-            if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-            return Math.floor(diff / 86400) + 'd ago';
-        }
+function addMsg(role,content,routing,meta,plotData){
+  const msgs=document.getElementById('chatMessages');
+  const ph=document.getElementById('sessPh');if(ph)ph.remove();
+  const mid=Date.now();
+  const group=document.createElement('div');group.className='msg-group';
+  const hdr=document.createElement('div');hdr.className='msg-hdr';
+  let rtag='';
+  if(routing){
+    const isForecast=routing==='forecast';
+    const cls=isForecast?'rtag-fct':routing==='sql'?'rtag-sql':routing==='document'?'rtag-doc':'rtag-hyb';
+    rtag=`<span class="rtag ${cls}">${routing.toUpperCase()}</span>`;
+  }
+  hdr.innerHTML=`<span class="msg-role ${role}">${role==='user'?'▸ USER':'◈ ANALYST'}</span><span>${new Date().toLocaleTimeString('en',{hour12:false})}</span>${rtag}`;
+  const bubble=document.createElement('div');bubble.className='msg-bubble '+role;
+  if(plotData)bubble.appendChild(renderChart(plotData,mid));
+  const cd=document.createElement('div');cd.className='mc';
+  if(role==='assistant')cd.innerHTML=renderMD(content);
+  else cd.textContent=content;
+  bubble.appendChild(cd);
+  group.appendChild(hdr);group.appendChild(bubble);
+  msgs.appendChild(group);msgs.scrollTop=msgs.scrollHeight;
+}
 
-        // ============================================
-        // KEYBOARD SHORTCUTS
-        // ============================================
-        document.getElementById('messageInput').addEventListener('keydown', e => {
-            if (e.key === 'Enter' && e.ctrlKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
+function clearChat(){
+  document.getElementById('chatMessages').innerHTML=`<div class="sess-ph" id="sessPh"><div class="sess-ph-grid"><span></span><span></span><span></span><span></span></div><div class="sess-ph-title">NEW SESSION / READY</div><div class="sess-ph-sub">Attach documents or start querying your data</div></div>`;
+  displayFiles([]);
+}
 
-        // ============================================
-        // INITIALIZATION
-        // ============================================
-        window.addEventListener('load', () => {
-            loadConversations();
-            updateUploadState();
-            updateSessionBadge();
-            console.log('Marked.js loaded:', typeof marked !== 'undefined');
-        });
-    </script>
+/* ── NOTIFICATIONS ───────────────────── */
+function showNotif(type,message){
+  const n=document.createElement('div');n.className='notif '+type;n.textContent=message;
+  document.body.appendChild(n);
+  setTimeout(()=>{n.style.opacity='0';n.style.transition='opacity .3s';setTimeout(()=>n.remove(),300);},2700);
+}
+function fdate(d){
+  const diff=(new Date()-new Date(d))/1000;
+  if(diff<60)return'NOW';if(diff<3600)return Math.floor(diff/60)+'M';
+  if(diff<86400)return Math.floor(diff/3600)+'H';return Math.floor(diff/86400)+'D';
+}
+
+/* ── TAB SWITCHING ───────────────────── */
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  if(tab==='chat'){
+    document.getElementById('tabChat').classList.add('active');
+    document.getElementById('panelChat').classList.add('active');
+  } else if(tab==='dash'){
+    document.getElementById('tabDash').classList.add('active');
+    document.getElementById('panelDash').classList.add('active');
+    onDashTabOpen();
+  }
+}
+
+/* ── DASHBOARD ───────────────────────── */
+// Per-session in-memory cache — source of truth is server /dashboard endpoint
+const _dashCache = {};   // { [convId]: { built, pref, panels } }
+
+function _ds(cid) {
+  if (!_dashCache[cid]) _dashCache[cid] = { built: false, pref: null, panels: [] };
+  return _dashCache[cid];
+}
+
+let dbChartInstances = {};
+
+// Called every time Dashboard tab is opened
+async function onDashTabOpen() {
+  if (!currentConversationId) return;
+  const state = _ds(currentConversationId);
+  if (state.built) return;   // already in memory
+
+  // Try loading from server first (persisted across refreshes / session switches)
+  const loaded = await loadDashboardFromServer(currentConversationId);
+  if (loaded) return;
+
+  // First time for this session — show preference dialog
+  showDashPreferenceDialog();
+}
+
+async function loadDashboardFromServer(cid) {
+  try {
+    const res  = await fetch(`/conversations/${cid}/dashboard`);
+    const data = await res.json();
+    if (!data.success || !data.state || !data.state.panels?.length) return false;
+
+    const state = _ds(cid);
+    state.pref   = data.state.pref;
+    state.panels = data.state.panels;
+    state.built  = true;
+    renderFromPanels(cid, data.state.panels, data.state.title || 'DASHBOARD');
+    showNotif('info', '◈ Dashboard restored from session');
+    return true;
+  } catch(e) { return false; }
+}
+
+async function saveDashboardToServer(cid) {
+  const state = _ds(cid);
+  try {
+    await fetch(`/conversations/${cid}/dashboard`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ state: { pref: state.pref, panels: state.panels, title: state.title || 'DASHBOARD' } })
+    });
+  } catch(e) { console.warn('Dashboard save failed:', e); }
+}
+
+function showDashPreferenceDialog() {
+  document.getElementById('dashEmpty').style.display  = 'flex';
+  document.getElementById('dashBoard').style.display  = 'none';
+  if (document.getElementById('dashPrefBox')) return;
+
+  const box = document.createElement('div');
+  box.id = 'dashPrefBox';
+  box.style.cssText = 'margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:14px;';
+  box.innerHTML = `
+    <div style="font-family:var(--fm);font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-align:center;">HOW SHOULD WE BUILD YOUR DASHBOARD?</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+      <button onclick="setDashPref('auto')" style="background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:10px 22px;font-family:var(--fm);font-size:.7rem;font-weight:600;cursor:pointer;letter-spacing:.05em;">⊞ AUTO-BUILD (smart queries)</button>
+      <button onclick="setDashPref('chat')" style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted2);border-radius:3px;padding:10px 22px;font-family:var(--fm);font-size:.7rem;font-weight:600;cursor:pointer;letter-spacing:.05em;">◈ CHAT ONLY (no extra queries)</button>
+    </div>
+    <div style="font-family:var(--fm);font-size:.58rem;color:var(--muted);text-align:center;max-width:340px;line-height:1.6;">
+      Auto-build runs smart queries based on your data columns.<br>Chat-only uses only charts from existing chat queries.
+    </div>`;
+  document.getElementById('dashEmpty').appendChild(box);
+}
+
+async function setDashPref(pref) {
+  if (!currentConversationId) return;
+  _ds(currentConversationId).pref = pref;
+  const box = document.getElementById('dashPrefBox');
+  if (box) box.remove();
+  if (pref === 'auto') await buildAutoDashboard();
+  else showNotif('info', '◈ Chat-only mode — charts from your chat queries will appear here');
+}
+
+function resetDashboard() {
+  if (!currentConversationId) return;
+  _dashCache[currentConversationId] = { built: false, pref: null, panels: [] };
+  document.getElementById('dashBoard').style.display  = 'none';
+  document.getElementById('dashEmpty').style.display  = 'flex';
+  document.getElementById('dashPromptInput').value    = '';
+  Object.values(dbChartInstances).forEach(c => { try { c.destroy(); } catch(e){} });
+  dbChartInstances = {};
+  showDashPreferenceDialog();
+}
+
+// ── AUTO BUILD ────────────────────────────────────────────────────────────────
+async function buildAutoDashboard() {
+  if (!currentConversationId) return;
+  showDashLoading();
+  try {
+    const schemaRes  = await fetch(`/conversations/${currentConversationId}/schema`);
+    const schema     = await schemaRes.json();
+    const numCols    = schema.numeric_columns    || [];
+    const dateCols   = schema.date_columns       || [];
+    const catCols    = schema.categorical_columns|| [];
+
+    if (!numCols.length && !catCols.length)
+      throw new Error('No usable columns — upload a CSV first');
+
+    const queries = buildSmartQueries(numCols, dateCols, catCols);
+    const results = await Promise.all(queries.map(q => runSilentQuery(q.question)));
+
+    const panels = [];
+    queries.forEach((q, i) => {
+      const r = results[i];
+      if (r && r.success) panels.push({ label: q.label, question: q.question, result: r });
+    });
+
+    const state = _ds(currentConversationId);
+    state.panels = panels;
+    state.title  = 'AUTO DASHBOARD';
+    state.built  = true;
+    state.pref   = 'auto';
+
+    renderFromPanels(currentConversationId, panels, 'AUTO DASHBOARD');
+    await saveDashboardToServer(currentConversationId);
+  } catch(e) {
+    hideDashLoading();
+    showNotif('error', '✗ ' + e.message);
+  }
+}
+
+// Silent query — uses /query/silent, NO chat history saved
+async function runSilentQuery(question) {
+  try {
+    const res = await fetch('/query/silent', {
+      method:  'POST',
+      headers: {'Content-Type':'application/json','X-Api-Key':API_KEY},
+      body:    JSON.stringify({ question, conversation_id: currentConversationId })
+    });
+    return await res.json();
+  } catch(e) { return { success: false }; }
+}
+
+function buildSmartQueries(numCols, dateCols, catCols) {
+  const queries = [];
+  const metric  = pickBestMetric(numCols);
+
+  if (dateCols.length && metric) {
+    queries.push({ question: `show ${metric} by ${dateCols[0]} as line chart`, label: `${metric} over time` });
+  }
+  if (catCols.length && metric) {
+    queries.push({ question: `total ${metric} by ${catCols[0]} bar chart`, label: `${metric} by ${catCols[0]}` });
+  }
+  if (catCols.length >= 2 && metric) {
+    queries.push({ question: `${metric} by ${catCols[1]} bar chart`, label: `${metric} by ${catCols[1]}` });
+  }
+  if (catCols.length && metric) {
+    queries.push({ question: `distribution of ${metric} by ${catCols[0]} pie chart`, label: `${metric} share` });
+  }
+  numCols.slice(0, 2).forEach(col => {
+    queries.push({ question: `total ${col}`, label: `total ${col}` });
+  });
+  return queries.slice(0, 6);
+}
+
+function pickBestMetric(numCols) {
+  const preferred = ['total','revenue','sales','amount','price','value','profit','quantity'];
+  for (const p of preferred) {
+    const f = numCols.find(c => c.toLowerCase().includes(p));
+    if (f) return f;
+  }
+  return numCols[0] || null;
+}
+
+// ── MANUAL PROMPT BUILD ───────────────────────────────────────────────────────
+async function generateDashboard() {
+  const prompt = document.getElementById('dashPromptInput').value.trim();
+  if (!prompt) return;
+  if (!currentConversationId) { showNotif('error','⚠ Start a session first'); return; }
+
+  const state = _ds(currentConversationId);
+  if (state.pref === 'chat') {
+    showNotif('error','⚠ Chat-only mode active — reset dashboard to use prompt bar');
+    return;
+  }
+
+  showDashLoading();
+  try {
+    const parts   = prompt.split(/,|;|\band\b|\bwith\b/i).map(s => s.trim()).filter(s => s.length > 4);
+    const queries = parts.length >= 2 ? parts.slice(0, 5) : [prompt];
+    const results = await Promise.all(queries.map(q => runSilentQuery(q)));
+
+    const panels = [];
+    queries.forEach((q, i) => {
+      const r = results[i];
+      if (r && r.success) panels.push({ label: q, question: q, result: r });
+    });
+
+    state.panels = panels;
+    state.title  = prompt;
+    state.built  = true;
+
+    renderFromPanels(currentConversationId, panels, prompt);
+    await saveDashboardToServer(currentConversationId);
+  } catch(e) {
+    hideDashLoading();
+    showNotif('error', '✗ ' + e.message);
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderFromPanels(cid, panels, title) {
+  hideDashLoading();
+  Object.values(dbChartInstances).forEach(c => { try { c.destroy(); } catch(e){} });
+  dbChartInstances = {};
+
+  const titleEl = document.getElementById('dbTitle');
+  if (titleEl) titleEl.textContent = (title || 'DASHBOARD').toUpperCase();
+  const subEl = document.getElementById('dbSubtitle');
+  if (subEl) subEl.textContent = new Date().toLocaleString('en',{dateStyle:'medium',timeStyle:'short'}) +
+    ' · session ' + (cid||'').slice(0,8).toUpperCase();
+
+  const grid = document.getElementById('dbGrid');
+  grid.innerHTML = '';
+
+  const kpiPanels   = panels.filter(p => p.result?.data?.length === 1);
+  const chartPanels = panels.filter(p => p.result?.data?.length > 1);
+  const insights    = panels.filter(p => p.result?.explanation).map(p => p.result.explanation.split('.')[0].trim());
+
+  // ── KPI row ───────────────────────────────────────────────────────────────
+  if (kpiPanels.length) {
+    const kpiRow = document.createElement('div');
+    kpiRow.className = 'db-kpi-row';
+    kpiPanels.forEach(p => {
+      const d = p.result.data[0];
+      const numKey = Object.keys(d).find(k => typeof d[k] === 'number') || Object.keys(d)[0];
+      const val    = d[numKey];
+      const card   = document.createElement('div');
+      card.className = 'db-kpi-card';
+      card.innerHTML = `<div class="db-kpi-label">${shortLabel(p.label)}</div><div class="db-kpi-val">${fmtKPI(val)}</div>`;
+      kpiRow.appendChild(card);
+    });
+    grid.appendChild(kpiRow);
+  }
+
+  // ── Chart grid (v1-style) ─────────────────────────────────────────────────
+  const chartGrid = document.createElement('div');
+  chartGrid.className = 'db-chart-grid';
+
+  chartPanels.forEach((p, idx) => {
+    const r    = p.result;
+    const d    = r.data || [];
+    if (!d.length) return;
+    const cols   = Object.keys(d[0]);
+    const numKey = cols.find(c => typeof d[0][c] === 'number') || cols[1];
+    const xKey   = cols[0];
+    if (!numKey) return;
+
+    const plot = r.plot || { type: 'bar', x: d.map(row=>String(row[xKey])), y: d.map(row=>Number(row[numKey])||0) };
+    const type = plot.type || 'bar';
+    const cid2 = `dbc-${idx}-${Date.now()}`;
+    const label = shortLabel(p.label);
+
+    const card = document.createElement('div');
+    card.className = 'db-chart-card' + (idx === 0 && chartPanels.length > 2 ? ' wide' : '');
+    card.innerHTML = `
+      <div class="db-card-header">
+        <span class="db-card-title">${label}</span>
+        <div class="db-card-actions">
+          <div class="db-type-sw">
+            ${['bar','line','pie','area'].map(t=>`<button class="dts-btn ${t===type?'active':''}" onclick="switchDbChart('${cid2}','${t}',this)">${t.toUpperCase()}</button>`).join('')}
+          </div>
+          <button class="db-png-btn" onclick="dlDbChart('${cid2}','${label}')">↓</button>
+        </div>
+      </div>
+      <div class="db-canvas-wrap"><canvas id="${cid2}"></canvas></div>`;
+    chartGrid.appendChild(card);
+
+    const labels = plot.x || d.map(row=>String(row[xKey]));
+    const values = plot.y || d.map(row=>Number(row[numKey])||0);
+    setTimeout(() => buildDbChart(cid2, type, labels, values, numKey), 120 + idx*60);
+  });
+
+  grid.appendChild(chartGrid);
+
+  // ── Insights strip ────────────────────────────────────────────────────────
+  if (insights.length) {
+    const strip = document.createElement('div');
+    strip.className = 'db-insight-strip';
+    strip.innerHTML = `<div class="db-ins-label">◈ KEY INSIGHTS</div>` +
+      insights.map(i=>`<div class="db-ins-line">→ ${i}</div>`).join('');
+    grid.appendChild(strip);
+  }
+
+  document.getElementById('dashBoard').style.display = 'block';
+  document.getElementById('dashEmpty').style.display  = 'none';
+  showNotif('success', '✓ Dashboard — ' + chartPanels.length + ' charts · ' + kpiPanels.length + ' KPIs');
+}
+
+// ── CHART ENGINE ──────────────────────────────────────────────────────────────
+function buildDbChart(cid, type, labels, values, yLabel) {
+  const cv = document.getElementById(cid); if (!cv) return;
+  if (dbChartInstances[cid]) { try { dbChartInstances[cid].destroy(); } catch(e){} }
+  const pal  = ['#4ade80','#38bdf8','#fbbf24','#f87171','#a78bfa','#fb923c'];
+  const isArea = type === 'area';
+  const isPie  = type === 'pie' || type === 'donut';
+  dbChartInstances[cid] = new Chart(cv.getContext('2d'), {
+    type: isArea ? 'line' : type,
+    data: { labels, datasets: [{ label: yLabel, data: values,
+      backgroundColor: isPie ? pal.slice(0,labels.length).map(c=>c+'cc') : isArea ? 'rgba(74,222,128,.1)' : 'rgba(74,222,128,.18)',
+      borderColor: isPie ? pal.slice(0,labels.length) : '#4ade80',
+      borderWidth: isPie ? 2 : 1.5, tension: 0.4, fill: isArea,
+      pointRadius: type==='line'||isArea ? 3 : 0, pointHoverRadius:5, pointBackgroundColor:'#4ade80'
+    }]},
+    options: { responsive:true, maintainAspectRatio:false, animation:{duration:500},
+      plugins:{ legend:{display:isPie,position:'bottom',labels:{color:'#6b7291',font:{family:"'IBM Plex Mono'",size:10},padding:10}},
+        tooltip:{backgroundColor:'#0c0d14',borderColor:'#252840',borderWidth:1,titleColor:'#4ade80',bodyColor:'#d4d8f0',
+          titleFont:{family:"'IBM Plex Mono'",size:11},bodyFont:{family:"'IBM Plex Mono'",size:11},padding:10}},
+      scales: isPie ? {} : {
+        x:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:9},maxRotation:35},grid:{color:'rgba(28,31,46,.8)'},border:{color:'#1c1f2e'}},
+        y:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:9},callback:v=>fmtKPI(v)},grid:{color:'rgba(28,31,46,.8)'},border:{color:'#1c1f2e'},beginAtZero:true}
+      }
+    }
+  });
+}
+
+function switchDbChart(cid, type, btn) {
+  const chart = dbChartInstances[cid]; if (!chart) return;
+  const labels = chart.data.labels;
+  const values = chart.data.datasets[0].data;
+  const yLabel = chart.data.datasets[0].label;
+  btn.closest('.db-type-sw').querySelectorAll('.dts-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  buildDbChart(cid, type, labels, values, yLabel);
+}
+
+// ── PDF DOWNLOAD ──────────────────────────────────────────────────────────────
+async function downloadFullDashboard() {
+  const btn = document.getElementById('dlFullBtn');
+  if (btn) { btn.textContent='⏳ PREPARING…'; btn.disabled=true; }
+  try {
+    const board = document.getElementById('dashBoard');
+    const img   = await domToImg(board);
+    const sid   = currentConversationId ? currentConversationId.slice(0,8).toUpperCase() : 'DASH';
+    const w     = window.open('','_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>Dashboard ${sid}</title>
+      <style>*{margin:0;padding:0;}body{background:#07080d;display:flex;flex-direction:column;align-items:center;padding:16px;font-family:'IBM Plex Mono',monospace;}
+      .hdr{color:#4ade80;font-size:11px;letter-spacing:.1em;margin-bottom:8px;}
+      .sub{color:#4a5066;font-size:9px;margin-bottom:14px;}img{max-width:100%;border-radius:4px;}
+      @media print{body{padding:0;}@page{margin:8mm;size:A4 landscape;}}</style></head><body>
+      <div class="hdr">◈ ANALYST DASHBOARD · SESSION ${sid}</div>
+      <div class="sub">${new Date().toLocaleString('en',{dateStyle:'long',timeStyle:'short'})}</div>
+      <img src="${img}"/><script>window.onload=()=>{window.print();}<\/script></body></html>`);
+    w.document.close();
+    showNotif('success','✓ PDF ready — print dialog opened');
+  } catch(err) { showNotif('error','✗ Export failed: '+err.message); }
+  finally { if (btn) { btn.textContent='⬇ DOWNLOAD PDF'; btn.disabled=false; } }
+}
+
+async function domToImg(el) {
+  // Use html2canvas if available, else fallback to canvas export
+  if (typeof html2canvas !== 'undefined') {
+    const bc = await html2canvas(el, {backgroundColor:'#07080d',scale:2,useCORS:true,logging:false,ignoreElements:e=>e.tagName==='CANVAS'});
+    const fc = document.createElement('canvas');
+    fc.width=bc.width; fc.height=bc.height;
+    const ctx=fc.getContext('2d'); ctx.drawImage(bc,0,0);
+    const boardRect=el.getBoundingClientRect();
+    el.querySelectorAll('canvas').forEach(cv=>{
+      if(!cv.width||!cv.height)return;
+      const r=cv.getBoundingClientRect();
+      try{ctx.drawImage(cv,(r.left-boardRect.left)*2,(r.top-boardRect.top)*2,r.width*2,r.height*2);}catch(e){}
+    });
+    return fc.toDataURL('image/png',1.0);
+  }
+  throw new Error('html2canvas not loaded');
+}
+
+function dlDbChart(cid, title) {
+  const cv=document.getElementById(cid); if(!cv)return;
+  const a=document.createElement('a');
+  a.download=(title||'chart').replace(/[^a-z0-9]/gi,'_')+'.png';
+  a.href=cv.toDataURL('image/png'); a.click();
+}
+
+function showDashLoading() {
+  document.getElementById('dashEmpty').style.display   = 'none';
+  document.getElementById('dashBoard').style.display   = 'none';
+  document.getElementById('dashLoading').style.display = 'flex';
+  document.getElementById('dashGenBtn').disabled       = true;
+  const steps=['dlS1','dlS2','dlS3','dlS4'];
+  steps.forEach(s=>document.getElementById(s).classList.remove('lit'));
+  let si=0;
+  window._dashStepTimer=setInterval(()=>{if(si<steps.length)document.getElementById(steps[si++]).classList.add('lit');},500);
+}
+
+function hideDashLoading() {
+  clearInterval(window._dashStepTimer);
+  ['dlS1','dlS2','dlS3','dlS4'].forEach(s=>document.getElementById(s).classList.add('lit'));
+  document.getElementById('dashLoading').style.display='none';
+  document.getElementById('dashGenBtn').disabled=false;
+}
+
+function fmtKPI(v) {
+  if (typeof v !== 'number') return String(v);
+  if (v >= 1e9) return (v/1e9).toFixed(2)+'B';
+  if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+  if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+  return v === Math.floor(v) ? v.toLocaleString() : v.toFixed(2);
+}
+
+function shortLabel(s) {
+  s = String(s).replace(/^(show|give me|display|total|sum of|list all)\s+/i,'');
+  return s.length > 50 ? s.substring(0,47)+'…' : s;
+}
+
+/* ── METRICS POLLING ─────────────────── */
+async function refreshMetrics(){
+  if(!currentConversationId)return;
+  try{
+    const res=await fetch('/api/metrics');if(!res.ok)return;
+    const m=await res.json();
+    if(typeof m.total_vectors==='number')document.getElementById('sessionDocs').textContent=m.total_vectors;
+    if(typeof m.total_sessions==='number')document.getElementById('totalChats').textContent=m.total_sessions;
+  }catch(e){}
+}
+setInterval(refreshMetrics,15000);
+
+/* ── KEYBOARD ────────────────────────── */
+document.getElementById('messageInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.ctrlKey){e.preventDefault();sendMessage();}});
+document.getElementById('dashPromptInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();generateDashboard();}});
+</script>
 </body>
 </html>
