@@ -61,20 +61,34 @@ class LanguageDetector:
         return None
 
     def detect_language(self, text: str) -> Optional[str]:
-        '''Detect lang (Input_text -> lang_code). Script-first for CJK/Arabic.'''
-        # Priority 1: fast script detection (no false positives for CJK/Arabic/Hindi)
+        '''Detect lang (Input_text -> lang_code). Script-first for CJK/Arabic/Hindi.'''
+        # Priority 1: fast script detection — always runs first, even for short text
+        # This prevents the short-query guard in sql_analyst from bypassing CJK detection
         script = self._script_detect(text)
         if script:
             logger.info(f"🌍 Detected language (script): {self.get_language_name(script)} ({script})")
             return script
-        # Priority 2: langdetect for Latin-script languages
+        # Priority 2: langdetect for Latin-script with pt/ca disambiguation
         try:
             lang_code = detect(text)
+            # Fix: langdetect confuses Portuguese with Catalan for short sentences
+            # Portuguese markers: ã, õ, ê, ç + common words
+            if lang_code == "ca":
+                pt_markers = ["ão", "ões", "ção", "ções", "ão", "qual", "são", "não", "é a", "é o"]
+                if any(m in text.lower() for m in pt_markers):
+                    lang_code = "pt"
+                    logger.info("🌍 Detected language: Portuguese (pt/ca disambiguation)")
+                    return lang_code
             logger.info(f"🌍 Detected language: {self.get_language_name(lang_code)} ({lang_code})")
             return lang_code
         except LangDetectException:
             logger.warning("⚠️  Could not detect language, defaulting to English")
             return 'en'
+    
+    def is_cjk_text(self, text: str) -> bool:
+        """Returns True if text contains significant CJK characters — used by sql_analyst
+        to bypass the short-query English default for Japanese/Korean/Chinese."""
+        return self._script_detect(text) in ("ja", "ko", "zh-cn")
     
     def get_language_name(self, lang_code: str) -> str:
         '''Lang_code -> Full language name'''

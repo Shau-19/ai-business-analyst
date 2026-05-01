@@ -1,4 +1,3 @@
-
 """
 Smart Query Orchestrator v5.0
 ==============================

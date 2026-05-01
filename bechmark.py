@@ -243,9 +243,12 @@ def run_forecast_benchmark(csv_path, conv_id):
         if not date_col:
             return {"error":"No date column"}
 
-        num_cols  = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c]) and c != date_col]
+        num_cols  = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c]) and c != date_col
+                     and not c.lower().endswith('_id') and c.lower() != 'id']
         if not num_cols: return {"error":"No numeric column"}
-        value_col = num_cols[0]
+        # Prefer business-meaningful columns
+        preferred = ['total','revenue','sales','amount','price','value','quantity']
+        value_col = next((c for p in preferred for c in num_cols if p in c.lower()), num_cols[0])
         print(f"  Columns: date={date_col}, value={value_col}")
 
         pdf = df[[date_col,value_col]].copy()

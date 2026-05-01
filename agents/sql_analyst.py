@@ -325,10 +325,12 @@ Answer in {language_name}:""",
             }
 
         try:
-            # Language detection guard: langdetect is unreliable on <4 words.
+            # Language detection guard: langdetect is unreliable on <4 Latin words.
             # Short queries like "total patients" default to English.
+            # Exception: CJK/Arabic/Hindi text must always be detected by script
+            # since they don't have word spaces so word count is always 1.
             words = question.strip().split()
-            if len(words) < 4:
+            if len(words) < 4 and not self.language_detector.is_cjk_text(question):
                 lang_code = 'en'
                 lang_name = 'English'
                 logger.info("🌍  Language: English (short query — skipped detect)")
