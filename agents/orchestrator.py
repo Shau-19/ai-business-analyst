@@ -1,3 +1,4 @@
+# agents/orchestrator.py
 """
 Smart Query Orchestrator v5.0
 ==============================
@@ -6,6 +7,7 @@ dispatching to the correct agent via the A2A registry. No agent is ever
 called directly — all calls go through registry.route_message().
 
 Routing priorities:
+  -1   General / conversational         → GENERAL   (LLM direct)
   0.5  Forecast keywords + CSV present  → FORECAST  (A2A → forecast_agent)
   0    No uploads                        → GENERAL   (LLM direct)
   1    Text/PDF/DOCX only                → DOCUMENT  (A2A → rag_agent)
@@ -321,15 +323,65 @@ Question: {question}""",
 
         question_lower = question.lower()
 
+        # ── Priority -1: General / conversational queries ─────────────────────
+        # FIX 1: Runs BEFORE forecast and CSV router — prevents greetings routing
+        # to document/SQL even when uploads exist.
+        # FIX 2: Curly-quote bug fixed — two clean ASCII patterns replace the
+        # broken r'^(how are you|how\u2019s it going)\b' single pattern.
+        _GEN_EXACT = [
+            r'^(hi|hello|hey|greetings|howdy)',
+            r'^(how are you)\b',
+            r'^hello.*how are you',
+            r'^(what can you do|what do you do|what are your capabilities)',
+            r'^(who are you|what are you|tell me about yourself)',
+            r'^(thanks?|thank you|thx|cheers|bye|goodbye)',
+            r'^(can you help|how does this work|how do i use this)',
+        ]
+        _GEN_TOPICS = [
+            'machine learning', 'artificial intelligence', 'deep learning',
+            'neural network', 'what is nlp', 'what is ai', 'what is gpt',
+            'what is llm', 'what is rag', 'what is python', 'what is sql',
+            'large language model',
+        ]
+        _GEN_STARTERS = [
+            'explain what ', 'explain how ', 'what is a ', 'what is an ',
+            'how does ', 'describe what ',
+        ]
+        _DATA_SIGS = [
+            'total', 'average', 'count', 'sum', 'top', 'max', 'min',
+            'revenue', 'sales', 'chart', 'plot', 'forecast', 'trend',
+            'data', 'dataset', 'csv', 'column', 'row', 'table', 'report',
+        ]
+        q_lc = question_lower.strip()
+        _gen = False
+        if any(re.search(p, q_lc) for p in _GEN_EXACT):
+            _gen = True
+        elif any(t in q_lc for t in _GEN_TOPICS):
+            _gen = True
+        elif any(q_lc.startswith(s) for s in _GEN_STARTERS):
+            if not any(s in q_lc for s in _DATA_SIGS):
+                _gen = True
+        if _gen:
+            logger.info("💬  Route: GENERAL (conversational/knowledge query)")
+            return "GENERAL"
+
         # ── Priority 0.5: Forecast keywords + CSV present ─────────────────────
+        # Guard: historical queries ("last year's projections") are NOT forecasts
+        _HIST_SIGS = [
+            'last year', 'last quarter', 'previous', 'past year',
+            'unaudited', 'internal projection', 'historical', 'prior year', ' ago',
+        ]
+        _is_hist = any(s in question_lower for s in _HIST_SIGS)
         FORECAST_KEYWORDS = [
-            'forecast', 'predict', 'projection', 'project',
-            'next month', 'next quarter', 'next year',
+            'forecast', 'predict', 'next month', 'next quarter', 'next year',
             'next 3', 'next 6', 'next 12',
-            'trend ahead', 'future', 'upcoming periods',
+            'trend ahead', 'upcoming periods',
             'anomaly', 'anomalies', 'outlier', 'detect anomal', 'time series',
         ]
-        if session_has_csv and any(kw in question_lower for kw in FORECAST_KEYWORDS):
+        # "projection" only triggers forecast if it is about the future
+        if 'projection' in question_lower and not _is_hist:
+            FORECAST_KEYWORDS.append('projection')
+        if session_has_csv and not _is_hist and any(kw in question_lower for kw in FORECAST_KEYWORDS):
             if PROPHET_AVAILABLE:
                 logger.info("📈  FORECAST: keyword match + CSV present")
                 return "FORECAST"
@@ -363,7 +415,7 @@ Question: {question}""",
         if not csv_only_session and session_has_docs and session_has_csv:
             hint = self._detect_source_hint(question, conversation_id)
 
-            COMPARISON_KEYWORDS = ['compare', 'why', 'explain', 'causes', 'factors']
+            COMPARISON_KEYWORDS    = ['compare', 'why', 'explain', 'causes', 'factors']
             HYBRID_OVERRIDE_KEYWORDS = [
                 'compare', 'match', 'vs', 'versus', 'based on', 'at risk',
                 'most likely', 'which employees', 'who are', 'actual', 'real data',
@@ -397,22 +449,32 @@ Question: {question}""",
                 return "HYBRID"
 
         # ── Priority 3: Explicit hybrid indicators ────────────────────────────
-        COMPARISON_KW = ['compare', 'correlation', 'relationship', 'why', 'causes',
-                         'factors', 'difference between', 'what led to', 'how come']
+        COMPARISON_KW = [
+            'compare', 'correlation', 'relationship', 'why', 'causes',
+            'factors', 'difference between', 'what led to', 'how come',
+        ]
         DEFINITION_KW = ['explain what', 'what does', 'what is', 'define', 'meaning of']
         DATA_KW       = ['show', 'list', 'top', 'count', 'calculate', 'numbers', 'data']
 
         if any(kw in question_lower for kw in COMPARISON_KW):
             logger.info("🔀  HYBRID: comparison/causal keyword")
             return "HYBRID"
+
+        # FIX 3: pure_metric guard — "what is the maximum value in the dataset"
+        # should route SQL, not HYBRID. Guard must live here in the active class.
+        _pure_metric = any(m in question_lower for m in [
+            'maximum', 'minimum', 'average', 'total', 'sum', 'count',
+            'max value', 'min value', 'how many', 'how much',
+            'highest value', 'lowest value',
+        ])
         if (any(kw in question_lower for kw in DEFINITION_KW) and
-                any(kw in question_lower for kw in DATA_KW)):
+                any(kw in question_lower for kw in DATA_KW) and not _pure_metric):
             logger.info("🔀  HYBRID: definition + data keywords")
             return "HYBRID"
 
         # ── Priority 4: CSV query router ──────────────────────────────────────
         if self.csv_router:
-            route = self.csv_router.route(question, has_csv_data=True)
+            route   = self.csv_router.route(question, has_csv_data=True)
             mapping = {"SQL": "SQL", "RAG": "DOCUMENT", "HYBRID": "HYBRID"}
             if route in mapping:
                 logger.info(f"📊  CSV Router → {mapping[route]}")
@@ -479,7 +541,7 @@ Question: {question}""",
                     "answer":         response.content.strip(),
                     "routing":        "general",
                     "agent":          "llm",
-                    "routing_reason": "No documents uploaded — general conversation",
+                    "routing_reason": "Conversational or general knowledge query",
                 }
 
             # ── DOCUMENT ─────────────────────────────────────────────────────
@@ -498,25 +560,6 @@ Question: {question}""",
                     "routing_reason": "Document/semantic query",
                 })
                 return result
-
-            # ── GENERAL ──────────────────────────────────────────────────────
-            elif classification == "GENERAL":
-                logger.info("💬  GENERAL: direct LLM response")
-                try:
-                    answer = self.llm.invoke(question).content.strip()
-                except Exception:
-                    answer = "I am ANALYST, an AI business intelligence system. Upload a CSV or document and ask me data questions!"
-                return {
-                    "success":        True,
-                    "routing":        "general",
-                    "answer":         answer,
-                    "explanation":    answer,
-                    "question":       question,
-                    "data":           [],
-                    "row_count":      0,
-                    "agent":          "llm",
-                    "routing_reason": "Conversational or general knowledge query",
-                }
 
             # ── SQL ───────────────────────────────────────────────────────────
             elif classification == "SQL":

@@ -445,7 +445,7 @@
   <div id="tabNav">
     <button class="tab-btn active" id="tabChat" onclick="switchTab('chat')">CHAT</button>
     <button class="tab-btn" id="tabDash" onclick="switchTab('dash')">DASHBOARD<span class="tb-badge">β</span></button>
-
+    <button class="tab-btn tab-forecast" id="tabForecast" onclick="switchTab('forecast')">FORECAST<span class="tb-badge" style="background:var(--purple-dim);color:var(--purple);">β</span></button>
   </div>
 
   <div id="appLayout">
@@ -533,7 +533,7 @@
                 <div class="db-subtitle" id="dbSubtitle"></div>
               </div>
               <div class="db-actions">
-                <button class="db-act-btn" onclick="downloadFullDashboard()" id="dlFullBtn">⬇ DOWNLOAD PDF</button>
+                <button class="db-act-btn" onclick="downloadFullDashboard()" id="dlFullBtn">⬇ DOWNLOAD PNG</button>
                 <button class="db-act-btn" onclick="resetDashboard()">⟳ REBUILD</button>
               </div>
             </div>
@@ -544,7 +544,7 @@
     </div>
 
     <!-- ── FORECAST PANEL ───────────────────────── -->
-    <div class="tab-panel" id="panelForecast" style="display:none!important">
+    <div class="tab-panel" id="panelForecast">
       <div id="forecastPanel">
         <div id="forecastBar">
           <div class="fc-bar-title">◈ PROPHET FORECASTING ENGINE — A2A ROUTED</div>
@@ -634,7 +634,6 @@
 const API_KEY = 'xyz_123';
 let currentUserId='user_'+Math.random().toString(36).substr(2,9);
 let currentConversationId=null;
-let _forecastColumnsLoadedFor=null;
 let isLoading=false;
 let chartInstances={};
 let fcPeriods=6;
@@ -725,9 +724,7 @@ function pollProcessingStatus(convId,fnames){
         clearInterval(timer);
         showNotif('success','✓ '+(r.files?.length||fnames.length)+' file(s) indexed and ready');
         updateSessionStats();loadConversations();
-        // Only populate forecast columns if the user is still on THIS session.
-        // Prevents auto-query firing on a different (older) session's chat.
-        if(convId===currentConversationId)populateForecastColumns();
+        populateForecastColumns();
       } else if(r.status==='error'){
         clearInterval(timer);showNotif('error','✗ Indexing failed: '+(r.error||'unknown error'));displayFiles([]);
       }
@@ -756,8 +753,12 @@ async function newChat(){
     if(r.success){
       currentConversationId=r.conversation_id;
       clearChat();loadConversations();updateSessionStats();updateSessionBadge();
-      
       showNotif('success','✓ New session started');
+      document.getElementById('dashBoard').style.display='none';
+      document.getElementById('dashEmpty').style.display='flex';
+      document.getElementById('dashPromptInput').value='';
+      Object.values(dbChartInstances).forEach(c=>{try{c.destroy();}catch(e){}});
+      dbChartInstances={};
     }
   } catch(e){showNotif('error','✗ Failed to create chat');}
 }
@@ -791,6 +792,17 @@ async function loadConversation(id){
       r.conversation.messages.forEach(m=>addMsg(m.role,m.content,m.routing,m.metadata));
       loadConversations();updateSessionStats();updateSessionBadge();
       populateForecastColumns();
+      const state=_ds(id);
+      if(!state.built){
+        loadDashboardFromServer(id).then(loaded=>{
+          if(!loaded&&document.getElementById('panelDash').classList.contains('active')){
+            document.getElementById('dashBoard').style.display='none';
+            document.getElementById('dashEmpty').style.display='flex';
+          }
+        });
+      } else if(document.getElementById('panelDash').classList.contains('active')){
+        renderFromPanels(id,state.panels,state.title||'DASHBOARD');
+      }
     }
   } catch(e){console.error(e);}
 }
@@ -816,34 +828,30 @@ function updateSessionBadge(){
 /* ── FORECAST COLUMN POPULATE ────────── */
 async function populateForecastColumns(){
   if(!currentConversationId)return;
-  // Only re-populate if session changed — prevents tab-switch from re-firing /query
-  if(_forecastColumnsLoadedFor===currentConversationId)return;
-
   try{
     const docRes=await fetch('/conversations/'+currentConversationId+'/documents');
     const docData=await docRes.json();
     const hasCsv=docData.documents&&docData.documents.some(f=>f.toLowerCase().endsWith('.csv'));
     if(!hasCsv)return;
   } catch(e){ return; }
-
   try{
-    // Use /schema endpoint to get column types — no chat query fired
-    const res=await fetch('/conversations/'+currentConversationId+'/schema');
+    const res=await fetch('/query',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Api-Key':API_KEY},
+      body:JSON.stringify({question:'list all numeric column names in the data',conversation_id:currentConversationId})
+    });
     const r=await res.json();
     const sel=document.getElementById('fcColSelect');
-    sel.innerHTML="<option value=''>— select column to forecast —</option>";
-    if(r.numeric_columns&&r.numeric_columns.length>0){
-      r.numeric_columns.forEach(c=>{
+    sel.innerHTML='<option value="">— select column to forecast —</option>';
+    if(r.data&&r.data.length>0){
+      const cols=Object.keys(r.data[0]).filter(c=>typeof r.data[0][c]==='number'||!isNaN(parseFloat(r.data[0][c])));
+      cols.forEach(c=>{
         const opt=document.createElement('option');opt.value=c;opt.textContent=c;
         sel.appendChild(opt);
       });
-      _forecastColumnsLoadedFor=currentConversationId;
-      showNotif('info','◈ '+r.numeric_columns.length+' numeric columns available for forecasting');
+      if(cols.length>0)showNotif('info','◈ '+cols.length+' numeric columns available for forecasting');
     }
-  } catch(e){
-    // Fallback: if no /schema endpoint yet, show placeholder only
-    console.warn('Schema endpoint not available:', e);
-  }
+  } catch(e){console.error('Column populate error:',e);}
 }
 
 /* ── FORECAST CONTROLS ───────────────── */
@@ -854,138 +862,44 @@ function setPeriod(n,btn){
 }
 
 async function runForecast(){
-  /* Forecast tab removed — routes through chat instead */
   if(!currentConversationId){showNotif('error','⚠ Start a session and upload a CSV first');return;}
   const col=document.getElementById('fcColSelect').value;
-  if(!col){showNotif('error','⚠ Select a column to forecast first');return;}
-  const question=`forecast ${col} for next ${fcPeriods} periods`;
-  // Inject question into chat input and send — forecast renders inline in chat
-  const inp=document.getElementById('chatInput');
-  if(inp){inp.value=question;}
-  switchTab('chat');
-  await sendMessageWithForecast(question, col);
-}
-
-async function sendMessageWithForecast(question, col){
-  if(!currentConversationId)return;
-  addMsg('user', question);
-  await streamForecastToChat(question, col);
-}
-
-async function streamForecastToChat(question, col){
-  const msgs=document.getElementById('chatMessages');
-  const ph=document.getElementById('sessPh');if(ph)ph.remove();
-  // Show typing indicator
-  const group=document.createElement('div');group.className='msg-group';
-  const hdr=document.createElement('div');hdr.className='msg-hdr';
-  hdr.innerHTML=`<span class="msg-role assistant">◈ ANALYST</span><span>${new Date().toLocaleTimeString('en',{hour12:false})}</span><span class="rtag rtag-fct">FORECAST</span>`;
-  const bubble=document.createElement('div');bubble.className='msg-bubble assistant';
-  const cd=document.createElement('div');cd.className='mc';
-  cd.innerHTML='<span class="stream-cursor"></span>';
-  bubble.appendChild(cd);group.appendChild(hdr);group.appendChild(bubble);
-  msgs.appendChild(group);msgs.scrollTop=msgs.scrollHeight;
+  const question=col?`forecast ${col} for next ${fcPeriods} periods`:`forecast the main metric for next ${fcPeriods} periods`;
+  document.getElementById('fcEmpty').style.display='none';
+  document.getElementById('fcResult').style.display='none';
+  document.getElementById('fcLoading').style.display='flex';
+  document.getElementById('fcRunBtn').disabled=true;
+  document.getElementById('sbForecastStatus').textContent='FORECASTING…';
+  document.getElementById('sbForecastStatus').style.color='var(--purple)';
+  const steps=['fcS1','fcS2','fcS3','fcS4','fcS5'];
+  steps.forEach(s=>document.getElementById(s).classList.remove('lit'));
+  let si=0;
+  const stepTimer=setInterval(()=>{if(si<steps.length)document.getElementById(steps[si++]).classList.add('lit');},700);
   try{
-    const res=await fetch('/query',{
+    const res=await fetch('/mcp/tools/call',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:'forecast_query',arguments:{question,conversation_id:currentConversationId}})
+    });
+    const mcpResult=await res.json();
+    const qRes=await fetch('/query',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Api-Key':API_KEY},
-      body:JSON.stringify({question,conversation_id:currentConversationId,value_col:col||null})
+      body:JSON.stringify({question,conversation_id:currentConversationId})
     });
-    const result=await res.json();
-    // Render inline forecast card in the chat bubble
-    cd.innerHTML='';
-    renderInlineForecast(result, col, bubble, cd);
-    msgs.scrollTop=msgs.scrollHeight;
+    const qData=await qRes.json();
+    clearInterval(stepTimer);
+    steps.forEach(s=>document.getElementById(s).classList.add('lit'));
+    await sleep(300);
+    renderForecastResult(qData,mcpResult,col||'metric',question);
   } catch(e){
-    cd.textContent='✗ Forecast failed: '+e.message;
-  }
-}
-
-function renderInlineForecast(result, colName, bubble, cd){
-  const explanation=result.explanation||result.answer||'Forecast complete.';
-  const data=result.data||[];
-  const anomalies=result.anomalies||[];
-  const historical=data.filter(d=>d.actual!==undefined);
-  const forecasted=data.filter(d=>d.forecast!==undefined);
-
-  // ── Short summary first ───────────────────────────────────────────────
-  const shortSummary = explanation.split('.')[0]+'.';
-  const summaryEl=document.createElement('div');
-  summaryEl.className='mc';
-  summaryEl.innerHTML=renderMD(shortSummary);
-  summaryEl.style.marginBottom='10px';
-  cd.appendChild(summaryEl);
-
-  // ── KPI strip ─────────────────────────────────────────────────────────
-  const kpiStrip=document.createElement('div');kpiStrip.className='fc-kpi-strip';
-  if(historical.length){
-    const vals=historical.map(d=>d.actual).filter(v=>v!=null);
-    addFcKpi(kpiStrip,'DATA POINTS',vals.length,'historical records');
-    const avg=(vals.reduce((a,b)=>a+b,0)/vals.length);
-    addFcKpi(kpiStrip,'HISTORICAL AVG',fmtKPI(avg),'average value');
-  }
-  if(forecasted.length){
-    const nextVal=forecasted[0]?.forecast;
-    if(nextVal!=null)addFcKpi(kpiStrip,'NEXT PERIOD',fmtKPI(nextVal),'forecasted value');
-    addFcKpi(kpiStrip,'FORECAST PERIODS',forecasted.length,'periods ahead');
-  }
-  addFcKpi(kpiStrip,'ANOMALIES',anomalies.length,anomalies.length===0?'✓ none':'⚠ detected');
-  cd.appendChild(kpiStrip);
-
-  // ── Chart ─────────────────────────────────────────────────────────────
-  if(data.length){
-    const chartCard=document.createElement('div');chartCard.className='fc-chart-card';
-    chartCard.style.marginTop='10px';
-    const chartTitle=document.createElement('div');chartTitle.className='fc-chart-title';
-    chartTitle.textContent=(colName||'METRIC').toUpperCase()+' — HISTORICAL + FORECAST';
-    const canvasWrap=document.createElement('div');canvasWrap.className='fc-chart-canvas';
-    const cv=document.createElement('canvas');cv.id='inlineFcChart'+Date.now();
-    canvasWrap.appendChild(cv);chartCard.appendChild(chartTitle);chartCard.appendChild(canvasWrap);
-    cd.appendChild(chartCard);
-    buildInlineForecastChart(cv, data);
-  }
-
-  // ── Full insight (collapsible) ────────────────────────────────────────
-  if(explanation){
-    const details=document.createElement('details');details.style.marginTop='8px';
-    const summary=document.createElement('summary');
-    summary.style.cssText='font-family:var(--fm);font-size:.62rem;color:var(--muted);cursor:pointer;padding:4px 0;letter-spacing:.05em;';
-    summary.textContent='◈ FULL FORECAST INSIGHT';
-    const body=document.createElement('div');body.style.marginTop='6px';
-    body.innerHTML=renderMD(explanation);
-    details.appendChild(summary);details.appendChild(body);
-    cd.appendChild(details);
-  }
-
-  showNotif('success','✓ Forecast complete — '+forecasted.length+' periods projected');
-}
-
-function buildInlineForecastChart(cv, data){
-  const historical=data.filter(d=>d.actual!==undefined);
-  const forecasted=data.filter(d=>d.forecast!==undefined);
-  const allDates=[...historical.map(d=>d.date),...forecasted.map(d=>d.date)];
-  const histMap=Object.fromEntries(historical.map(d=>[d.date,d.actual]));
-  const foreMap=Object.fromEntries(forecasted.map(d=>[d.date,d.forecast]));
-  const lowMap=Object.fromEntries(forecasted.map(d=>[d.date,d.lower]));
-  const hiMap=Object.fromEntries(forecasted.map(d=>[d.date,d.upper]));
-  new Chart(cv.getContext('2d'),{
-    type:'line',
-    data:{
-      labels:allDates,
-      datasets:[
-        {label:'Actual',data:allDates.map(d=>histMap[d]??null),borderColor:'#4A9EFF',backgroundColor:'rgba(74,158,255,.08)',pointRadius:3,borderWidth:1.5,tension:.35,spanGaps:false},
-        {label:'Forecast',data:allDates.map(d=>foreMap[d]??null),borderColor:'#F5A623',backgroundColor:'rgba(245,166,35,.08)',borderDash:[4,3],pointRadius:3,borderWidth:1.5,tension:.35,spanGaps:false},
-        {label:'Upper',data:allDates.map(d=>hiMap[d]??null),borderColor:'rgba(245,166,35,.15)',backgroundColor:'rgba(245,166,35,.07)',fill:'+1',pointRadius:0,borderWidth:.5,tension:.35,spanGaps:false},
-        {label:'Lower',data:allDates.map(d=>lowMap[d]??null),borderColor:'rgba(245,166,35,.15)',backgroundColor:'rgba(245,166,35,.07)',fill:false,pointRadius:0,borderWidth:.5,tension:.35,spanGaps:false}
-      ]
-    },
-    options:{responsive:true,maintainAspectRatio:false,animation:{duration:600},
-      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(15,15,20,.9)',titleFont:{family:'IBM Plex Mono'},bodyFont:{family:'IBM Plex Mono'},titleColor:'#e2e8f0',bodyColor:'#94a3b8'}},
-      scales:{
-        x:{ticks:{font:{family:'IBM Plex Mono',size:8},color:'#475569',maxRotation:45},grid:{color:'rgba(255,255,255,.03)'}},
-        y:{ticks:{font:{family:'IBM Plex Mono',size:9},color:'#475569'},grid:{color:'rgba(255,255,255,.04)'}}
-      }
-    }
-  });
+    clearInterval(stepTimer);
+    showNotif('error','✗ Forecast failed: '+e.message);
+    document.getElementById('fcLoading').style.display='none';
+    document.getElementById('fcEmpty').style.display='flex';
+    document.getElementById('sbForecastStatus').textContent='FORECAST ERROR';
+    document.getElementById('sbForecastStatus').style.color='var(--red)';
+  } finally{document.getElementById('fcRunBtn').disabled=false;}
 }
 
 function renderForecastResult(result,mcpResult,colName,question){
@@ -1192,11 +1106,6 @@ async function streamMessage(question){
           const isForecast=meta.routing==='forecast';
           const cls=isForecast?'rtag-fct':meta.routing==='sql'?'rtag-sql':meta.routing==='document'?'rtag-doc':'rtag-hyb';
           rtag=`<span class="rtag ${cls}">${meta.routing.toUpperCase()}</span>`;
-          if(isForecast){
-            // Store forecast data to render inline card on 'done'
-            window._lastForecastMeta=meta;
-            window._lastForecastData=meta;
-          }
         }
         hdr.innerHTML=`<span class="msg-role assistant">◈ ANALYST</span><span>${new Date().toLocaleTimeString('en',{hour12:false})}</span>${rtag}`;
         bubble=document.createElement('div');bubble.className='msg-bubble assistant';
@@ -1214,14 +1123,7 @@ async function streamMessage(question){
         document.getElementById('chatMessages').scrollTop=99999;
       }
       else if(name==='done'&&contentDiv){
-        // If this was a forecast response, render the inline forecast card
-        if(window._lastForecastMeta&&window._lastForecastData){
-          contentDiv.innerHTML='';
-          renderInlineForecast(window._lastForecastData,'',bubble,contentDiv);
-          window._lastForecastMeta=null;window._lastForecastData=null;
-        } else {
-          contentDiv.innerHTML=renderMD(accText);
-        }
+        contentDiv.innerHTML=renderMD(accText);
       }
       else if(name==='error'){
         const err=JSON.parse(data);
@@ -1282,425 +1184,203 @@ function switchTab(tab){
   } else if(tab==='dash'){
     document.getElementById('tabDash').classList.add('active');
     document.getElementById('panelDash').classList.add('active');
-    onDashTabOpen();
+  } else if(tab==='forecast'){
+    document.getElementById('tabForecast').classList.add('active');
+    document.getElementById('panelForecast').classList.add('active');
+    if(currentConversationId)populateForecastColumns();
   }
 }
 
 /* ── DASHBOARD ───────────────────────── */
-// Per-session in-memory cache — source of truth is server /dashboard endpoint
-const _dashCache = {};   // { [convId]: { built, pref, panels } }
-
-function _ds(cid) {
-  if (!_dashCache[cid]) _dashCache[cid] = { built: false, pref: null, panels: [] };
-  return _dashCache[cid];
+let dbChartInstances={};let dbChartData={};let dashBuilt=false;
+function setPrompt(txt){document.getElementById('dashPromptInput').value=txt;document.getElementById('dashPromptInput').focus();}
+function resetDashboard(){
+  dashBuilt=false;
+  document.getElementById('dashBoard').style.display='none';
+  document.getElementById('dashEmpty').style.display='flex';
+  document.getElementById('dashPromptInput').value='';
+  Object.values(dbChartInstances).forEach(c=>{try{c.destroy();}catch(e){}});
+  dbChartInstances={};dbChartData={};
 }
-
-let dbChartInstances = {};
-
-// Called every time Dashboard tab is opened
-async function onDashTabOpen() {
-  if (!currentConversationId) return;
-  const state = _ds(currentConversationId);
-  if (state.built) return;   // already in memory
-
-  // Try loading from server first (persisted across refreshes / session switches)
-  const loaded = await loadDashboardFromServer(currentConversationId);
-  if (loaded) return;
-
-  // First time for this session — show preference dialog
-  showDashPreferenceDialog();
-}
-
-async function loadDashboardFromServer(cid) {
-  try {
-    const res  = await fetch(`/conversations/${cid}/dashboard`);
-    const data = await res.json();
-    if (!data.success || !data.state || !data.state.panels?.length) return false;
-
-    const state = _ds(cid);
-    state.pref   = data.state.pref;
-    state.panels = data.state.panels;
-    state.built  = true;
-    renderFromPanels(cid, data.state.panels, data.state.title || 'DASHBOARD');
-    showNotif('info', '◈ Dashboard restored from session');
-    return true;
-  } catch(e) { return false; }
-}
-
-async function saveDashboardToServer(cid) {
-  const state = _ds(cid);
-  try {
-    await fetch(`/conversations/${cid}/dashboard`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ state: { pref: state.pref, panels: state.panels, title: state.title || 'DASHBOARD' } })
-    });
-  } catch(e) { console.warn('Dashboard save failed:', e); }
-}
-
-function showDashPreferenceDialog() {
-  document.getElementById('dashEmpty').style.display  = 'flex';
-  document.getElementById('dashBoard').style.display  = 'none';
-  if (document.getElementById('dashPrefBox')) return;
-
-  const box = document.createElement('div');
-  box.id = 'dashPrefBox';
-  box.style.cssText = 'margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:14px;';
-  box.innerHTML = `
-    <div style="font-family:var(--fm);font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-align:center;">HOW SHOULD WE BUILD YOUR DASHBOARD?</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-      <button onclick="setDashPref('auto')" style="background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:10px 22px;font-family:var(--fm);font-size:.7rem;font-weight:600;cursor:pointer;letter-spacing:.05em;">⊞ AUTO-BUILD (smart queries)</button>
-      <button onclick="setDashPref('chat')" style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted2);border-radius:3px;padding:10px 22px;font-family:var(--fm);font-size:.7rem;font-weight:600;cursor:pointer;letter-spacing:.05em;">◈ CHAT ONLY (no extra queries)</button>
-    </div>
-    <div style="font-family:var(--fm);font-size:.58rem;color:var(--muted);text-align:center;max-width:340px;line-height:1.6;">
-      Auto-build runs smart queries based on your data columns.<br>Chat-only uses only charts from existing chat queries.
-    </div>`;
-  document.getElementById('dashEmpty').appendChild(box);
-}
-
-async function setDashPref(pref) {
-  if (!currentConversationId) return;
-  _ds(currentConversationId).pref = pref;
-  const box = document.getElementById('dashPrefBox');
-  if (box) box.remove();
-  if (pref === 'auto') await buildAutoDashboard();
-  else showNotif('info', '◈ Chat-only mode — charts from your chat queries will appear here');
-}
-
-function resetDashboard() {
-  if (!currentConversationId) return;
-  _dashCache[currentConversationId] = { built: false, pref: null, panels: [] };
-  document.getElementById('dashBoard').style.display  = 'none';
-  document.getElementById('dashEmpty').style.display  = 'flex';
-  document.getElementById('dashPromptInput').value    = '';
-  Object.values(dbChartInstances).forEach(c => { try { c.destroy(); } catch(e){} });
-  dbChartInstances = {};
-  showDashPreferenceDialog();
-}
-
-// ── AUTO BUILD ────────────────────────────────────────────────────────────────
-async function buildAutoDashboard() {
-  if (!currentConversationId) return;
-  showDashLoading();
-  try {
-    const schemaRes  = await fetch(`/conversations/${currentConversationId}/schema`);
-    const schema     = await schemaRes.json();
-    const numCols    = schema.numeric_columns    || [];
-    const dateCols   = schema.date_columns       || [];
-    const catCols    = schema.categorical_columns|| [];
-
-    if (!numCols.length && !catCols.length)
-      throw new Error('No usable columns — upload a CSV first');
-
-    const queries = buildSmartQueries(numCols, dateCols, catCols);
-    const results = await Promise.all(queries.map(q => runSilentQuery(q.question)));
-
-    const panels = [];
-    queries.forEach((q, i) => {
-      const r = results[i];
-      if (r && r.success) panels.push({ label: q.label, question: q.question, result: r });
-    });
-
-    const state = _ds(currentConversationId);
-    state.panels = panels;
-    state.title  = 'AUTO DASHBOARD';
-    state.built  = true;
-    state.pref   = 'auto';
-
-    renderFromPanels(currentConversationId, panels, 'AUTO DASHBOARD');
-    await saveDashboardToServer(currentConversationId);
-  } catch(e) {
-    hideDashLoading();
-    showNotif('error', '✗ ' + e.message);
-  }
-}
-
-// Silent query — uses /query/silent, NO chat history saved
-async function runSilentQuery(question) {
-  try {
-    const res = await fetch('/query/silent', {
-      method:  'POST',
-      headers: {'Content-Type':'application/json','X-Api-Key':API_KEY},
-      body:    JSON.stringify({ question, conversation_id: currentConversationId })
-    });
-    if (!res.ok) {
-      console.warn('Silent query failed:', res.status, question);
-      return { success: false, error: `HTTP ${res.status}` };
-    }
-    return await res.json();
-  } catch(e) { return { success: false, error: e.message }; }
-}
-
-function buildSmartQueries(numCols, dateCols, catCols) {
-  const queries = [];
-  const metric  = pickBestMetric(numCols);
-
-  if (dateCols.length && metric) {
-    queries.push({ question: `show ${metric} by ${dateCols[0]} as line chart`, label: `${metric} over time` });
-  }
-  if (catCols.length && metric) {
-    queries.push({ question: `total ${metric} by ${catCols[0]} bar chart`, label: `${metric} by ${catCols[0]}` });
-  }
-  if (catCols.length >= 2 && metric) {
-    queries.push({ question: `${metric} by ${catCols[1]} bar chart`, label: `${metric} by ${catCols[1]}` });
-  }
-  if (catCols.length && metric) {
-    queries.push({ question: `distribution of ${metric} by ${catCols[0]} pie chart`, label: `${metric} share` });
-  }
-  numCols.slice(0, 2).forEach(col => {
-    queries.push({ question: `total ${col}`, label: `total ${col}` });
-  });
-  return queries.slice(0, 6);
-}
-
-function pickBestMetric(numCols) {
-  const preferred = ['total','revenue','sales','amount','price','value','profit','quantity'];
-  for (const p of preferred) {
-    const f = numCols.find(c => c.toLowerCase().includes(p));
-    if (f) return f;
-  }
-  return numCols[0] || null;
-}
-
-// ── MANUAL PROMPT BUILD ───────────────────────────────────────────────────────
-async function generateDashboard() {
-  const prompt = document.getElementById('dashPromptInput').value.trim();
-  if (!prompt) return;
-  if (!currentConversationId) { showNotif('error','⚠ Start a session first'); return; }
-
-  const state = _ds(currentConversationId);
-  if (state.pref === 'chat') {
-    showNotif('error','⚠ Chat-only mode active — reset dashboard to use prompt bar');
-    return;
-  }
-
-  showDashLoading();
-  try {
-    const parts   = prompt.split(/,|;|\band\b|\bwith\b/i).map(s => s.trim()).filter(s => s.length > 4);
-    const queries = parts.length >= 2 ? parts.slice(0, 5) : [prompt];
-    const results = await Promise.all(queries.map(q => runSilentQuery(q)));
-
-    const panels = [];
-    queries.forEach((q, i) => {
-      const r = results[i];
-      if (r && r.success) panels.push({ label: q, question: q, result: r });
-    });
-
-    state.panels = panels;
-    state.title  = prompt;
-    state.built  = true;
-
-    renderFromPanels(currentConversationId, panels, prompt);
-    await saveDashboardToServer(currentConversationId);
-  } catch(e) {
-    hideDashLoading();
-    showNotif('error', '✗ ' + e.message);
-  }
-}
-
-// ── RENDER ────────────────────────────────────────────────────────────────────
-function renderFromPanels(cid, panels, title) {
-  hideDashLoading();
-  Object.values(dbChartInstances).forEach(c => { try { c.destroy(); } catch(e){} });
-  dbChartInstances = {};
-
-  const titleEl = document.getElementById('dbTitle');
-  if (titleEl) titleEl.textContent = (title || 'DASHBOARD').toUpperCase();
-  const subEl = document.getElementById('dbSubtitle');
-  if (subEl) subEl.textContent = new Date().toLocaleString('en',{dateStyle:'medium',timeStyle:'short'}) +
-    ' · session ' + (cid||'').slice(0,8).toUpperCase();
-
-  const grid = document.getElementById('dbGrid');
-  grid.innerHTML = '';
-
-  const kpiPanels   = panels.filter(p => p.result?.data?.length === 1);
-  const chartPanels = panels.filter(p => p.result?.data?.length > 1);
-  const insights    = panels.filter(p => p.result?.explanation).map(p => p.result.explanation.split('.')[0].trim());
-
-  // ── KPI row ───────────────────────────────────────────────────────────────
-  if (kpiPanels.length) {
-    const kpiRow = document.createElement('div');
-    kpiRow.className = 'db-kpi-row';
-    kpiPanels.forEach(p => {
-      const d = p.result.data[0];
-      const numKey = Object.keys(d).find(k => typeof d[k] === 'number') || Object.keys(d)[0];
-      const val    = d[numKey];
-      const card   = document.createElement('div');
-      card.className = 'db-kpi-card';
-      card.innerHTML = `<div class="db-kpi-label">${shortLabel(p.label)}</div><div class="db-kpi-val">${fmtKPI(val)}</div>`;
-      kpiRow.appendChild(card);
-    });
-    grid.appendChild(kpiRow);
-  }
-
-  // ── Chart grid (v1-style) ─────────────────────────────────────────────────
-  const chartGrid = document.createElement('div');
-  chartGrid.className = 'db-chart-grid';
-
-  chartPanels.forEach((p, idx) => {
-    const r    = p.result;
-    const d    = r.data || [];
-    if (!d.length) return;
-    const cols   = Object.keys(d[0]);
-    const numKey = cols.find(c => typeof d[0][c] === 'number') || cols[1];
-    const xKey   = cols[0];
-    if (!numKey) return;
-
-    const plot = r.plot || { type: 'bar', x: d.map(row=>String(row[xKey])), y: d.map(row=>Number(row[numKey])||0) };
-    const type = plot.type || 'bar';
-    const cid2 = `dbc-${idx}-${Date.now()}`;
-    const label = shortLabel(p.label);
-
-    const card = document.createElement('div');
-    card.className = 'db-chart-card' + (idx === 0 && chartPanels.length > 2 ? ' wide' : '');
-    card.innerHTML = `
-      <div class="db-card-header">
-        <span class="db-card-title">${label}</span>
-        <div class="db-card-actions">
-          <div class="db-type-sw">
-            ${['bar','line','pie','area'].map(t=>`<button class="dts-btn ${t===type?'active':''}" onclick="switchDbChart('${cid2}','${t}',this)">${t.toUpperCase()}</button>`).join('')}
-          </div>
-          <button class="db-png-btn" onclick="dlDbChart('${cid2}','${label}')">↓</button>
-        </div>
-      </div>
-      <div class="db-canvas-wrap"><canvas id="${cid2}"></canvas></div>`;
-    chartGrid.appendChild(card);
-
-    const labels = plot.x || d.map(row=>String(row[xKey]));
-    const values = plot.y || d.map(row=>Number(row[numKey])||0);
-    setTimeout(() => buildDbChart(cid2, type, labels, values, numKey), 120 + idx*60);
-  });
-
-  grid.appendChild(chartGrid);
-
-  // ── Insights strip ────────────────────────────────────────────────────────
-  if (insights.length) {
-    const strip = document.createElement('div');
-    strip.className = 'db-insight-strip';
-    strip.innerHTML = `<div class="db-ins-label">◈ KEY INSIGHTS</div>` +
-      insights.map(i=>`<div class="db-ins-line">→ ${i}</div>`).join('');
-    grid.appendChild(strip);
-  }
-
-  document.getElementById('dashBoard').style.display = 'block';
-  document.getElementById('dashEmpty').style.display  = 'none';
-  showNotif('success', '✓ Dashboard — ' + chartPanels.length + ' charts · ' + kpiPanels.length + ' KPIs');
-}
-
-// ── CHART ENGINE ──────────────────────────────────────────────────────────────
-function buildDbChart(cid, type, labels, values, yLabel) {
-  const cv = document.getElementById(cid); if (!cv) return;
-  if (dbChartInstances[cid]) { try { dbChartInstances[cid].destroy(); } catch(e){} }
-  const pal  = ['#4ade80','#38bdf8','#fbbf24','#f87171','#a78bfa','#fb923c'];
-  const isArea = type === 'area';
-  const isPie  = type === 'pie' || type === 'donut';
-  dbChartInstances[cid] = new Chart(cv.getContext('2d'), {
-    type: isArea ? 'line' : type,
-    data: { labels, datasets: [{ label: yLabel, data: values,
-      backgroundColor: isPie ? pal.slice(0,labels.length).map(c=>c+'cc') : isArea ? 'rgba(74,222,128,.1)' : 'rgba(74,222,128,.18)',
-      borderColor: isPie ? pal.slice(0,labels.length) : '#4ade80',
-      borderWidth: isPie ? 2 : 1.5, tension: 0.4, fill: isArea,
-      pointRadius: type==='line'||isArea ? 3 : 0, pointHoverRadius:5, pointBackgroundColor:'#4ade80'
-    }]},
-    options: { responsive:true, maintainAspectRatio:false, animation:{duration:500},
-      plugins:{ legend:{display:isPie,position:'bottom',labels:{color:'#6b7291',font:{family:"'IBM Plex Mono'",size:10},padding:10}},
-        tooltip:{backgroundColor:'#0c0d14',borderColor:'#252840',borderWidth:1,titleColor:'#4ade80',bodyColor:'#d4d8f0',
-          titleFont:{family:"'IBM Plex Mono'",size:11},bodyFont:{family:"'IBM Plex Mono'",size:11},padding:10}},
-      scales: isPie ? {} : {
-        x:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:9},maxRotation:35},grid:{color:'rgba(28,31,46,.8)'},border:{color:'#1c1f2e'}},
-        y:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:9},callback:v=>fmtKPI(v)},grid:{color:'rgba(28,31,46,.8)'},border:{color:'#1c1f2e'},beginAtZero:true}
-      }
-    }
-  });
-}
-
-function switchDbChart(cid, type, btn) {
-  const chart = dbChartInstances[cid]; if (!chart) return;
-  const labels = chart.data.labels;
-  const values = chart.data.datasets[0].data;
-  const yLabel = chart.data.datasets[0].label;
-  btn.closest('.db-type-sw').querySelectorAll('.dts-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  buildDbChart(cid, type, labels, values, yLabel);
-}
-
-// ── PDF DOWNLOAD ──────────────────────────────────────────────────────────────
-async function downloadFullDashboard() {
-  const btn = document.getElementById('dlFullBtn');
-  if (btn) { btn.textContent='⏳ PREPARING…'; btn.disabled=true; }
-  try {
-    const board = document.getElementById('dashBoard');
-    const img   = await domToImg(board);
-    const sid   = currentConversationId ? currentConversationId.slice(0,8).toUpperCase() : 'DASH';
-    const w     = window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html><head><title>Dashboard ${sid}</title>
-      <style>*{margin:0;padding:0;}body{background:#07080d;display:flex;flex-direction:column;align-items:center;padding:16px;font-family:'IBM Plex Mono',monospace;}
-      .hdr{color:#4ade80;font-size:11px;letter-spacing:.1em;margin-bottom:8px;}
-      .sub{color:#4a5066;font-size:9px;margin-bottom:14px;}img{max-width:100%;border-radius:4px;}
-      @media print{body{padding:0;}@page{margin:8mm;size:A4 landscape;}}</style></head><body>
-      <div class="hdr">◈ ANALYST DASHBOARD · SESSION ${sid}</div>
-      <div class="sub">${new Date().toLocaleString('en',{dateStyle:'long',timeStyle:'short'})}</div>
-      <img src="${img}"/><script>window.onload=()=>{window.print();}<\/script></body></html>`);
-    w.document.close();
-    showNotif('success','✓ PDF ready — print dialog opened');
-  } catch(err) { showNotif('error','✗ Export failed: '+err.message); }
-  finally { if (btn) { btn.textContent='⬇ DOWNLOAD PDF'; btn.disabled=false; } }
-}
-
-async function domToImg(el) {
-  // Use html2canvas if available, else fallback to canvas export
-  if (typeof html2canvas !== 'undefined') {
-    const bc = await html2canvas(el, {backgroundColor:'#07080d',scale:2,useCORS:true,logging:false,ignoreElements:e=>e.tagName==='CANVAS'});
-    const fc = document.createElement('canvas');
-    fc.width=bc.width; fc.height=bc.height;
-    const ctx=fc.getContext('2d'); ctx.drawImage(bc,0,0);
-    const boardRect=el.getBoundingClientRect();
-    el.querySelectorAll('canvas').forEach(cv=>{
-      if(!cv.width||!cv.height)return;
-      const r=cv.getBoundingClientRect();
-      try{ctx.drawImage(cv,(r.left-boardRect.left)*2,(r.top-boardRect.top)*2,r.width*2,r.height*2);}catch(e){}
-    });
-    return fc.toDataURL('image/png',1.0);
-  }
-  throw new Error('html2canvas not loaded');
-}
-
-function dlDbChart(cid, title) {
-  const cv=document.getElementById(cid); if(!cv)return;
-  const a=document.createElement('a');
-  a.download=(title||'chart').replace(/[^a-z0-9]/gi,'_')+'.png';
-  a.href=cv.toDataURL('image/png'); a.click();
-}
-
-function showDashLoading() {
-  document.getElementById('dashEmpty').style.display   = 'none';
-  document.getElementById('dashBoard').style.display   = 'none';
-  document.getElementById('dashLoading').style.display = 'flex';
-  document.getElementById('dashGenBtn').disabled       = true;
+async function generateDashboard(){
+  const prompt=document.getElementById('dashPromptInput').value.trim();
+  if(!prompt)return;
+  if(!currentConversationId){showNotif('error','⚠ Start a session and upload data first');return;}
+  document.getElementById('dashEmpty').style.display='none';
+  document.getElementById('dashBoard').style.display='none';
+  document.getElementById('dashLoading').style.display='flex';
+  document.getElementById('dashGenBtn').disabled=true;
   const steps=['dlS1','dlS2','dlS3','dlS4'];
   steps.forEach(s=>document.getElementById(s).classList.remove('lit'));
   let si=0;
-  window._dashStepTimer=setInterval(()=>{if(si<steps.length)document.getElementById(steps[si++]).classList.add('lit');},500);
+  const stepTimer=setInterval(()=>{if(si<steps.length)document.getElementById(steps[si++]).classList.add('lit');},600);
+  try{
+    const queries=await parseDashboardPrompt(prompt);
+    const results=await Promise.all(queries.map(q=>runDashQuery(q)));
+    clearInterval(stepTimer);steps.forEach(s=>document.getElementById(s).classList.add('lit'));
+    await sleep(300);renderDashboard(prompt,queries,results);
+  } catch(e){
+    clearInterval(stepTimer);showNotif('error','✗ Dashboard failed: '+e.message);
+    document.getElementById('dashLoading').style.display='none';document.getElementById('dashEmpty').style.display='flex';
+  } finally{document.getElementById('dashGenBtn').disabled=false;}
 }
-
-function hideDashLoading() {
-  clearInterval(window._dashStepTimer);
-  ['dlS1','dlS2','dlS3','dlS4'].forEach(s=>document.getElementById(s).classList.add('lit'));
+async function runDashQuery(question){
+  try{
+    const res=await fetch('/query',{method:'POST',headers:{'Content-Type':'application/json','X-User-ID':currentUserId,'X-Api-Key':API_KEY},body:JSON.stringify({question,conversation_id:currentConversationId})});
+    return await res.json();
+  } catch(e){return{success:false,error:e.message,question};}
+}
+function renderDashboard(prompt,queries,results){
   document.getElementById('dashLoading').style.display='none';
-  document.getElementById('dashGenBtn').disabled=false;
+  const titleEl=document.getElementById('dbTitle');
+  titleEl.textContent=prompt.length>60?prompt.substring(0,57)+'…':prompt.toUpperCase();
+  const ok=results.filter(r=>r.success&&r.data?.length);
+  document.getElementById('dbSubtitle').textContent=new Date().toLocaleString('en',{dateStyle:'medium',timeStyle:'short'})+' · '+ok.length+' panels generated';
+  const grid=document.getElementById('dbGrid');grid.innerHTML='';
+  Object.values(dbChartInstances).forEach(c=>{try{c.destroy();}catch(e){}});dbChartInstances={};
+  const colCycle=['','c-blu','c-yel','c-red','c-pur'];
+  let cardIdx=0;
+  const kpis=[],charts=[];
+  results.forEach((r,i)=>{
+    if(!r.success||!r.data?.length)return;
+    const d=r.data;const cols=Object.keys(d[0]);
+    const numCols=cols.filter(c=>typeof d[0][c]==='number');
+    if(d.length===1&&numCols.length>=1)kpis.push({r,i,d,cols,numCols});
+    else if(d.length>=2)charts.push({r,i,d,cols,numCols});
+  });
+  let kpiQueue=[...kpis];
+  function addKPI(k,delay){
+    const{r,i,d,cols,numCols}=k;const col=colCycle[cardIdx%colCycle.length];
+    const valKey=numCols[0];const val=d[0][valKey];const lbl=shortLabel(queries[i]||valKey);
+    const rawSub=r.explanation?r.explanation.split(/[.\n]/)[0].trim():valKey;
+    const sub=rawSub.length>72?rawSub.substring(0,70)+'…':rawSub;
+    const card=document.createElement('div');card.className=`dbc dbc-kpi ${col}`;card.style.animationDelay=delay+'ms';
+    const sparkData=findSparkData(queries[i],results);const sparkId=sparkData?'sp-'+i+'-'+Date.now():'';
+    card.innerHTML=`<div class="dbc-lbl">${lbl}</div><div class="dbc-val">${fmtKPI(val)}</div><div class="dbc-sub">${sub}</div>${sparkData?`<div class="dbc-spark"><canvas id="${sparkId}"></canvas></div>`:''}`;
+    grid.appendChild(card);cardIdx++;
+    if(sparkData&&sparkId)setTimeout(()=>makeSparkline(sparkId,sparkData),200+delay);
+  }
+  function addChart(k,spanClass,delay){
+    const{r,i,d,cols,numCols}=k;const col=colCycle[cardIdx%colCycle.length];
+    const xCol=cols[0];const yCol=numCols[0]||cols[1];if(!yCol)return;
+    const plot=r.plot||inferPlot(d,xCol,yCol,queries[i]||'');
+    const cid='dbc-'+i+'-'+Date.now();const title=shortLabel(queries[i]||plot.title||yCol);
+    const initialType=plot.type||'bar';
+    const card=document.createElement('div');card.className=`dbc dbc-chart ${col} ${spanClass}`;card.style.animationDelay=delay+'ms';
+    card.innerHTML=`<div class="dbc-ch"><div class="dbc-ch-title">${title}</div><div class="dbc-ch-meta"><div class="dbc-ch-switcher"><button class="cts-btn ${initialType==='bar'?'active':''}" onclick="switchChartType('${cid}','bar',this)">BAR</button><button class="cts-btn ${initialType==='line'?'active':''}" onclick="switchChartType('${cid}','line',this)">LINE</button><button class="cts-btn ${initialType==='pie'?'active':''}" onclick="switchChartType('${cid}','pie',this)">PIE</button></div><button class="dbc-ch-dl" onclick="dlDbChart('${cid}','${title.replace(/'/g,'')}')">↓</button></div></div><div class="dbc-canvas"><canvas id="${cid}"></canvas></div>`;
+    grid.appendChild(card);cardIdx++;
+    const labels=plot.x||d.map(row=>String(row[xCol]));
+    const values=plot.y||d.map(row=>Number(row[yCol])||0);
+    dbChartData[cid]={labels,values,yLabel:plot.y_label||yCol};
+    setTimeout(()=>buildChart(cid,initialType,labels,values,plot.y_label||yCol),180+delay);
+  }
+  let delay=0;
+  if(charts.length>=1){
+    const firstSpan=(kpis.length>0||charts.length>1)?'span2':'span3';
+    addChart(charts[0],firstSpan,delay);delay+=80;
+    const kpisBeside=kpiQueue.splice(0,Math.min(3,kpiQueue.length));
+    kpisBeside.forEach(k=>{addKPI(k,delay);delay+=60;});
+    charts.slice(1).forEach((k,idx)=>{addChart(k,'',delay);delay+=80;if(kpiQueue.length&&(idx+1)%2===0){addKPI(kpiQueue.shift(),delay);delay+=60;}});
+    kpiQueue.forEach(k=>{addKPI(k,delay);delay+=60;});
+  } else {kpis.forEach(k=>{addKPI(k,delay);delay+=60;});}
+  const insightLines=results.filter(r=>r.success&&r.explanation).map(r=>{
+    const clean=r.explanation.replace(/Top Insights?:[\s\S]*/i,'').replace(/•[^\n]*/g,'').split(/\n/).map(s=>s.trim()).filter(s=>s.length>10).join(' ').trim();
+    return clean||r.explanation.split('\n')[0].trim();
+  }).filter(Boolean);
+  if(insightLines.length){
+    const ins=document.createElement('div');ins.className='dbc dbc-insight';ins.style.animationDelay=delay+'ms';
+    ins.innerHTML=`<div class="is-lbl">◈ KEY INSIGHTS</div><div class="is-body">${insightLines.map(l=>`<div class="is-line">→ ${l}</div>`).join('')}</div>`;
+    grid.appendChild(ins);
+  }
+  document.getElementById('dashBoard').style.display='block';dashBuilt=true;
+  showNotif('success','✓ Dashboard — '+charts.length+' charts, '+kpis.length+' KPIs');
 }
-
-function fmtKPI(v) {
-  if (typeof v !== 'number') return String(v);
-  if (v >= 1e9) return (v/1e9).toFixed(2)+'B';
-  if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
-  if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
-  return v === Math.floor(v) ? v.toLocaleString() : v.toFixed(2);
+function inferPlot(data,xCol,yCol,question){
+  const q=(question||'').toLowerCase();const isTime=/month|week|day|date|year|quarter/i.test(xCol);
+  let type='bar';if(isTime)type='line';if(/pie|share|portion|breakdown|distribution/i.test(q))type='pie';
+  if(/trend|over time|timeline/i.test(q))type='line';if(/bar/i.test(q))type='bar';
+  return{type,x:data.map(r=>String(r[xCol])),y:data.map(r=>Number(r[yCol])||0),title:yCol,x_label:xCol,y_label:yCol};
 }
-
-function shortLabel(s) {
-  s = String(s).replace(/^(show|give me|display|total|sum of|list all)\s+/i,'');
-  return s.length > 50 ? s.substring(0,47)+'…' : s;
+async function parseDashboardPrompt(prompt){
+  const parts=prompt.split(/,|;|\band\b|\bwith\b|\bplus\b/i).map(s=>s.trim()).filter(s=>s.length>5);
+  if(parts.length>=2)return parts.slice(0,5);
+  return[prompt];
+}
+function findSparkData(question,results){
+  for(const r of results){
+    if(!r.success||!r.data||r.data.length<3)continue;
+    const cols=Object.keys(r.data[0]);const numCol=cols.find(c=>typeof r.data[0][c]==='number');
+    if(numCol)return r.data.map(row=>Number(row[numCol])||0);
+  }
+  return null;
+}
+function makeSparkline(id,values){
+  const cv=document.getElementById(id);if(!cv)return;
+  dbChartInstances[id]=new Chart(cv.getContext('2d'),{
+    type:'line',data:{labels:values.map((_,i)=>i),datasets:[{data:values,borderColor:'#4ade80',borderWidth:1.5,backgroundColor:'rgba(74,222,128,0.08)',fill:true,tension:0.4,pointRadius:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}
+  });
+}
+function shortLabel(s){s=String(s);s=s.replace(/^(show|give me|display|list|what is|what are)\s+/i,'');return s.length>52?s.substring(0,49)+'…':s;}
+function fmtKPI(v){
+  if(typeof v!=='number')return v;
+  if(v>=1e9)return(v/1e9).toFixed(2)+'B';if(v>=1e6)return(v/1e6).toFixed(2)+'M';
+  if(v>=1e3)return(v/1e3).toFixed(1)+'K';if(v===Math.floor(v))return v.toLocaleString();return v.toFixed(2);
+}
+function buildChart(cid,type,labels,values,yLabel){
+  const cv=document.getElementById(cid);if(!cv)return;
+  if(dbChartInstances[cid]){try{dbChartInstances[cid].destroy();}catch(e){}}
+  const pal=['#4ade80','#38bdf8','#fbbf24','#f87171','#a78bfa','#fb923c'];
+  const isPie=type==='pie'||type==='doughnut';
+  dbChartInstances[cid]=new Chart(cv.getContext('2d'),{
+    type,data:{labels,datasets:[{label:yLabel,data:values,
+      backgroundColor:isPie?pal.slice(0,labels.length).map(c=>c+'cc'):(type==='line'?'rgba(74,222,128,0.08)':'rgba(74,222,128,0.18)'),
+      borderColor:isPie?pal.slice(0,labels.length):'#4ade80',borderWidth:isPie?2:1.5,
+      tension:0.4,fill:type==='line',pointRadius:type==='line'?3:0,pointHoverRadius:5,pointBackgroundColor:'#4ade80'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:isPie,position:'bottom',labels:{color:'#6b7291',font:{family:"'IBM Plex Mono'",size:10},padding:12}},
+        tooltip:{backgroundColor:'#0c0d14',borderColor:'#252840',borderWidth:1,titleColor:'#4ade80',bodyColor:'#d4d8f0',titleFont:{family:"'IBM Plex Mono'",size:11},bodyFont:{family:"'IBM Plex Mono'",size:11},padding:10}},
+      scales:isPie?{}:{
+        x:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:10},maxRotation:0},grid:{color:'rgba(28,31,46,0.8)'},border:{color:'#1c1f2e'}},
+        y:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:10},callback:v=>fmtN(v)},grid:{color:'rgba(28,31,46,0.8)'},border:{color:'#1c1f2e'},beginAtZero:true}}}
+  });
+}
+function switchChartType(cid,type,btn){
+  const data=dbChartData[cid];if(!data)return;
+  const switcher=btn.closest('.dbc-ch-switcher');
+  if(switcher)switcher.querySelectorAll('.cts-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');buildChart(cid,type,data.labels,data.values,data.yLabel);
+}
+async function downloadFullDashboard(){
+  const btn=document.getElementById('dlFullBtn');btn.textContent='⏳ CAPTURING…';btn.disabled=true;
+  try{
+    const dashBoard=document.getElementById('dashBoard');const dashArea=document.getElementById('dashArea');
+    const prevOverflow=dashArea.style.overflow;const prevMaxH=dashArea.style.maxHeight;
+    dashArea.style.overflow='visible';dashArea.style.maxHeight='none';
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    const baseCanvas=await html2canvas(dashBoard,{backgroundColor:'#07080d',scale:2,useCORS:true,logging:false,ignoreElements:(el)=>el.tagName==='CANVAS'});
+    const scale=2;const finalCanvas=document.createElement('canvas');
+    finalCanvas.width=baseCanvas.width;finalCanvas.height=baseCanvas.height;
+    const ctx=finalCanvas.getContext('2d');ctx.drawImage(baseCanvas,0,0);
+    const boardRect=dashBoard.getBoundingClientRect();
+    dashBoard.querySelectorAll('canvas').forEach(cv=>{
+      if(!cv.width||!cv.height)return;
+      const r=cv.getBoundingClientRect();
+      const x=(r.left-boardRect.left)*scale;const y=(r.top-boardRect.top)*scale;
+      const w=r.width*scale;const h=r.height*scale;
+      try{ctx.drawImage(cv,x,y,w,h);}catch(e){}
+    });
+    dashArea.style.overflow=prevOverflow;dashArea.style.maxHeight=prevMaxH;
+    const a=document.createElement('a');a.download='analyst-dashboard-'+new Date().toISOString().slice(0,16).replace(/[T:]/g,'-')+'.png';
+    a.href=finalCanvas.toDataURL('image/png',1.0);a.click();
+    showNotif('success','✓ Full dashboard exported');
+  }catch(err){showNotif('error','✗ Export failed: '+err.message);}
+  finally{btn.textContent='⬇ DOWNLOAD PNG';btn.disabled=false;}
+}
+function dlDbChart(cid,title){
+  const cv=document.getElementById(cid);if(!cv)return;
+  const a=document.createElement('a');a.download=(title||'chart').replace(/[^a-z0-9]/gi,'_')+'.png';
+  a.href=cv.toDataURL('image/png');a.click();showNotif('success','↓ Chart exported');
 }
 
 /* ── METRICS POLLING ─────────────────── */
