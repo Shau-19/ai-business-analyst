@@ -24,7 +24,7 @@ Comprehensive evaluation on 23 benchmark test cases demonstrates production-read
 
 ### System Performance Dashboard
 
-<img src="evaluation/figurres/benchmark_dashboard.png" alt="Evaluation Dashboard" width="100%"/>
+<img src="evaluation/figures/benchmark_dashboard.png" alt="Evaluation Dashboard" width="100%"/>
 
 ### Key Metrics
 
