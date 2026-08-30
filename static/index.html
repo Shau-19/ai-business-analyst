@@ -830,33 +830,29 @@ function updateSessionBadge(){
 }
 
 /* ── FORECAST COLUMN POPULATE ────────── */
+let _populatingCols = false;  // lock — prevents concurrent calls
 async function populateForecastColumns(){
-  if(!currentConversationId)return;
+  if(!currentConversationId) return;
+  if(_populatingCols) return;   // already running — skip
+  _populatingCols = true;
   try{
-    const docRes=await fetch('/conversations/'+currentConversationId+'/documents');
-    const docData=await docRes.json();
-    const hasCsv=docData.documents&&docData.documents.some(f=>f.toLowerCase().endsWith('.csv'));
-    if(!hasCsv)return;
-  } catch(e){ return; }
-  try{
-    const res=await fetch('/query/silent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Api-Key':API_KEY},
-      body:JSON.stringify({question:'list all numeric column names in the data',conversation_id:currentConversationId})
-    });
-    const r=await res.json();
-    const sel=document.getElementById('fcColSelect');
-    sel.innerHTML='<option value="">— select column to forecast —</option>';
-    if(r.data&&r.data.length>0){
-      const cols=Object.keys(r.data[0]).filter(c=>typeof r.data[0][c]==='number'||!isNaN(parseFloat(r.data[0][c])));
-      cols.forEach(c=>{
-        const opt=document.createElement('option');opt.value=c;opt.textContent=c;
+    // Fast path: dedicated endpoint uses pragma_table_info — no LLM, no chat history
+    const res = await fetch('/conversations/'+currentConversationId+'/numeric-columns');
+    const r = await res.json();
+    const sel = document.getElementById('fcColSelect');
+    sel.innerHTML = '<option value="">— select column to forecast —</option>';
+    if(r.success && r.columns && r.columns.length > 0){
+      r.columns.forEach(c=>{
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
         sel.appendChild(opt);
       });
-      if(cols.length>0)showNotif('info','◈ '+cols.length+' numeric columns available for forecasting');
+      showNotif('info','◈ '+r.columns.length+' numeric columns available for forecasting');
     }
-  } catch(e){console.error('Column populate error:',e);}
+  } catch(e){ console.error('Column populate error:',e); }
+  finally{ _populatingCols = false; }
 }
+
 
 /* ── FORECAST CONTROLS ───────────────── */
 function setPeriod(n,btn){

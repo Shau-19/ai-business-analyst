@@ -440,6 +440,41 @@ async def save_dashboard(cid: str, request: Request):
         return {"success": False, "error": str(e)}
 
 
+@app.get("/conversations/{cid}/numeric-columns")
+async def get_numeric_columns(cid: str):
+    """
+    Return numeric column names for all upload tables in this session.
+    Uses pragma_table_info directly — no LLM, no chat history, instant.
+    Called by the Forecast tab to populate the column selector.
+    """
+    try:
+        tables = db_manager.list_tables()
+        session_prefix = f"upload_{cid[:8].replace('-', '')}"
+        session_tables = [t for t in tables if t.lower().startswith(session_prefix)]
+        if not session_tables:
+            return {"success": True, "columns": []}
+
+        numeric_types = {"integer", "real", "numeric", "float", "double"}
+        columns = []
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        for table in session_tables:
+            cursor.execute(f"PRAGMA table_info([{table}])")
+            for row in cursor.fetchall():
+                col_name = row[1]
+                col_type = str(row[2]).lower()
+                if any(nt in col_type for nt in numeric_types):
+                    if col_name not in columns:
+                        columns.append(col_name)
+        conn.close()
+        return {"success": True, "columns": columns}
+    except Exception as e:
+        logger.error(f"❌ numeric-columns error: {e}")
+        return {"success": False, "columns": [], "error": str(e)}
+
+
+
+
 @app.get("/conversations/{cid}/processing-status")
 async def processing_status(cid: str):
     state = _processing_state.get(cid)
