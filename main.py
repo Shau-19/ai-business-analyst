@@ -79,6 +79,8 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
+if Path("frontend/dist/assets").exists():
+    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
 if Path("static").exists():
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -143,7 +145,10 @@ mcp.register_tool(MCPTool(
 async def root(): return {"service":"AI Business Analyst","version":"3.3.1"}
 
 @app.get("/ui")
-async def serve_ui(): return FileResponse("static/index.html")
+async def serve_ui():
+    if Path("frontend/dist/index.html").exists():
+        return FileResponse("frontend/dist/index.html")
+    return FileResponse("static/index.html")
 
 @app.post("/conversations")
 async def create_conversation(request: ConversationCreate, x_user_id: Optional[str] = Header(None)):
