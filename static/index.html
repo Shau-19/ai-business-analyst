@@ -1022,10 +1022,50 @@ function renderChart(pd,mid){
   const cv=document.createElement('canvas');
   const cid='chart-'+mid+'-'+Date.now();cv.id=cid;
   box.appendChild(cv);
-  const dl=document.createElement('button');dl.className='chart-dl';dl.innerHTML='↓ EXPORT PNG';
-  dl.onclick=()=>dlChart(cv,pd.title);box.appendChild(dl);
+
+  const btnRow=document.createElement('div');
+  btnRow.style.cssText='display:flex;gap:8px;margin-top:12px;';
+
+  const dl=document.createElement('button');dl.className='chart-dl';dl.style.marginTop='0';dl.innerHTML='↓ EXPORT PNG';
+  dl.onclick=()=>dlChart(cv,pd.title);
+  btnRow.appendChild(dl);
+
+  const pin=document.createElement('button');pin.className='chart-dl';
+  pin.style.cssText='margin-top:0;background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple);';
+  pin.innerHTML='📌 PIN TO DASHBOARD';
+  pin.onclick=()=>pinToDashboard(pd);
+  btnRow.appendChild(pin);
+
+  box.appendChild(btnRow);
   setTimeout(()=>makeChart(cv,pd,cid),100);
   return box;
+}
+
+function pinToDashboard(pd){
+  if(!currentConversationId){showNotif('error','⚠ Start a session first');return;}
+  switchTab('dash');
+  document.getElementById('dashEmpty').style.display='none';
+  document.getElementById('dashBoard').style.display='block';
+
+  const grid=document.getElementById('dbGrid');
+  const card=document.createElement('div');
+  card.className='dbc dbc-chart span2';
+  const wId='pin-'+Date.now();
+  card.innerHTML=`
+    <div class="dbc-ch">
+      <div class="dbc-ch-title">${pd.title||'PINNED CHART'}</div>
+      <div class="dbc-ch-meta">
+        <button class="dbc-ch-dl" onclick="this.closest('.dbc').remove()">✕ REMOVE</button>
+      </div>
+    </div>
+    <div class="dbc-canvas"><canvas id="${wId}"></canvas></div>
+  `;
+  grid.appendChild(card);
+  setTimeout(()=>{
+    const cv=document.getElementById(wId);
+    if(cv) makeChart(cv,pd,wId);
+  },100);
+  showNotif('success','📌 Chart pinned to session Dashboard!');
 }
 function makeChart(cv,pd,cid){
   const ctx=cv.getContext('2d');

@@ -54,26 +54,31 @@ class PlotBuilder:
             logger.warning("⚠️ No columns found")
             return None
         
-        x_col = keys[0]
-        y_col = keys[1] if len(keys) > 1 else keys[0]
-        
-        # Limit to 50 data points for charts
-        max_points = 50
-        if len(rows) > max_points:
-            logger.info(f"📊 Limiting chart to {max_points} points (from {len(rows)} rows)")
-            rows = rows[:max_points]
-        
+        # Smart column detection: find which column is numeric and which is categorical
+        col1 = keys[0]
+        col2 = keys[1] if len(keys) > 1 else keys[0]
+
         try:
-            x_values = [row[x_col] for row in rows]
+            col1_vals = [row[col1] for row in rows]
+            col2_vals = [row[col2] for row in rows]
+
+            col1_is_num = all(isinstance(v, (int, float)) or self._is_numeric_string(v) for v in col1_vals if v is not None)
+            col2_is_num = all(isinstance(v, (int, float)) or self._is_numeric_string(v) for v in col2_vals if v is not None)
+
+            if col1_is_num and not col2_is_num:
+                x_col, y_col = col2, col1
+            else:
+                x_col, y_col = col1, col2
+
+            x_values = [str(row[x_col]) if row[x_col] is not None else "" for row in rows]
             y_values = [row[y_col] for row in rows]
-            
-            if not all(isinstance(v, (int, float)) or self._is_numeric_string(v) 
-                    for v in y_values):
+
+            if not all(isinstance(v, (int, float)) or self._is_numeric_string(v) for v in y_values if v is not None):
                 logger.warning("⚠️ Y-axis values are not numeric")
                 return None
-            
-            y_values = [float(v) if isinstance(v, str) else v for v in y_values]
-            
+
+            y_values = [float(v) if v is not None and isinstance(v, str) else (v or 0.0) for v in y_values]
+
         except Exception as e:
             logger.error(f"❌ Failed to extract values: {e}")
             return None
