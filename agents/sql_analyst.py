@@ -1,10 +1,10 @@
-
+# agents/sql_analyst.py
 """
 SQL Analyst Agent v3.4
 =======================
 Converts natural language questions to SQL, executes them, and generates
 business-friendly explanations.
-
+ 
 Anti-hallucination measures:
   - Zero-row guard: returns "not available" immediately on empty results
   - Not-available sentinel guard: intercepts SQL placeholder rows before LLM
@@ -12,23 +12,23 @@ Anti-hallucination measures:
   - Tightened explanation prompt with strict rules and few-shot examples
   - Injected actual column values into schema so LLM uses exact spelling
 """
-
+ 
 import re
 from typing import Dict, Any, List, Optional
-
+ 
 import pandas as pd
 from langchain_groq import ChatGroq
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-
+ 
 from database.db_manager import DatabaseManager
 from tools.language_detector import LanguageDetector
 from tools.sql_executor import SQLExecutor
 from config import settings
 from utils.logger import logger, log_section
 from utils.plot_builder import PlotBuilder
-
-
+ 
+ 
 # Phrases that indicate SQL returned a "not available" sentinel row.
 # Matched before sending to LLM to prevent hallucinated rephrasing.
 _NOT_AVAILABLE_PATTERNS = [
@@ -37,10 +37,10 @@ _NOT_AVAILABLE_PATTERNS = [
     "no data found",
     "no results",
 ]
-
-
+ 
+ 
 class SQLAnalystAgent:
-
+ 
     MONTH_ORDER = {
         'january': 1,   'february': 2,  'march': 3,    'april': 4,
         'may': 5,        'june': 6,      'july': 7,     'august': 8,
@@ -53,7 +53,7 @@ class SQLAnalystAgent:
         '1': 1,  '2': 2,  '3': 3,  '4': 4,  '5': 5,   '6': 6,
         '7': 7,  '8': 8,  '9': 9,
     }
-
+ 
     ENTITY_MAP = {
         'repo': 'repositories', 'repository': 'repositories',
         'customer': 'customers', 'employee': 'employees',
@@ -63,83 +63,83 @@ class SQLAnalystAgent:
         'patient': 'patients', 'visit': 'visits', 'record': 'records',
         'file': 'files', 'document': 'documents',
     }
-
+ 
     _AGGREGATION_EXACT = re.compile(
         r'\b(how many|count of|number of|sum of|overall total)\b',
         re.IGNORECASE,
     )
-
+ 
     def __init__(self, db_manager: DatabaseManager):
         self.db                = db_manager
         self.language_detector = LanguageDetector()
         self.sql_executor      = SQLExecutor(db_manager)
         self.plot_builder      = PlotBuilder()
         self._schema_cache: dict = {}   # cache key: "conv_id|table1,table2" → schema str
-
+ 
         self.llm = ChatGroq(
             api_key=settings.GROQ_API_KEY,
             model=settings.LLM_MODEL,
             temperature=settings.TEMPERATURE,
             max_tokens=settings.MAX_TOKENS,
         )
-
+ 
         sql_prompt = PromptTemplate(
             input_variables=["schema", "question", "allowed_tables"],
             template="""You are an expert SQLite query writer. Convert the question to a single valid SQL query.
-
+ 
 DATABASE SCHEMA:
 {schema}
-
+ 
 ALLOWED TABLES (use ONLY these):
 {allowed_tables}
-
+ 
 STRICT SYNTAX RULES:
 1. Aggregate functions MUST use parentheses:
    CORRECT → SELECT MAX(col), MIN(col), AVG(col), SUM(col), COUNT(col)
    WRONG   → SELECT MAX col, MIN col
-
+ 
 2. To fetch the row WHERE a max/min occurs (no grouping), use a subquery:
    SELECT col1, col2 FROM table_name
    WHERE numeric_col = (SELECT MAX(numeric_col) FROM table_name)
    Use this ONLY when NOT grouping. Never combine with GROUP BY.
-
+ 
 3. "highest/lowest AVERAGE per group" → GROUP BY + ORDER BY, never a subquery:
    CORRECT → SELECT group_col, AVG(val_col) as avg_val
              FROM table GROUP BY group_col ORDER BY avg_val DESC LIMIT 1
-
+ 
 4. "highest/lowest TOTAL per group" → GROUP BY + SUM + ORDER BY:
    SELECT group_col, SUM(val_col) as total FROM table
    GROUP BY group_col ORDER BY total DESC LIMIT 1
-
+ 
 5. Date/month extraction: STRFTIME('%Y-%m', date_col) AS month
-
+ 
 6. Column names with special characters must be quoted: "egfr_mL_min_1.73m2"
-
+ 
 7. "X as a number" means SELECT AVG(X) — never COUNT unless asked explicitly.
-
+ 
 8. Return ONLY the SQL — no markdown, no explanation, no code fences.
-
+ 
 9. Add LIMIT 50 for multi-row results. Never UNION between different upload tables.
-
+ 
 10. EVERY SELECT must include a FROM clause using the exact table name from ALLOWED TABLES.
     Even single-value aggregates must have FROM the_table_name. No bare SELECTs without FROM.
-
+ 
 11. Round decimal results: ROUND(AVG(col), 2), ROUND(SUM(col), 2)
-
+ 
 12. For "who is X" questions: SELECT all meaningful columns (ID, Role, Department).
-
+ 
 13. For "list all X" questions: SELECT identifier AND at least one descriptive column.
-
+ 
 14. For correlation questions ("does X affect Y", "do high X have more Y"):
     Bucket the independent variable with CASE WHEN, then AVG the dependent variable per bucket.
-
+ 
 15. If the question cannot be answered from the allowed tables, return exactly:
     SELECT 'This information is not available in the uploaded data' AS message
-
+ 
 --- FEW-SHOT EXAMPLES ---
-
+ 
 Schema: employees(EmployeeID TEXT, Department TEXT, Salary_LPA REAL, PerformanceScore REAL, Promoted TEXT, TenureYears REAL)
-
+ 
 Q: Which department has the highest average salary?
 SQL:
 SELECT Department, ROUND(AVG(Salary_LPA), 2) AS avg_salary
@@ -147,13 +147,13 @@ FROM employees
 GROUP BY Department
 ORDER BY avg_salary DESC
 LIMIT 1
-
+ 
 Q: Who is the highest paid employee?
 SQL:
 SELECT EmployeeID, Department, Salary_LPA
 FROM employees
 WHERE Salary_LPA = (SELECT MAX(Salary_LPA) FROM employees)
-
+ 
 Q: Do high performers get promoted more?
 SQL:
 SELECT
@@ -165,22 +165,22 @@ SELECT
 FROM employees
 GROUP BY performance_band
 ORDER BY MIN(PerformanceScore) DESC
-
+ 
 Q: What is the attrition rate?
 SQL:
 SELECT 'This information is not available in the uploaded data' AS message
-
+ 
 --- END EXAMPLES ---
-
+ 
 QUESTION: {question}
-
+ 
 SQL:""",
         )
-
+ 
         explanation_prompt = PromptTemplate(
             input_variables=["question", "sql", "results", "language", "language_name"],
             template="""You are a professional data analyst. Answer ONLY what was asked.
-
+ 
 STRICT ANTI-HALLUCINATION RULES:
 1. Answer the exact question — nothing more, nothing less.
 2. ONLY use values present in the data. Never invent or estimate.
@@ -191,23 +191,20 @@ STRICT ANTI-HALLUCINATION RULES:
 7. Round decimals to 2 places.
 8. No markdown (**, ##). Plain text only. Under 100 words.
 9. Do not mention SQL, databases, tables, or technical terms.
-10. If data contains "not available in uploaded data" or is empty →
-    respond ONLY with: "This information is not available in the uploaded data."
-    Stop immediately. Do not add anything else.
-11. NEVER infer or guess from unrelated columns.
-12. For correlation results (age groups, performance bands) →
+10. NEVER infer or guess from unrelated columns. The provided Data contains the exact answer.
+11. For correlation results (age groups, performance bands) →
     lead with the trend, then list the buckets as bullets, end with a one-line conclusion.
-
+ 
 --- FEW-SHOT EXAMPLES ---
-
+ 
 Q: What is the average salary?
 Data: [{{"ROUND(AVG(Salary_LPA), 2)": 11.45}}]
 Answer: The average salary across all employees is 11.45 LPA.
-
+ 
 Q: Which department has the highest average salary?
 Data: [{{"Department": "Technology & Engineering", "avg_salary": 17.0}}]
 Answer: Technology & Engineering has the highest average salary at 17.0 LPA.
-
+ 
 Q: Are older patients staying longer?
 Data: [{{"age_group": "Under 40", "avg_stay_days": 3.5}}, {{"age_group": "40-59", "avg_stay_days": 7.2}}, {{"age_group": "60+", "avg_stay_days": 10.8}}]
 Answer: Yes, older patients do stay longer on average.
@@ -215,27 +212,27 @@ Answer: Yes, older patients do stay longer on average.
 • 40-59: 7.2 days
 • 60+: 10.8 days
 Patients aged 60+ stay about 3x longer than those under 40.
-
+ 
 Q: What is the attrition rate?
 Data: [{{"message": "This information is not available in the uploaded data"}}]
 Answer: This information is not available in the uploaded data.
-
+ 
 --- END EXAMPLES ---
-
+ 
 Question: {question}
 Data: {results}
-
+ 
 Answer in {language_name}:""",
         )
-
+ 
         parser = StrOutputParser()
         self.sql_chain         = sql_prompt         | self.llm | parser
         self.explanation_chain = explanation_prompt  | self.llm | parser
-
+ 
         logger.info("✅  SQL Analyst Agent ready")
-
+ 
     # ── SQL sanitisation ──────────────────────────────────────────────────────
-
+ 
     @staticmethod
     def _sanitize_sql(sql: str) -> str:
         """Strip markdown fences, trailing semicolons, and fix bare aggregate functions."""
@@ -247,7 +244,7 @@ Answer in {language_name}:""",
             r'\1(\2)', sql, flags=re.IGNORECASE,
         )
         return sql.strip()
-
+ 
     @staticmethod
     def _is_not_available_result(data_preview: List[dict]) -> bool:
         """
@@ -260,9 +257,9 @@ Answer in {language_name}:""",
             if any(p in str(val).lower() for p in _NOT_AVAILABLE_PATTERNS):
                 return True
         return False
-
+ 
     # ── Smart chronological sort ──────────────────────────────────────────────
-
+ 
     def _smart_sort_results(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """Sort month-column results into calendar order."""
         if not result.get('success') or not result.get('data_preview'):
@@ -283,12 +280,12 @@ Answer in {language_name}:""",
         except Exception as e:
             logger.warning(f"⚠️  Smart sort skipped: {e}")
         return result
-
+ 
     # ── Helpers ───────────────────────────────────────────────────────────────
-
+ 
     def _is_simple_aggregation(self, question: str) -> bool:
         return bool(self._AGGREGATION_EXACT.search(question))
-
+ 
     def _extract_entity(self, question: str, result: Dict[str, Any]) -> str:
         q = question.lower()
         for kw, entity in self.ENTITY_MAP.items():
@@ -300,9 +297,9 @@ Answer in {language_name}:""",
             return re.sub(r'(COUNT|SUM|AVG|MAX|MIN)\s*\(|\)', '', col,
                           flags=re.IGNORECASE).replace('_', ' ').strip()
         return 'items'
-
+ 
     # ── Main analysis method ──────────────────────────────────────────────────
-
+ 
     def analyze(
         self,
         question: str,
@@ -311,7 +308,7 @@ Answer in {language_name}:""",
     ) -> Dict[str, Any]:
         log_section("ANALYZING QUESTION")
         logger.info(f"❓  Question: {question}")
-
+ 
         # Hard guard: no CSV uploaded
         if not allowed_tables:
             logger.warning("⚠️  SQL analyze called with no allowed_tables — aborting")
@@ -323,7 +320,7 @@ Answer in {language_name}:""",
                 'data':        [],
                 'row_count':   0,
             }
-
+ 
         try:
             # Language detection guard: langdetect is unreliable on <4 Latin words.
             # Short queries like "total patients" default to English.
@@ -338,20 +335,20 @@ Answer in {language_name}:""",
                 lang_code = self.language_detector.detect_language(question)
                 lang_name = self.language_detector.get_language_name(lang_code)
                 logger.info(f"🌍  Language: {lang_name} ({lang_code})")
-
+ 
             schema     = self._get_filtered_schema(allowed_tables, conversation_id)
             tables_str = ', '.join(allowed_tables)
-
+ 
             logger.info("🔧  Generating SQL...")
             raw_sql   = self.sql_chain.invoke({
                 'schema': schema, 'question': question, 'allowed_tables': tables_str,
             })
             sql_query = self._sanitize_sql(raw_sql)
             logger.info(f"📝  SQL: {sql_query}")
-
+ 
             logger.info("⚙️   Executing...")
             result = self.sql_executor.execute_query(sql_query)
-
+ 
             if not result['success']:
                 logger.error(f"❌  SQL error: {result['error']}")
                 return {
@@ -360,9 +357,9 @@ Answer in {language_name}:""",
                     'question': question,
                     'language': lang_code,
                 }
-
+ 
             logger.info(f"✅  {result['row_count']} rows returned")
-
+ 
             # Zero-row guard
             if result['row_count'] == 0:
                 return {
@@ -374,7 +371,7 @@ Answer in {language_name}:""",
                     'row_count':   0,
                     'language':    lang_code,
                 }
-
+ 
             # Not-available sentinel guard — intercept before LLM
             if self._is_not_available_result(result.get('data_preview', [])):
                 logger.info("🚫  SQL sentinel detected — skipping LLM")
@@ -387,9 +384,9 @@ Answer in {language_name}:""",
                     'row_count':   result['row_count'],
                     'language':    lang_code,
                 }
-
+ 
             result = self._smart_sort_results(result)
-
+ 
             # Fast path for simple count/sum queries — skip LLM
             if self._is_simple_aggregation(question):
                 nums = [
@@ -405,7 +402,7 @@ Answer in {language_name}:""",
                     return self._build_response(
                         question, lang_code, lang_name, sql_query, result, explanation
                     )
-
+ 
             results_text = self.sql_executor.format_results_as_text(result)
             logger.info("💬  Generating explanation...")
             explanation = self.explanation_chain.invoke({
@@ -415,24 +412,24 @@ Answer in {language_name}:""",
                 'language':     lang_code,
                 'language_name': lang_name,
             }).strip()
-
+ 
             logger.info("✅  Analysis complete")
             return self._build_response(
                 question, lang_code, lang_name, sql_query, result, explanation
             )
-
+ 
         except Exception as e:
             logger.error(f"❌  Analysis error: {e}")
             return {'success': False, 'error': str(e), 'question': question}
-
+ 
     # ── Schema builder ────────────────────────────────────────────────────────
-
+ 
     def _get_filtered_schema(self, allowed_tables: List[str], conversation_id: Optional[str] = None) -> str:
         """
         Build a schema string restricted to allowed_tables.
         Injects actual distinct values for text columns so the LLM uses exact
         spellings in WHERE clauses (e.g. "Technology & Engineering" not "Technology").
-
+ 
         Cache is session-scoped: key = conversation_id + sorted table names.
         Clearing one session's cache never affects another session.
         """
@@ -442,13 +439,13 @@ Answer in {language_name}:""",
         if cache_key in self._schema_cache:
             logger.info("📋  Schema cache hit — skipping SELECT DISTINCT queries")
             return self._schema_cache[cache_key]
-
+ 
         full_schema = self.db.get_schema()
         filtered    = {t: cols for t, cols in full_schema.items() if t in allowed_tables}
-
+ 
         if not filtered:
             return "No schema available for the specified tables."
-
+ 
         text = "DATABASE SCHEMA (uploaded tables only):\n\n"
         for table, columns in filtered.items():
             text += f"Table: {table}\nColumns:\n"
@@ -456,7 +453,7 @@ Answer in {language_name}:""",
                 nullable = "NULL" if not col["notnull"] else "NOT NULL"
                 pk       = " PRIMARY KEY" if col["primary_key"] else ""
                 text    += f'  - "{col["name"]}" ({col["type"]}) {nullable}{pk}\n'
-
+ 
             # Inject actual distinct values for text/string columns
             try:
                 text += "  ACTUAL VALUES (use EXACT spelling in WHERE clauses):\n"
@@ -471,13 +468,13 @@ Answer in {language_name}:""",
                             text += f'    {col["name"]}: {vals}\n'
             except Exception as e:
                 logger.warning(f"⚠️  Could not fetch distinct values: {e}")
-
+ 
             text += "\n"
-
+ 
         self._schema_cache[cache_key] = text
         logger.info(f"📋  Schema cached for session '{conversation_id}', tables: {allowed_tables}")
         return text
-
+ 
     def invalidate_schema_cache(self, conversation_id: Optional[str] = None) -> None:
         """
         Call this after a new CSV is uploaded so the next query rebuilds the schema.
@@ -495,7 +492,7 @@ Answer in {language_name}:""",
             for k in keys_to_drop:
                 del self._schema_cache[k]
             logger.info(f"📋  Schema cache cleared for session: {conversation_id}")
-
+ 
     def _build_response(
         self,
         question:    str,
@@ -522,7 +519,7 @@ Answer in {language_name}:""",
                 response['plot'] = plot_spec
                 logger.info(f"📊  Chart: {plot_spec['type']}")
         return response
-
+ 
     def get_database_info(self) -> Dict[str, Any]:
         tables = self.db.list_tables()
         return {'tables': tables, 'schema': self.db.get_schema(), 'total_tables': len(tables)}
