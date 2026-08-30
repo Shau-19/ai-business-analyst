@@ -196,13 +196,16 @@ async def query(request: Request, body: QueryRequest, x_user_id: Optional[str] =
         uid = get_user_id(x_user_id)
         cid = body.conversation_id or chat_manager.create_conversation(uid)
         orchestrator.rag_agent.get_or_create_session(cid)
-        chat_manager.add_message(conversation_id=cid, role="user", content=body.question)
+        chat_manager.add_message(conversation_id=cid, role="user", content=body.question, is_visible=True)
         result = await orchestrator.route_query(body.question, cid)
         chat_manager.add_message(
             conversation_id=cid, role="assistant",
             content=result.get("explanation") or result.get("answer", ""),
             routing=result.get("routing"),
-            metadata={"sql_query": result.get("sql_query"), "sources": result.get("sources", [])})
+            plot=result.get("plot"),
+            forecast=result.get("forecast"),
+            metadata={"sql_query": result.get("sql_query"), "sources": result.get("sources", [])},
+            is_visible=True)
         result["conversation_id"] = cid
         return JSONResponse(content=result)
     except Exception as e:
@@ -252,7 +255,7 @@ async def query_stream(request: Request, body: QueryRequest, x_user_id: Optional
     uid = get_user_id(x_user_id)
     cid = body.conversation_id or chat_manager.create_conversation(uid)
     orchestrator.rag_agent.get_or_create_session(cid)
-    chat_manager.add_message(conversation_id=cid, role="user", content=body.question)
+    chat_manager.add_message(conversation_id=cid, role="user", content=body.question, is_visible=True)
 
     async def event_generator():
         full_text = ""
@@ -316,7 +319,10 @@ async def query_stream(request: Request, body: QueryRequest, x_user_id: Optional
                 role="assistant",
                 content=full_text,
                 routing=result.get("routing"),
-                metadata={"sql_query": result.get("sql_query"), "sources": result.get("sources", [])}
+                plot=result.get("plot"),
+                forecast=result.get("forecast"),
+                metadata={"sql_query": result.get("sql_query"), "sources": result.get("sources", [])},
+                is_visible=True
             )
 
         except Exception as e:

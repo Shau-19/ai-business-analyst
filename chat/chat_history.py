@@ -86,10 +86,19 @@ class ChatHistoryManager:
                 content TEXT NOT NULL,
                 routing TEXT,
                 metadata TEXT,
+                is_visible INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id)
             )
         """)
+
+        # Migration: add is_visible to existing databases without it
+        try:
+            cursor.execute("ALTER TABLE messages ADD COLUMN is_visible INTEGER DEFAULT 1")
+            conn.commit()
+            logger.info("🔧 Migrated: added is_visible column to messages table")
+        except Exception:
+            pass  # Column already exists — safe to ignore
         
         # Indexes
         cursor.execute("""
@@ -145,43 +154,69 @@ class ChatHistoryManager:
         role: str,
         content: str,
         routing: Optional[str] = None,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
+        is_visible: bool = True,
+        plot: Optional[Dict] = None,
+        forecast: Optional[Dict] = None
     ) -> str:
-        """Add message to conversation"""
+        """Add message to conversation.
+
+        Args:
+            is_visible: Set False for internal background queries so they
+                        never surface in the frontend chat feed.
+            plot:       Chart spec dict from PlotBuilder — saved inside metadata
+                        so the UI can re-render the chart on reload.
+            forecast:   Forecast result dict — saved inside metadata for the
+                        same persistent re-render reason.
+        """
         message_id = str(uuid.uuid4())
-        
+
+        # Merge plot / forecast into metadata so they persist alongside the text
+        merged_meta = dict(metadata or {})
+        if plot:
+            merged_meta["plot"] = plot
+        if forecast:
+            merged_meta["forecast"] = forecast
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute("""
-            INSERT INTO messages 
-            (message_id, conversation_id, role, content, routing, metadata)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO messages
+            (message_id, conversation_id, role, content, routing, metadata, is_visible)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (
             message_id,
             conversation_id,
             role,
             content,
             routing,
-            json.dumps(metadata or {})
+            json.dumps(merged_meta),
+            1 if is_visible else 0
         ))
-        
-        # Update conversation timestamp
-        cursor.execute("""
-            UPDATE conversations 
-            SET updated_at = CURRENT_TIMESTAMP,
-                title = CASE 
-                    WHEN title = 'New Chat' THEN substr(?, 1, 50)
-                    ELSE title 
-                END
-            WHERE conversation_id = ?
-        """, (content, conversation_id))
-        
+
+        # Update conversation timestamp — only use visible user messages as title
+        if is_visible and role == "user":
+            cursor.execute("""
+                UPDATE conversations
+                SET updated_at = CURRENT_TIMESTAMP,
+                    title = CASE
+                        WHEN title = 'New Chat' THEN substr(?, 1, 50)
+                        ELSE title
+                    END
+                WHERE conversation_id = ?
+            """, (content, conversation_id))
+        else:
+            cursor.execute("""
+                UPDATE conversations SET updated_at = CURRENT_TIMESTAMP
+                WHERE conversation_id = ?
+            """, (conversation_id,))
+
         conn.commit()
         conn.close()
-        
-        # Update Redis cache
-        if self.redis_client:
+
+        # Update Redis cache (only visible messages go into the cache)
+        if self.redis_client and is_visible:
             cache_key = f"conv:{conversation_id}"
             try:
                 cached = self.redis_client.get(cache_key)
@@ -192,21 +227,25 @@ class ChatHistoryManager:
                         "role": role,
                         "content": content,
                         "routing": routing,
-                        "metadata": metadata,
+                        "metadata": merged_meta,
                         "timestamp": datetime.now().isoformat()
                     })
-                    
+
                     # Keep last 100 messages in cache
                     if len(data["messages"]) > 100:
                         data["messages"] = data["messages"][-100:]
-                    
+
                     self.redis_client.setex(cache_key, self.cache_ttl, json.dumps(data))
             except Exception as e:
                 logger.warning(f"⚠️ Redis cache update failed: {e}")
-        
-        logger.info(f"💾 Message saved: {message_id}")
+
+        if is_visible:
+            logger.info(f"💾 Message saved: {message_id}")
+        else:
+            logger.debug(f"🔇 Silent message saved: {message_id}")
         return message_id
-    
+
+
     def get_conversation(
         self,
         conversation_id: str,
@@ -241,10 +280,10 @@ class ChatHistoryManager:
             conn.close()
             return None
         
-        # Get messages
+        # Get messages — only visible ones go to the frontend
         cursor.execute("""
-            SELECT * FROM messages 
-            WHERE conversation_id = ?
+            SELECT * FROM messages
+            WHERE conversation_id = ? AND is_visible = 1
             ORDER BY created_at ASC
             LIMIT ?
         """, (conversation_id, limit))
