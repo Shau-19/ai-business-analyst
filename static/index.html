@@ -1043,28 +1043,15 @@ function renderChart(pd,mid){
 
 function pinToDashboard(pd){
   if(!currentConversationId){showNotif('error','⚠ Start a session first');return;}
-  switchTab('dash');
-  document.getElementById('dashEmpty').style.display='none';
-  document.getElementById('dashBoard').style.display='block';
+  let state = _ds(currentConversationId);
+  if(!state.panels) state.panels = [];
+  state.built = true;
+  state.title = 'SESSION DASHBOARD';
+  state.panels.push({ title: pd.title || 'PINNED CHART', plot: pd });
+  saveDashboardToServer(currentConversationId, state);
 
-  const grid=document.getElementById('dbGrid');
-  const card=document.createElement('div');
-  card.className='dbc dbc-chart span2';
-  const wId='pin-'+Date.now();
-  card.innerHTML=`
-    <div class="dbc-ch">
-      <div class="dbc-ch-title">${pd.title||'PINNED CHART'}</div>
-      <div class="dbc-ch-meta">
-        <button class="dbc-ch-dl" onclick="this.closest('.dbc').remove()">✕ REMOVE</button>
-      </div>
-    </div>
-    <div class="dbc-canvas"><canvas id="${wId}"></canvas></div>
-  `;
-  grid.appendChild(card);
-  setTimeout(()=>{
-    const cv=document.getElementById(wId);
-    if(cv) makeChart(cv,pd,wId);
-  },100);
+  switchTab('dash');
+  renderSavedDashboard(state);
   showNotif('success','📌 Chart pinned to session Dashboard!');
 }
 function makeChart(cv,pd,cid){
@@ -1224,10 +1211,100 @@ function switchTab(tab){
   } else if(tab==='dash'){
     document.getElementById('tabDash').classList.add('active');
     document.getElementById('panelDash').classList.add('active');
+    if (currentConversationId) {
+      const state = _ds(currentConversationId);
+      if (state.built) renderSavedDashboard(state);
+      else loadDashboardFromServer(currentConversationId);
+    }
   } else if(tab==='forecast'){
     document.getElementById('tabForecast').classList.add('active');
     document.getElementById('panelForecast').classList.add('active');
     if(currentConversationId)populateForecastColumns();
+  }
+}
+
+/* ── DASHBOARD PERSISTENCE ───────────── */
+let sessionDashboards = {}; // cid -> { built, prompt, panels, title }
+
+function _ds(cid){
+  return sessionDashboards[cid] || { built: false, panels: [] };
+}
+
+async function loadDashboardFromServer(cid){
+  if (!cid) return false;
+  try {
+    const res = await fetch('/conversations/' + cid + '/dashboard');
+    const r = await res.json();
+    if (r.success && r.state && r.state.built) {
+      sessionDashboards[cid] = r.state;
+      if (document.getElementById('panelDash').classList.contains('active')) {
+        renderSavedDashboard(r.state);
+      }
+      return true;
+    }
+  } catch(e) { console.error('Dashboard load error:', e); }
+  return false;
+}
+
+async function saveDashboardToServer(cid, state){
+  if (!cid) return;
+  sessionDashboards[cid] = state;
+  try {
+    await fetch('/conversations/' + cid + '/dashboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state })
+    });
+  } catch(e) { console.error('Dashboard save error:', e); }
+}
+
+function renderFromPanels(cid, panels, title){
+  renderSavedDashboard({ built: true, panels: panels || [], title: title || 'DASHBOARD' });
+}
+
+function renderSavedDashboard(state){
+  if (!state || !state.panels || !state.panels.length) {
+    document.getElementById('dashBoard').style.display = 'none';
+    document.getElementById('dashEmpty').style.display = 'flex';
+    return;
+  }
+  document.getElementById('dashEmpty').style.display = 'none';
+  document.getElementById('dashBoard').style.display = 'block';
+  document.getElementById('dbTitle').textContent = state.title || 'DASHBOARD';
+  const grid = document.getElementById('dbGrid');
+  grid.innerHTML = '';
+  Object.values(dbChartInstances).forEach(c => { try { c.destroy(); } catch(e){} });
+  dbChartInstances = {};
+
+  state.panels.forEach((p, idx) => {
+    const card = document.createElement('div');
+    card.className = `dbc dbc-chart span2`;
+    const cid = 'saved-db-' + idx + '-' + Date.now();
+    card.innerHTML = `
+      <div class="dbc-ch">
+        <div class="dbc-ch-title">${p.title || 'PINNED CHART'}</div>
+        <div class="dbc-ch-meta">
+          <button class="dbc-ch-dl" onclick="removeDashboardPanel(${idx})">✕ REMOVE</button>
+        </div>
+      </div>
+      <div class="dbc-canvas"><canvas id="${cid}"></canvas></div>
+    `;
+    grid.appendChild(card);
+    setTimeout(() => {
+      const cv = document.getElementById(cid);
+      if (cv && p.plot) makeChart(cv, p.plot, cid);
+    }, 150);
+  });
+}
+
+function removeDashboardPanel(idx){
+  if (!currentConversationId) return;
+  let state = _ds(currentConversationId);
+  if (state.panels && state.panels.length > idx) {
+    state.panels.splice(idx, 1);
+    if (!state.panels.length) state.built = false;
+    saveDashboardToServer(currentConversationId, state);
+    renderSavedDashboard(state);
   }
 }
 
