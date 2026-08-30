@@ -789,7 +789,11 @@ async function loadConversation(id){
     if(r.success){
       currentConversationId=id;
       const msgs=document.getElementById('chatMessages');msgs.innerHTML='';
-      r.conversation.messages.forEach(m=>addMsg(m.role,m.content,m.routing,m.metadata));
+      r.conversation.messages.forEach(m=>{
+        const plot = m.metadata?.plot || null;
+        const forecast = m.metadata?.forecast || null;
+        addMsg(m.role, m.content, m.routing, m.metadata, plot || forecast);
+      });
       loadConversations();updateSessionStats();updateSessionBadge();
       populateForecastColumns();
       const state=_ds(id);
@@ -835,7 +839,7 @@ async function populateForecastColumns(){
     if(!hasCsv)return;
   } catch(e){ return; }
   try{
-    const res=await fetch('/query',{
+    const res=await fetch('/query/silent',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Api-Key':API_KEY},
       body:JSON.stringify({question:'list all numeric column names in the data',conversation_id:currentConversationId})
