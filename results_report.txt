@@ -1,0 +1,32 @@
+======================================================================
+MULTILINGUAL HYBRID NLP SYSTEM - EVALUATION REPORT
+======================================================================
+
+Evaluation Date: 2026-01-12T11:41:33.315345
+
+OVERALL PERFORMANCE
+----------------------------------------------------------------------
+Routing Accuracy:        83.3%
+Language Detection:      90.9%
+Query Success Rate:      100.0%
+Avg Response Time:       1.54s
+Languages Supported:     9
+
+ROUTING ACCURACY DETAILS
+----------------------------------------------------------------------
+Correct: 10/12
+Accuracy: 83.3%
+
+Confusion Matrix:
+                SQL    Document    Hybrid
+sql             5       0          0
+document        0       5          0
+hybrid          0       2          0
+
+MULTILINGUAL SUPPORT
+----------------------------------------------------------------------
+Languages Tested: 9
+Languages: ar, de, en, es, fr, hi, ja, ko, pt
+Detection Accuracy: 90.9%
+
+======================================================================

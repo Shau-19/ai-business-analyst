@@ -1,0 +1,30 @@
+============================================================
+ANALYST — BENCHMARK REPORT
+Generated: 2026-05-07 13:17
+============================================================
+
+1. ROUTING ACCURACY
+   100.0%  (23/23 cases)
+   Avg latency: 5.212s  |  p95: 10.151s
+
+2. RETRIEVAL HIT RATE
+   80.0%  (8/10 queries)
+
+3. LATENCY
+   Overall avg: 7.25s  |  SQL: 9.161s  |  DOC: 4.384s
+
+4. HALLUCINATION GUARD
+   100.0%  (10/10 refused)
+
+5. FORECAST MAPE
+   55.4%  over 2 periods
+   Anomaly detected: YES
+
+6. LANGUAGE DETECTION
+   100.0%  (9/9 languages)
+
+============================================================
+RESUME METRICS
+============================================================
+
+Metrics: 100.0% routing accuracy · 80.0% retrieval hit rate · 7.25s avg latency · 100.0% hallucination guard rate · 55.4% forecast MAPE · 100.0% language detection (9 languages)

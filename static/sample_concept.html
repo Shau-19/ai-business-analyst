@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Business Analyst - NextGen UI Concept</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-panel: #1e293b;
+            --primary: #3b82f6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+        
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* SIDEBAR - Session Management */
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+        }
+        
+        .new-session-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .session-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
+        .session-item {
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+        .session-item.active, .session-item:hover {
+            background-color: var(--border);
+            color: var(--text-main);
+        }
+
+        /* MAIN CONTENT AREA */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* TOP NAVIGATION - Scopes */
+        .top-nav {
+            display: flex;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+        }
+        .nav-tab {
+            padding: 15px 20px;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+        }
+        .nav-tab.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            font-weight: bold;
+        }
+
+        /* VIEW CONTAINERS */
+        .view-container {
+            flex: 1;
+            padding: 20px;
+            display: none;
+            overflow-y: auto;
+        }
+        .view-container.active { display: flex; flex-direction: column; }
+
+        /* CHAT VIEW SPECIFICS */
+        .chat-feed { flex: 1; overflow-y: auto; margin-bottom: 20px; }
+        .message { margin-bottom: 20px; max-width: 80%; }
+        .msg-user { margin-left: auto; background-color: var(--primary); padding: 10px 15px; border-radius: 15px 15px 0 15px; }
+        .msg-ai { margin-right: auto; background-color: var(--bg-panel); padding: 10px 15px; border-radius: 15px 15px 15px 0; border: 1px solid var(--border); }
+        
+        .chat-input-area { display: flex; gap: 10px; }
+        .chat-input-area input { flex: 1; padding: 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-panel); color: white; }
+        .chat-input-area button { padding: 12px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; }
+
+        /* MOCK CHART IN CHAT */
+        .mock-chart {
+            background: #0f172a;
+            border: 1px dashed #475569;
+            height: 150px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            border-radius: 6px;
+        }
+        .save-btn {
+            background: #10b981;
+            color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+        }
+
+        /* DASHBOARD VIEW SPECIFICS */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .dash-widget {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            height: 250px;
+            display: flex;
+            flex-direction: column;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar">
+        <h3 style="margin-top: 0;">AI Analyst</h3>
+        <button class="new-session-btn">+ New Session</button>
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">RECENT SESSIONS</div>
+        <ul class="session-list">
+            <li class="session-item active">Q3 Sales Analysis</li>
+            <li class="session-item">Customer Churn Data</li>
+            <li class="session-item">Inventory Forecast</li>
+        </ul>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        
+        <!-- SCOPE NAVIGATION -->
+        <div class="top-nav">
+            <div class="nav-tab active" onclick="switchTab('chat')">💬 Chat</div>
+            <div class="nav-tab" onclick="switchTab('dashboard')">📊 Dashboard</div>
+            <div class="nav-tab" onclick="switchTab('forecast')">📈 Forecasts</div>
+            <div style="margin-left: auto; padding: 15px; color: var(--text-muted);">
+                Attached: 📄 sample_sales.csv
+            </div>
+        </div>
+
+        <!-- 1. CHAT SCOPE -->
+        <div id="view-chat" class="view-container active">
+            <div class="chat-feed">
+                <div class="message msg-user">Show me a bar chart of revenue by region</div>
+                <div class="message msg-ai">
+                    Here is the revenue breakdown by region:
+                    <div class="mock-chart">[ Bar Chart Renders Here ]</div>
+                    <button class="save-btn">📌 Save to Dashboard</button>
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" placeholder="Ask a question about your data...">
+                <button>Send</button>
+            </div>
+        </div>
+
+        <!-- 2. DASHBOARD SCOPE -->
+        <div id="view-dashboard" class="view-container">
+            <h2>Saved Dashboards: Q3 Overview</h2>
+            <div class="dashboard-grid">
+                <div class="dash-widget">
+                    <h4>Revenue by Region</h4>
+                    <div class="mock-chart" style="flex:1;">[ Bar Chart Renders Here ]</div>
+                </div>
+                <div class="dash-widget">
+                    <h4>Top Products Share</h4>
+                    <div class="mock-chart" style="flex:1;">[ Pie Chart Renders Here ]</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. FORECAST SCOPE -->
+        <div id="view-forecast" class="view-container">
+            <h2>Predictive Models</h2>
+            <div class="dash-widget" style="height: 400px;">
+                <h4>6-Month Revenue Projection</h4>
+                <div class="mock-chart" style="flex:1;">[ Line Chart with Forecast & Confidence Intervals Renders Here ]</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            // Remove active class from all tabs and views
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding view
+            event.target.classList.add('active');
+            document.getElementById('view-' + tabId).classList.add('active');
+        }
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 const API_KEY = 'xyz_123';
 
 const client = axios.create({
@@ -36,7 +36,7 @@ export const api = {
   uploadFiles: async (conversationId, files) => {
     const formData = new FormData();
     Array.from(files).forEach((f) => formData.append('files', f));
-    const res = await axios.post(`/upload`, formData, {
+    const res = await axios.post(`${API_BASE}/upload`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
         'X-Conversation-ID': conversationId,
@@ -93,7 +93,7 @@ export const api = {
   // SSE Stream helper
   streamQuery: async (conversationId, question, valueCol, { onMeta, onToken, onDone, onError }) => {
     try {
-      const response = await fetch('/query/stream', {
+      const response = await fetch(`${API_BASE}/query/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

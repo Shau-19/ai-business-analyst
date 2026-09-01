@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ANALYST — Session-Aware RAG</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#07080d;--surface:#0c0d14;--surface2:#111320;--surface3:#151826;
+      --border:#1c1f2e;--border2:#252840;
+      --accent:#4ade80;--accent2:#86efac;--accent-dim:#1a4a28;
+      --blue:#38bdf8;--blue-dim:#0c2d3e;
+      --yellow:#fbbf24;--red:#f87171;--red-dim:#3b0f0f;
+      --muted:#4a5066;--muted2:#6b7291;
+      --text:#d4d8f0;--text-dim:#8890b0;
+      --fm:'IBM Plex Mono',monospace;--fs:'IBM Plex Sans',sans-serif;
+      --hh:54px;--sb:28px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{font-size:18px;}
+    html,body{height:100%;overflow:hidden;}
+    body{font-family:var(--fs);font-size:1rem;background:var(--bg);color:var(--text);line-height:1.55;}
+    body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.022) 2px,rgba(0,0,0,.022) 4px);pointer-events:none;z-index:9000;}
+    ::-webkit-scrollbar{width:4px;height:4px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+    /* ─── LAUNCH SCREEN ─────────────────────── */
+    #launchScreen{
+      position:fixed;inset:0;background:var(--bg);z-index:8000;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      transition:opacity .65s ease,transform .65s ease;
+    }
+    #launchScreen.hiding{opacity:0;transform:scale(1.05);pointer-events:none;}
+
+    .ls-grid{
+      position:absolute;inset:0;
+      background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);
+      background-size:52px 52px;opacity:.3;
+    }
+    .ls-glow{
+      position:absolute;width:560px;height:560px;border-radius:50%;
+      background:radial-gradient(circle,rgba(74,222,128,.07) 0%,transparent 70%);
+      top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;
+      animation:glowpulse 3.2s ease-in-out infinite;
+    }
+    @keyframes glowpulse{0%,100%{opacity:.6;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}}
+
+    .ls-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:26px;}
+
+    .ls-logo{width:60px;height:60px;display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+    .ls-logo span{border-radius:3px;background:var(--accent);animation:flicker 2s infinite;}
+    .ls-logo span:nth-child(2){animation-delay:.25s;background:var(--blue);}
+    .ls-logo span:nth-child(3){animation-delay:.5s;background:var(--blue);}
+    .ls-logo span:nth-child(4){animation-delay:.75s;background:var(--accent);}
+    @keyframes flicker{0%,100%{opacity:1}50%{opacity:.45}}
+
+    .ls-title{font-family:var(--fm);font-size:2.8rem;font-weight:600;letter-spacing:.15em;color:var(--text);}
+    .ls-title em{color:var(--accent);font-style:normal;}
+    .ls-sub{font-family:var(--fm);font-size:.72rem;color:var(--muted2);letter-spacing:.1em;}
+
+    .ls-boot{font-family:var(--fm);font-size:.72rem;width:340px;text-align:left;min-height:100px;}
+    .boot-line{opacity:0;animation:bfade .3s ease forwards;padding:2px 0;}
+    .boot-line.ok{color:var(--accent);}
+    .boot-line.info{color:var(--blue);}
+    .boot-line.sys{color:var(--text-dim);}
+    @keyframes bfade{to{opacity:1}}
+
+    .ls-divider{width:260px;height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent);}
+
+    .ls-feats{display:flex;gap:26px;font-family:var(--fm);font-size:.7rem;color:var(--muted);}
+    .ls-feat{display:flex;align-items:center;gap:7px;}
+    .ls-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);}
+    .ls-dot.b{background:var(--blue);}
+    .ls-dot.y{background:var(--yellow);}
+
+    .ls-btn{
+      margin-top:6px;background:var(--accent-dim);border:1px solid var(--accent);
+      color:var(--accent);border-radius:4px;padding:15px 44px;
+      font-family:var(--fm);font-size:.95rem;font-weight:600;cursor:pointer;
+      letter-spacing:.08em;transition:all .2s;position:relative;overflow:hidden;
+    }
+    .ls-btn::before{content:'';position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .25s ease;}
+    .ls-btn:hover:not(:disabled)::before{transform:scaleX(1);}
+    .ls-btn:hover:not(:disabled){color:var(--bg);}
+    .ls-btn:disabled{opacity:.4;cursor:not-allowed;}
+    .ls-btn span{position:relative;z-index:1;}
+
+    .ls-ver{font-family:var(--fm);font-size:.63rem;color:var(--muted);letter-spacing:.05em;}
+
+    /* ─── MAIN APP ─────────────────────── */
+    #mainApp{display:flex;flex-direction:column;height:100vh;opacity:0;transition:opacity .5s ease .12s;}
+    #mainApp.visible{opacity:1;}
+    #appLayout{display:flex;flex:1;overflow:hidden;min-height:0;}
+
+    /* ─── HEADER ────────────────────────── */
+    #header{
+      height:var(--hh);background:var(--surface);border-bottom:1px solid var(--border);
+      display:flex;align-items:stretch;padding:0 0 0 16px;flex-shrink:0;
+    }
+    .h-brand{display:flex;align-items:center;gap:12px;padding-right:18px;border-right:1px solid var(--border);flex-shrink:0;}
+    .h-logo{width:26px;height:26px;display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+    .h-logo span{border-radius:1px;background:var(--accent);animation:flicker 4s infinite;}
+    .h-logo span:nth-child(2){animation-delay:.3s;background:var(--blue);}
+    .h-logo span:nth-child(3){animation-delay:.6s;background:var(--blue);}
+    .h-logo span:nth-child(4){animation-delay:.9s;background:var(--accent);}
+    .h-name{font-family:var(--fm);font-weight:600;font-size:.9rem;letter-spacing:.12em;color:var(--text);}
+    .h-tag{font-family:var(--fm);font-size:.6rem;color:var(--muted);letter-spacing:.06em;}
+
+    .h-session{display:flex;align-items:center;padding:0 18px;gap:14px;border-right:1px solid var(--border);}
+    .h-slabel{font-family:var(--fm);font-size:.65rem;color:var(--muted);letter-spacing:.07em;}
+    .h-sid{font-family:var(--fm);font-size:.65rem;color:var(--accent);}
+
+    .h-files{display:flex;align-items:center;gap:7px;padding:0 18px;overflow-x:auto;scrollbar-width:none;flex:1;}
+    .h-files::-webkit-scrollbar{display:none;}
+
+    .file-chip{
+      display:inline-flex;align-items:center;gap:6px;
+      background:var(--surface2);border:1px solid var(--border2);border-radius:3px;
+      padding:4px 10px;font-family:var(--fm);font-size:.65rem;color:var(--text-dim);white-space:nowrap;flex-shrink:0;
+    }
+    .fc-icon{color:var(--accent);}
+    .fc-status{font-size:.58rem;}
+    .fc-proc{animation:blink 1s infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+    .h-right{display:flex;align-items:center;gap:10px;padding:0 16px;border-left:1px solid var(--border);margin-left:auto;flex-shrink:0;}
+    .stat-pill{
+      display:flex;align-items:center;gap:7px;background:var(--surface2);
+      border:1px solid var(--border);border-radius:3px;padding:5px 12px;
+      font-family:var(--fm);font-size:.65rem;color:var(--muted2);
+    }
+    .stat-val{color:var(--accent);font-weight:600;}
+
+    .atw{position:relative;}
+    .atbtn{
+      width:38px;height:38px;background:var(--surface2);border:1px solid var(--border2);
+      border-radius:3px;display:flex;align-items:center;justify-content:center;
+      cursor:pointer;color:var(--muted2);transition:all .15s;
+    }
+    .atbtn:hover{border-color:var(--accent);color:var(--accent);}
+    .atbtn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+    .attip{
+      position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(-50%);
+      background:var(--surface3);border:1px solid var(--border2);border-radius:4px;
+      padding:7px 13px;font-family:var(--fm);font-size:.63rem;color:var(--text-dim);
+      white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300;
+    }
+    .attip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
+    .atw:hover .attip{opacity:1;}
+    .atbtn.nosess{animation:nosessflash .55s ease;}
+    @keyframes nosessflash{0%,100%{border-color:var(--border2);color:var(--muted2)}35%,65%{border-color:var(--red);color:var(--red)}}
+
+    .new-chat-btn{
+      background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);
+      border-radius:3px;padding:7px 15px;font-family:var(--fm);font-size:.7rem;
+      font-weight:600;cursor:pointer;letter-spacing:.05em;transition:all .15s;
+    }
+    .new-chat-btn:hover{background:var(--accent);color:var(--bg);}
+
+    #appLayout{display:flex;flex:1;overflow:hidden;min-height:0;}
+
+    #sidebar{width:248px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface);flex-shrink:0;}
+    .sb-label{font-family:var(--fm);font-size:.6rem;color:var(--muted);letter-spacing:.1em;padding:12px 14px 8px;border-bottom:1px solid var(--border);}
+    #convList{flex:1;overflow-y:auto;padding:7px;}
+    .conv-item{padding:11px 12px;border-radius:3px;cursor:pointer;border-left:2px solid transparent;transition:all .15s;margin-bottom:3px;}
+    .conv-item:hover{background:var(--surface2);border-left-color:var(--border2);}
+    .conv-item.active{background:var(--surface2);border-left-color:var(--accent);}
+    .conv-title{font-size:.82rem;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px;}
+    .conv-meta{font-family:var(--fm);font-size:.6rem;color:var(--muted);display:flex;gap:8px;align-items:center;}
+    .doc-badge{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);padding:1px 5px;border-radius:2px;font-size:.54rem;}
+
+    #panelChat{flex:1;overflow:hidden;}
+    #chatMain{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);height:100%;}
+    .toolbar{
+      height:42px;background:var(--surface);border-bottom:1px solid var(--border);
+      display:flex;align-items:center;padding:0 22px;gap:14px;flex-shrink:0;
+    }
+    .tlabel{font-family:var(--fm);font-size:.6rem;color:var(--muted);letter-spacing:.1em;}
+    .rdot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+    .rdot.sql{background:var(--accent);}
+    .rdot.doc{background:var(--blue);}
+    .rdot.hyb{background:var(--yellow);}
+    .rtxt{font-family:var(--fm);font-size:.67rem;}
+
+    #chatMessages{flex:1;overflow-y:auto;padding:30px 36px;display:flex;flex-direction:column;gap:2px;}
+
+    .sess-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;opacity:.5;}
+    .sess-ph-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:42px;height:42px;}
+    .sess-ph-grid span{border-radius:2px;background:var(--accent);}
+    .sess-ph-grid span:nth-child(2),.sess-ph-grid span:nth-child(3){background:var(--blue);}
+    .sess-ph-title{font-family:var(--fm);font-size:.93rem;color:var(--text-dim);letter-spacing:.07em;}
+    .sess-ph-sub{font-size:.82rem;color:var(--muted);text-align:center;max-width:360px;}
+
+    .msg-group{display:flex;flex-direction:column;gap:3px;margin-bottom:22px;animation:msgin .22s ease;}
+    @keyframes msgin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .msg-hdr{font-family:var(--fm);font-size:.6rem;color:var(--muted);display:flex;align-items:center;gap:10px;padding:0 4px;margin-bottom:6px;}
+    .msg-role{letter-spacing:.06em;}
+    .msg-role.user{color:var(--blue);}
+    .msg-role.assistant{color:var(--accent);}
+    .rtag{border-radius:2px;padding:1px 6px;font-size:.55rem;font-weight:600;letter-spacing:.05em;}
+    .rtag-sql{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);}
+    .rtag-doc{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);}
+    .rtag-hyb{background:#2d1e05;color:var(--yellow);border:1px solid var(--yellow);}
+
+    .msg-bubble{padding:15px 19px;border-radius:3px;max-width:82%;font-size:.95rem;line-height:1.78;position:relative;}
+    .msg-bubble.user{
+      align-self:flex-end;background:var(--blue-dim);border:1px solid var(--blue);
+      border-right:3px solid var(--blue);color:var(--text);font-family:var(--fm);font-size:.82rem;
+    }
+    .msg-bubble.assistant{align-self:flex-start;background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--accent);color:var(--text);}
+    .msg-bubble.user::before{content:'> ';font-family:var(--fm);color:var(--blue);}
+
+    .mc{word-wrap:break-word;}
+    .mc>*:first-child{margin-top:0!important;}
+    .mc>*:last-child{margin-bottom:0!important;}
+    .mc h1,.mc h2,.mc h3{font-family:var(--fm);margin-top:16px;margin-bottom:9px;color:var(--accent2);font-size:.95em;letter-spacing:.04em;}
+    .mc p{margin-bottom:9px;margin-top:9px;}
+    .mc strong{color:var(--accent2);font-weight:600;}
+    .mc em{color:var(--text-dim);font-style:italic;}
+    .mc ul,.mc ol{margin-left:22px;margin-bottom:10px;}
+    .mc li{margin-bottom:5px;}
+    .mc ul li{list-style-type:none;}
+    .mc ul li::before{content:'→ ';color:var(--accent);font-family:var(--fm);font-size:.85em;}
+    .mc code{background:var(--surface3);border:1px solid var(--border2);padding:2px 6px;border-radius:2px;font-family:var(--fm);font-size:.88em;color:var(--blue);}
+    .mc pre{background:var(--surface3);border:1px solid var(--border2);padding:13px 16px;border-radius:3px;overflow-x:auto;margin:12px 0;}
+    .mc pre code{background:transparent;border:none;padding:0;}
+    .mc blockquote{border-left:2px solid var(--accent);padding-left:14px;margin:12px 0;color:var(--muted2);}
+    .mc table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.9em;}
+    .mc th,.mc td{border:1px solid var(--border2);padding:8px 13px;}
+    .mc th{background:var(--surface3);color:var(--accent2);font-family:var(--fm);font-size:.8em;}
+    .mc hr{border:none;border-top:1px solid var(--border2);margin:16px 0;}
+
+    .chart-box{margin:14px 0;padding:18px;background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--accent);border-radius:3px;}
+    .chart-box canvas{max-width:100%;max-height:400px;}
+    .chart-dl{margin-top:12px;padding:6px 14px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:3px;cursor:pointer;font-family:var(--fm);font-size:.67rem;font-weight:600;transition:all .15s;}
+    .chart-dl:hover{background:var(--accent);color:var(--bg);}
+
+    #inputArea{background:var(--surface);border-top:1px solid var(--border);padding:15px 22px;flex-shrink:0;}
+    .input-row{display:flex;gap:10px;align-items:flex-end;}
+
+    .iatw{position:relative;flex-shrink:0;}
+    .iatbtn{
+      width:46px;height:46px;background:var(--surface2);border:1px solid var(--border2);
+      border-radius:3px;display:flex;align-items:center;justify-content:center;
+      cursor:pointer;color:var(--muted2);transition:all .15s;
+    }
+    .iatbtn:hover{border-color:var(--accent);color:var(--accent);}
+    .iatbtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+    .iattip{
+      position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(-50%);
+      background:var(--surface3);border:1px solid var(--border2);border-radius:4px;
+      padding:8px 13px;font-family:var(--fm);font-size:.63rem;color:var(--text-dim);
+      white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300;
+    }
+    .iattip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
+    .iatw:hover .iattip{opacity:1;}
+    .iatbtn.nosess{animation:nosessflash .55s ease;}
+
+    #messageInput{
+      flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;
+      color:var(--text);font-family:var(--fm);font-size:.82rem;padding:12px 14px;
+      resize:none;outline:none;max-height:130px;transition:border .15s;line-height:1.5;
+    }
+    #messageInput:focus{border-color:var(--accent);}
+    #messageInput::placeholder{color:var(--muted);}
+
+    #sendBtn{
+      background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);
+      border-radius:3px;padding:12px 22px;font-family:var(--fm);font-size:.75rem;
+      font-weight:600;cursor:pointer;letter-spacing:.06em;transition:all .15s;height:46px;white-space:nowrap;
+    }
+    #sendBtn:hover:not(:disabled){background:var(--accent);color:var(--bg);}
+    #sendBtn:disabled{opacity:.4;cursor:not-allowed;}
+
+    .input-hint{font-family:var(--fm);font-size:.6rem;color:var(--muted);margin-top:8px;letter-spacing:.04em;display:flex;align-items:center;gap:12px;}
+    .ih-sep{color:var(--border2);}
+
+    #statusBar{
+      height:var(--sb);background:var(--surface);border-top:1px solid var(--border);
+      display:flex;align-items:center;padding:0 18px;gap:18px;
+      font-family:var(--fm);font-size:.6rem;color:var(--muted);letter-spacing:.05em;flex-shrink:0;
+    }
+    .sb-item{display:flex;align-items:center;gap:7px;}
+    .sb-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 2.5s infinite;}
+    .sb-sep{color:var(--border2);}
+
+    .notif{
+      position:fixed;bottom:54px;right:18px;padding:11px 18px;border-radius:3px;
+      font-family:var(--fm);font-size:.73rem;z-index:9001;animation:nfin .2s ease;
+      display:flex;align-items:center;gap:10px;max-width:360px;
+    }
+    @keyframes nfin{from{transform:translateX(120px);opacity:0}to{transform:translateX(0);opacity:1}}
+    .notif.success{background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);}
+    .notif.error{background:var(--red-dim);border:1px solid var(--red);color:var(--red);}
+    .notif.info{background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);}
+
+    #fileInput{display:none;}
+
+    #tabNav{
+      display:flex;align-items:stretch;border-bottom:1px solid var(--border);
+      background:var(--surface);flex-shrink:0;padding:0 0 0 0;
+    }
+    .tab-btn{
+      padding:0 26px;height:38px;background:transparent;border:none;
+      font-family:var(--fm);font-size:.67rem;font-weight:600;letter-spacing:.08em;
+      color:var(--muted2);cursor:pointer;position:relative;transition:color .15s;
+      border-bottom:2px solid transparent;margin-bottom:-1px;
+    }
+    .tab-btn:hover{color:var(--text);}
+    .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+    .tab-btn .tb-badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:16px;height:16px;border-radius:2px;
+      background:var(--accent-dim);color:var(--accent);
+      font-size:.55rem;margin-left:7px;
+    }
+
+    .tab-panel{display:none;flex:1;overflow:hidden;flex-direction:column;}
+    .tab-panel.active{display:flex;}
+
+    #dashPanel{background:var(--bg);display:flex;flex-direction:column;overflow:hidden;}
+
+    #dashPromptBar{
+      background:var(--surface);border-bottom:1px solid var(--border);
+      padding:11px 18px;flex-shrink:0;
+    }
+    .db-prompt-row{display:flex;gap:9px;align-items:center;}
+    #dashPromptInput{
+      flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;
+      color:var(--text);font-family:var(--fm);font-size:.8rem;padding:9px 13px;
+      outline:none;transition:border .15s;
+    }
+    #dashPromptInput:focus{border-color:var(--accent);}
+    #dashPromptInput::placeholder{color:var(--muted);}
+    #dashGenBtn{
+      background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);
+      border-radius:3px;padding:9px 20px;font-family:var(--fm);font-size:.72rem;
+      font-weight:600;cursor:pointer;letter-spacing:.06em;transition:all .15s;white-space:nowrap;
+    }
+    #dashGenBtn:hover:not(:disabled){background:var(--accent);color:var(--bg);}
+    #dashGenBtn:disabled{opacity:.4;cursor:not-allowed;}
+    .db-hint{font-family:var(--fm);font-size:.59rem;color:var(--muted);margin-top:6px;letter-spacing:.03em;}
+
+    #dashArea{flex:1;overflow-y:auto;padding:16px 18px;}
+
+    #dashEmpty{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      height:100%;gap:16px;opacity:.45;
+    }
+    .de-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:40px;height:40px;}
+    .de-grid span{border-radius:2px;}
+    .de-grid span:nth-child(1){background:var(--accent);}
+    .de-grid span:nth-child(2){background:var(--blue);}
+    .de-grid span:nth-child(3){background:var(--yellow);}
+    .de-grid span:nth-child(4){background:var(--accent);}
+    .de-title{font-family:var(--fm);font-size:.88rem;color:var(--text-dim);letter-spacing:.07em;}
+    .de-sub{font-size:.78rem;color:var(--muted);text-align:center;max-width:380px;line-height:1.7;}
+    .de-examples{display:flex;flex-direction:column;gap:6px;margin-top:2px;}
+    .de-ex{
+      background:var(--surface);border:1px solid var(--border);border-radius:3px;
+      padding:7px 14px;font-family:var(--fm);font-size:.65rem;color:var(--muted2);
+      cursor:pointer;transition:all .15s;letter-spacing:.03em;
+    }
+    .de-ex:hover{border-color:var(--accent);color:var(--accent);}
+
+    #dashLoading{display:none;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:16px;}
+    .dl-logo{width:32px;height:32px;display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+    .dl-logo span{border-radius:2px;background:var(--accent);animation:flicker 1s infinite;}
+    .dl-logo span:nth-child(2){animation-delay:.15s;background:var(--blue);}
+    .dl-logo span:nth-child(3){animation-delay:.3s;background:var(--blue);}
+    .dl-logo span:nth-child(4){animation-delay:.45s;background:var(--accent);}
+    .dl-txt{font-family:var(--fm);font-size:.72rem;color:var(--muted2);letter-spacing:.07em;}
+    .dl-steps{display:flex;flex-direction:column;gap:4px;width:240px;}
+    .dl-step{font-family:var(--fm);font-size:.61rem;color:var(--muted);opacity:0;transition:opacity .3s;}
+    .dl-step.lit{opacity:1;color:var(--accent);}
+
+    #dashBoard{display:none;}
+
+    .db-header{
+      display:flex;align-items:center;justify-content:space-between;
+      margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);
+    }
+    .db-title{font-family:var(--fm);font-size:.82rem;font-weight:600;color:var(--text);letter-spacing:.05em;}
+    .db-subtitle{font-family:var(--fm);font-size:.58rem;color:var(--muted);margin-top:3px;}
+    .db-actions{display:flex;gap:7px;}
+    .db-act-btn{
+      background:transparent;border:1px solid var(--border2);color:var(--muted2);
+      border-radius:3px;padding:5px 12px;font-family:var(--fm);font-size:.6rem;
+      cursor:pointer;transition:all .15s;letter-spacing:.04em;
+    }
+    .db-act-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+    #dbGrid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      grid-auto-rows:min-content;
+      gap:12px;
+    }
+
+    .dbc{
+      background:var(--surface);border:1px solid var(--border2);border-radius:4px;
+      overflow:hidden;animation:kpiin .35s ease both;position:relative;
+    }
+    @keyframes kpiin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+    .dbc.span2{grid-column:span 2;}
+    .dbc.span3{grid-column:span 3;}
+
+    .dbc::after{
+      content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:var(--accent);opacity:.7;
+    }
+    .dbc.c-blu::after{background:var(--blue);}
+    .dbc.c-yel::after{background:var(--yellow);}
+    .dbc.c-red::after{background:var(--red);}
+    .dbc.c-pur::after{background:#a78bfa;}
+
+    .dbc-kpi{padding:14px 16px 12px;}
+    .dbc-kpi .dbc-lbl{font-family:var(--fm);font-size:.58rem;color:var(--muted);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;}
+    .dbc-kpi .dbc-val{font-family:var(--fm);font-size:1.65rem;font-weight:600;color:var(--accent);line-height:1;margin-bottom:5px;}
+    .dbc-kpi.c-blu .dbc-val{color:var(--blue);}
+    .dbc-kpi.c-yel .dbc-val{color:var(--yellow);}
+    .dbc-kpi.c-red .dbc-val{color:var(--red);}
+    .dbc-kpi.c-pur .dbc-val{color:#a78bfa;}
+    .dbc-kpi .dbc-sub{font-family:var(--fm);font-size:.6rem;color:var(--muted);line-height:1.4;}
+    .dbc-kpi .dbc-spark{margin-top:10px;height:38px;}
+    .dbc-kpi .dbc-spark canvas{width:100%!important;height:38px!important;}
+
+    .dbc-chart{display:flex;flex-direction:column;}
+    .dbc-ch{padding:11px 14px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+    .dbc-ch-title{font-family:var(--fm);font-size:.65rem;font-weight:600;color:var(--text-dim);letter-spacing:.04em;}
+    .dbc-ch-meta{display:flex;align-items:center;gap:7px;}
+    .dbc-ch-type{font-family:var(--fm);font-size:.55rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:2px;}
+    .dbc-ch-dl{background:transparent;border:none;color:var(--muted);font-family:var(--fm);font-size:.6rem;cursor:pointer;padding:2px 4px;transition:color .15s;}
+    .dbc-ch-dl:hover{color:var(--accent);}
+    .dbc-canvas{padding:0 10px 12px;flex:1;}
+    .dbc-canvas canvas{width:100%!important;height:220px!important;}
+    .dbc.span2 .dbc-canvas canvas,.dbc.span3 .dbc-canvas canvas{height:260px!important;}
+
+    .dbc-ch-switcher{display:flex;gap:3px;align-items:center;}
+    .cts-btn{
+      background:transparent;border:1px solid var(--border);color:var(--muted);
+      border-radius:2px;padding:2px 7px;font-family:var(--fm);font-size:.52rem;
+      cursor:pointer;transition:all .15s;letter-spacing:.03em;line-height:1.4;
+    }
+    .cts-btn:hover{border-color:var(--muted2);color:var(--text-dim);}
+    .cts-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+
+    .dbc-insight{padding:14px 16px;grid-column:span 3;}
+    .dbc-insight .is-lbl{font-family:var(--fm);font-size:.58rem;color:var(--accent);letter-spacing:.1em;margin-bottom:10px;}
+    .dbc-insight .is-body{display:flex;flex-direction:column;gap:6px;}
+    .dbc-insight .is-line{font-size:.82rem;line-height:1.6;color:var(--text-dim);padding-left:4px;}
+
+    /* ── STREAMING CURSOR ───────────────────────────────────────────────
+       Blinking block shown while SSE tokens stream in word-by-word.
+       Removed automatically when 'done' event fires and markdown renders. */
+    .stream-cursor{
+      display:inline-block;width:2px;height:1.1em;
+      background:var(--accent);margin-left:1px;
+      animation:cur-blink .65s steps(1) infinite;
+      vertical-align:text-bottom;border-radius:1px;
+    }
+    @keyframes cur-blink{0%,100%{opacity:1}50%{opacity:0}}
+
+    @media(max-width:900px){
+      #dbGrid{grid-template-columns:repeat(2,1fr);}
+      .dbc.span3{grid-column:span 2;}
+    }
+    @media(max-width:640px){
+      #dbGrid{grid-template-columns:1fr;}
+      .dbc.span2,.dbc.span3{grid-column:span 1;}
+      #sidebar{display:none;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ LAUNCH SCREEN ════════════════════════════════════ -->
+<div id="launchScreen">
+  <div class="ls-grid"></div>
+  <div class="ls-glow"></div>
+  <div class="ls-inner">
+    <div class="ls-logo"><span></span><span></span><span></span><span></span></div>
+    <div>
+      <div class="ls-title">ANAL<em>YST</em></div>
+    </div>
+    <div class="ls-sub">SESSION-AWARE BUSINESS INTELLIGENCE</div>
+    <div class="ls-boot" id="lsBoot"></div>
+    <div class="ls-divider"></div>
+    <div class="ls-feats">
+      <div class="ls-feat"><div class="ls-dot"></div>SQL ROUTING</div>
+      <div class="ls-feat"><div class="ls-dot b"></div>DOC RAG</div>
+      <div class="ls-feat"><div class="ls-dot y"></div>CHARTS</div>
+    </div>
+    <button class="ls-btn" id="lsBtn" onclick="startApp()" disabled>
+      <span id="lsBtnTxt">INITIALIZING…</span>
+    </button>
+    <div class="ls-ver">ANALYST v2.0 &nbsp;·&nbsp; READY WHEN YOU ARE</div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ════════════════════════════════════════ -->
+<div id="mainApp">
+
+  <header id="header">
+    <div class="h-brand">
+      <div class="h-logo"><span></span><span></span><span></span><span></span></div>
+      <div>
+        <div class="h-name">ANALYST</div>
+        <div class="h-tag">SESSION-AWARE RAG</div>
+      </div>
+    </div>
+
+    <div class="h-session">
+      <span class="h-slabel">SESSION</span>
+      <span class="h-sid" id="currentSessionBadge">—</span>
+    </div>
+
+    <div class="h-files" id="filesBar">
+      <div class="file-chip" style="opacity:.4;color:var(--muted);"><span class="fc-icon">○</span>no documents loaded</div>
+    </div>
+
+    <div class="h-right">
+      <div class="stat-pill"><span>CHATS</span><span class="stat-val" id="totalChats">0</span></div>
+      <div class="stat-pill"><span>DOCS</span><span class="stat-val" id="sessionDocs">0</span></div>
+
+      <div class="atw">
+        <button class="atbtn" id="hAtBtn" onclick="onAttach('h')">
+          <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <div class="attip" id="hAtTip">Attach documents to session</div>
+      </div>
+
+      <input type="file" id="fileInput" multiple accept=".xlsx,.csv,.pdf,.docx,.txt">
+      <button class="new-chat-btn" onclick="newChat()">+ NEW CHAT</button>
+    </div>
+  </header>
+
+  <div id="tabNav">
+    <button class="tab-btn active" id="tabChat" onclick="switchTab('chat')">CHAT</button>
+    <button class="tab-btn" id="tabDash" onclick="switchTab('dash')">DASHBOARD<span class="tb-badge">β</span></button>
+  </div>
+
+  <div id="appLayout">
+    <aside id="sidebar">
+      <div class="sb-label">CONVERSATIONS</div>
+      <div id="convList">
+        <div style="padding:20px 12px;font-family:var(--fm);font-size:.65rem;color:var(--muted);">Loading…</div>
+      </div>
+    </aside>
+
+    <div class="tab-panel active" id="panelChat">
+      <main id="chatMain">
+        <div class="toolbar">
+          <span class="tlabel">ROUTING</span>
+          <div class="rdot sql"></div><span class="rtxt" style="color:var(--accent);">SQL</span>
+          <div class="rdot doc"></div><span class="rtxt" style="color:var(--blue);">DOC</span>
+          <div class="rdot hyb"></div><span class="rtxt" style="color:var(--yellow);">HYBRID</span>
+          <span style="margin-left:auto;font-family:var(--fm);font-size:.6rem;color:var(--muted);">CTRL+ENTER TO SEND</span>
+        </div>
+
+        <div id="chatMessages">
+          <div class="sess-ph" id="sessPh">
+            <div class="sess-ph-grid"><span></span><span></span><span></span><span></span></div>
+            <div class="sess-ph-title">ANALYST / READY</div>
+            <div class="sess-ph-sub">Create a new chat to begin — attach documents and query your data with natural language</div>
+          </div>
+        </div>
+
+        <div id="inputArea">
+          <div class="input-row">
+            <div class="iatw">
+              <button class="iatbtn" id="iAtBtn" onclick="onAttach('i')">
+                <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+              </button>
+              <div class="iattip" id="iAtTip">Attach documents to session</div>
+            </div>
+            <textarea id="messageInput" placeholder="query your data…" rows="2"></textarea>
+            <button id="sendBtn" onclick="sendMessage()">SEND →</button>
+          </div>
+          <div class="input-hint">
+            <span>📎 ATTACH DOCS</span><span class="ih-sep">·</span>
+            <span>CHARTS SUPPORTED</span><span class="ih-sep">·</span>
+            <span>CTRL+ENTER TO SEND</span>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div class="tab-panel" id="panelDash">
+      <div id="dashPanel">
+        <div id="dashPromptBar">
+          <div class="db-prompt-row">
+            <input id="dashPromptInput" type="text"
+              placeholder="e.g. &quot;show revenue trend, top products by sales, and monthly churn rate&quot;"/>
+            <button id="dashGenBtn" onclick="generateDashboard()">⊞ GENERATE →</button>
+          </div>
+          <div class="db-hint">Describe what you want to see — the system will generate charts + KPI cards from your uploaded data</div>
+        </div>
+
+        <div id="dashArea">
+          <div id="dashEmpty">
+            <div class="de-grid"><span></span><span></span><span></span><span></span></div>
+            <div class="de-title">DASHBOARD MAKER</div>
+            <div class="de-sub">Describe your dashboard in plain English. The system will query your data and build charts automatically.</div>
+            <div class="de-examples">
+              <div class="de-ex" onclick="setPrompt('show total revenue by month with average deal size and churn rate')">→ show total revenue by month with average deal size and churn rate</div>
+              <div class="de-ex" onclick="setPrompt('top 5 products by revenue, monthly sales trend, and overall totals')">→ top 5 products by revenue, monthly sales trend, and overall totals</div>
+              <div class="de-ex" onclick="setPrompt('revenue breakdown, deal count per month, and key performance numbers')">→ revenue breakdown, deal count per month, and key performance numbers</div>
+            </div>
+          </div>
+
+          <div id="dashLoading">
+            <div class="dl-logo"><span></span><span></span><span></span><span></span></div>
+            <div class="dl-txt">BUILDING DASHBOARD…</div>
+            <div class="dl-steps">
+              <div class="dl-step" id="dlS1">→ parsing your request</div>
+              <div class="dl-step" id="dlS2">→ querying data sources</div>
+              <div class="dl-step" id="dlS3">→ computing metrics</div>
+              <div class="dl-step" id="dlS4">→ rendering charts</div>
+            </div>
+          </div>
+
+          <div id="dashBoard">
+            <div class="db-header">
+              <div>
+                <div class="db-title" id="dbTitle">DASHBOARD</div>
+                <div class="db-subtitle" id="dbSubtitle"></div>
+              </div>
+              <div class="db-actions">
+                <button class="db-act-btn" onclick="downloadFullDashboard()" id="dlFullBtn">⬇ DOWNLOAD PNG</button>
+                <button class="db-act-btn" onclick="resetDashboard()">⟳ REBUILD</button>
+              </div>
+            </div>
+            <div id="dbGrid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="statusBar">
+    <div class="sb-item"><div class="sb-dot"></div><span>ONLINE</span></div>
+    <span class="sb-sep">·</span>
+    <span id="sbSession">NO SESSION</span>
+    <span style="margin-left:auto;">ANALYST v2.0</span>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+const API_KEY = 'xyz_123'; // Set this to match your .env API_KEYS
+let currentUserId='user_'+Math.random().toString(36).substr(2,9);
+let currentConversationId=null;
+let isLoading=false;
+let chartInstances={};
+
+/* ── LAUNCH ─────────────────────────── */
+const BOOT=[
+  {t:'sys',m:'[ ANALYST ] initializing runtime…'},
+  {t:'ok', m:'✓ session engine ready'},
+  {t:'ok', m:'✓ RAG pipeline loaded'},
+  {t:'ok', m:'✓ chart renderer ready'},
+  {t:'info',m:'→ connecting to backend…'},
+];
+
+async function runBoot(){
+  const c=document.getElementById('lsBoot');
+  for(let i=0;i<BOOT.length;i++){
+    await sleep(340+i*120);
+    const d=document.createElement('div');
+    d.className='boot-line '+BOOT[i].t;
+    d.textContent=BOOT[i].m;
+    c.appendChild(d);
+  }
+  await sleep(380);
+  document.getElementById('lsBtn').disabled=false;
+  document.getElementById('lsBtnTxt').textContent='▷ START SESSION';
+}
+
+function startApp(){
+  const ls=document.getElementById('launchScreen');
+  ls.classList.add('hiding');
+  setTimeout(()=>{
+    ls.style.display='none';
+    const app=document.getElementById('mainApp');
+    app.classList.add('visible');
+    loadConversations();
+    updateSessionBadge();
+  },650);
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+window.addEventListener('load',runBoot);
+
+/* ── ATTACH BUTTON LOGIC ─────────────── */
+function onAttach(src){
+  if(!currentConversationId){
+    const btnEl=document.getElementById(src==='h'?'hAtBtn':'iAtBtn');
+    const tipEl=document.getElementById(src==='h'?'hAtTip':'iAtTip');
+    btnEl.classList.remove('nosess');
+    void btnEl.offsetWidth;
+    btnEl.classList.add('nosess');
+    btnEl.addEventListener('animationend',()=>btnEl.classList.remove('nosess'),{once:true});
+    const orig=tipEl.textContent;
+    tipEl.textContent='⚠ Start a new session first!';
+    tipEl.style.color='var(--red)';
+    tipEl.style.opacity='1';
+    tipEl.style.pointerEvents='none';
+    setTimeout(()=>{tipEl.textContent=orig;tipEl.style.color='';tipEl.style.opacity='';},2200);
+    showNotif('error','⚠ Start a new session first — click + NEW CHAT');
+    return;
+  }
+  document.getElementById('fileInput').click();
+}
+
+document.getElementById('fileInput').addEventListener('change',async(e)=>{
+  await handleFiles(e.target.files);
+  e.target.value='';
+});
+
+/* ── FILE UPLOAD ─────────────────────── */
+async function handleFiles(files){
+  if(!currentConversationId){showNotif('error','⚠ Start a new session first');return;}
+  const fd=new FormData();const fnames=[];
+  Array.from(files).forEach(f=>{
+    if(f.size>10*1024*1024){showNotif('error','⚠ '+f.name+' >10MB');return;}
+    fd.append('files',f);fnames.push(f.name);
+  });
+  if(!fnames.length)return;
+  try{
+    displayFiles(fnames.map(n=>({name:n,status:'processing'})));
+    showNotif('info','↑ Uploading '+fnames.length+' file(s)…');
+    const res=await fetch('/upload',{method:'POST',headers:{'X-Conversation-ID':currentConversationId,'X-Api-Key':API_KEY},body:fd});
+    const r=await res.json();
+    if(r.success||r.loaded_files){
+      showNotif('info','⏳ Indexing — please wait…');
+      pollProcessingStatus(currentConversationId, fnames);
+    } else {
+      showNotif('error','✗ '+(r.error||'Upload failed'));displayFiles([]);
+    }
+  } catch(e){showNotif('error','✗ '+e.message);displayFiles([]);}
+}
+
+function pollProcessingStatus(convId, fnames){
+  let attempts=0;
+  const MAX=90;
+  const timer=setInterval(async()=>{
+    attempts++;
+    if(attempts>MAX){
+      clearInterval(timer);
+      showNotif('error','✗ Indexing timed out — try refreshing');
+      updateSessionStats();
+      return;
+    }
+    try{
+      const res=await fetch('/conversations/'+convId+'/processing-status');
+      if(!res.ok)return;
+      const r=await res.json();
+      if(r.status==='ready'){
+        clearInterval(timer);
+        const n=r.files?.length||fnames.length;
+        showNotif('success','✓ '+n+' file'+(n!==1?'s':'')+' indexed and ready');
+        updateSessionStats();
+        loadConversations();
+      } else if(r.status==='error'){
+        clearInterval(timer);
+        showNotif('error','✗ Indexing failed: '+(r.error||'unknown error'));
+        displayFiles([]);
+      }
+    }catch(e){}
+  },1000);
+}
+
+function displayFiles(files){
+  const bar=document.getElementById('filesBar');
+  if(!files||!files.length){
+    bar.innerHTML='<div class="file-chip" style="opacity:.4;color:var(--muted);"><span class="fc-icon">○</span>no documents loaded</div>';
+    return;
+  }
+  bar.innerHTML='';
+  files.forEach(f=>{
+    const fname=typeof f==='string'?f:f.name;
+    const st=f.status||'ready';
+    const chip=document.createElement('div');chip.className='file-chip';
+    chip.innerHTML=`<span class="fc-icon">${ficon(fname)}</span><span>${fname}</span><span class="fc-status ${st==='processing'?'fc-proc':''}">${st==='processing'?'…':'✓'}</span>`;
+    bar.appendChild(chip);
+  });
+}
+function ficon(n){const e=(n.split('.').pop()||'').toLowerCase();return{xlsx:'◈',csv:'◇',pdf:'▣',docx:'▤',txt:'▥'}[e]||'▦';}
+
+/* ── CONVERSATIONS ───────────────────── */
+async function newChat(){
+  try{
+    const res=await fetch('/conversations',{method:'POST',headers:{'Content-Type':'application/json','X-User-ID':currentUserId},body:JSON.stringify({user_id:currentUserId,title:'New Chat'})});
+    const r=await res.json();
+    if(r.success){
+      currentConversationId=r.conversation_id;
+      clearChat();loadConversations();updateSessionStats();updateSessionBadge();
+      showNotif('success','✓ New session started');
+    }
+  } catch(e){showNotif('error','✗ Failed to create chat');}
+}
+
+async function loadConversations(){
+  try{
+    const res=await fetch('/conversations',{headers:{'X-User-ID':currentUserId}});
+    const r=await res.json();
+    const list=document.getElementById('convList');list.innerHTML='';
+    if(!r.conversations.length){
+      list.innerHTML='<div style="padding:20px 12px;font-family:var(--fm);font-size:.63rem;color:var(--muted);">NO CONVERSATIONS<br><span style="color:var(--border2);">→ click + NEW CHAT</span></div>';
+      return;
+    }
+    r.conversations.forEach(conv=>{
+      const item=document.createElement('div');
+      item.className='conv-item'+(conv.conversation_id===currentConversationId?' active':'');
+      const db=conv.documents>0?`<span class="doc-badge">⊡ ${conv.documents}</span>`:'';
+      item.innerHTML=`<div class="conv-title">${conv.title}</div><div class="conv-meta"><span>${conv.message_count} msgs</span>${db}<span>${fdate(conv.updated_at)}</span></div>`;
+      item.onclick=()=>loadConversation(conv.conversation_id);
+      list.appendChild(item);
+    });
+    document.getElementById('totalChats').textContent=r.conversations.length;
+  } catch(e){console.error(e);}
+}
+
+async function loadConversation(id){
+  try{
+    const res=await fetch('/conversations/'+id);
+    const r=await res.json();
+    if(r.success){
+      currentConversationId=id;
+      const msgs=document.getElementById('chatMessages');msgs.innerHTML='';
+      r.conversation.messages.forEach(m=>addMsg(m.role,m.content,m.routing,m.metadata));
+      loadConversations();updateSessionStats();updateSessionBadge();
+    }
+  } catch(e){console.error(e);}
+}
+
+async function updateSessionStats(){
+  if(!currentConversationId){document.getElementById('sessionDocs').textContent='0';displayFiles([]);return;}
+  try{
+    const res=await fetch('/conversations/'+currentConversationId+'/documents');
+    const r=await res.json();
+    if(r.success){
+      document.getElementById('sessionDocs').textContent=r.total_documents;
+      if(r.documents?.length)displayFiles(r.documents.map(n=>({name:n,status:'ready'})));
+      else displayFiles([]);
+    }
+  } catch(e){console.error(e);}
+}
+
+function updateSessionBadge(){
+  const id=currentConversationId;
+  const s=id?id.substring(0,8).toUpperCase()+'…':'—';
+  document.getElementById('currentSessionBadge').textContent=s;
+  document.getElementById('sbSession').textContent=id?'SESSION '+s:'NO SESSION';
+}
+
+/* ── MARKDOWN ────────────────────────── */
+function renderMD(text){
+  if(!text)return'';
+  try{
+    marked.setOptions({breaks:true,gfm:true,headerIds:false,mangle:false,pedantic:false});
+    return marked.parse(text.trim().replace(/\r\n/g,'\n'));
+  } catch(e){return fbMD(text);}
+}
+function fbMD(t){
+  let h=t;
+  h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  h=h.replace(/__(.+?)__/g,'<strong>$1</strong>');
+  h=h.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+  h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  h=h.replace(/^- (.+)$/gm,'<li>$1</li>');
+  h=h.replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>');
+  h=h.replace(/\n/g,'<br>');
+  return h;
+}
+
+/* ── CHARTS ──────────────────────────── */
+function renderChart(pd,mid){
+  const box=document.createElement('div');box.className='chart-box';
+  const cv=document.createElement('canvas');
+  const cid='chart-'+mid+'-'+Date.now();cv.id=cid;
+  box.appendChild(cv);
+  const dl=document.createElement('button');dl.className='chart-dl';dl.innerHTML='↓ EXPORT PNG';
+  dl.onclick=()=>dlChart(cv,pd.title);box.appendChild(dl);
+  setTimeout(()=>makeChart(cv,pd,cid),100);
+  return box;
+}
+function makeChart(cv,pd,cid){
+  const ctx=cv.getContext('2d');
+  if(chartInstances[cid])chartInstances[cid].destroy();
+  const pal=['#4ade80','#38bdf8','#fbbf24','#f87171','#a78bfa','#fb923c','#34d399','#818cf8'];
+  const isPie=pd.type==='pie'||pd.type==='doughnut';
+  chartInstances[cid]=new Chart(ctx,{
+    type:pd.type,
+    data:{
+      labels:pd.x,
+      datasets:[{label:pd.y_label,data:pd.y,
+        backgroundColor:isPie?pal.slice(0,pd.x.length).map(c=>c+'aa'):'#4ade8033',
+        borderColor:isPie?pal.slice(0,pd.x.length):'#4ade80',
+        borderWidth:1.5,tension:0.4}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,
+      plugins:{
+        title:{display:true,text:pd.title,color:'#86efac',font:{family:"'IBM Plex Mono'",size:13,weight:'600'},padding:{bottom:18}},
+        legend:{display:isPie,labels:{color:'#8890b0',font:{family:"'IBM Plex Mono'",size:11}}},
+        tooltip:{backgroundColor:'#111320',borderColor:'#252840',borderWidth:1,titleColor:'#4ade80',bodyColor:'#d4d8f0',titleFont:{family:"'IBM Plex Mono'"},bodyFont:{family:"'IBM Plex Mono'",size:12}}
+      },
+      scales:isPie?{}:{
+        x:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:11}},grid:{color:'#1c1f2e'},title:{display:true,text:pd.x_label,color:'#6b7291',font:{family:"'IBM Plex Mono'",size:11}}},
+        y:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:11},callback:v=>fmtN(v)},grid:{color:'#1c1f2e'},title:{display:true,text:pd.y_label,color:'#6b7291',font:{family:"'IBM Plex Mono'",size:11}},beginAtZero:true}
+      }
+    }
+  });
+}
+function dlChart(cv,title){
+  const a=document.createElement('a');
+  a.download=(title||'chart').replace(/[^a-z0-9]/gi,'_')+'.png';
+  a.href=cv.toDataURL('image/png');a.click();
+  showNotif('success','↓ Chart exported');
+}
+function fmtN(n){
+  if(typeof n!=='number')return n;
+  if(n>=1e6)return(n/1e6).toFixed(1)+'M';
+  if(n>=1e3)return(n/1e3).toFixed(1)+'K';
+  return n.toLocaleString();
+}
+
+/* ── MESSAGING ───────────────────────── */
+async function sendMessage(){
+  const inp=document.getElementById('messageInput');
+  const msg=inp.value.trim();
+  if(!msg||isLoading)return;
+  if(!currentConversationId){showNotif('error','⚠ Start a new session first');return;}
+  addMsg('user',msg);inp.value='';
+  isLoading=true;document.getElementById('sendBtn').disabled=true;
+  try{
+    await streamMessage(msg);
+    loadConversations();
+  } catch(e){addMsg('assistant','✗ Error: '+e.message);}
+  finally{isLoading=false;document.getElementById('sendBtn').disabled=false;}
+}
+
+/* ── streamMessage ───────────────────────────────────────────────────
+ *
+ * SSE streaming via fetch + ReadableStream.
+ *
+ * WHY fetch+ReadableStream instead of native EventSource?
+ *   EventSource only supports GET. We need POST to send the question
+ *   body. fetch() with ReadableStream gives identical chunk-by-chunk
+ *   streaming behaviour and works with POST.
+ *
+ * PROTOCOL — server sends these SSE events in order:
+ *   event: meta   → JSON {routing, plot, data, sql_query, sources}
+ *                   Sent immediately after routing/SQL/RAG complete.
+ *                   Frontend creates the bubble here.
+ *   event: token  → JSON-encoded string chunk (one word at a time)
+ *                   Frontend appends each word before the cursor.
+ *   event: done   → signals end of stream
+ *                   Frontend replaces plain text with rendered markdown.
+ *   event: error  → {error: string}
+ *
+ * UX FLOW:
+ *   meta arrives  → bubble appears instantly with routing tag + cursor
+ *   tokens arrive → words append one-by-one, chat auto-scrolls
+ *   done arrives  → plain streamed text replaced with full markdown
+ *
+ * Dashboard still uses POST /query (non-streaming) — untouched.
+ */
+async function streamMessage(question){
+  const res=await fetch('/query/stream',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-User-ID':currentUserId,'X-Api-Key':API_KEY},
+    body:JSON.stringify({question,conversation_id:currentConversationId})
+  });
+  if(!res.ok) throw new Error('Stream failed: '+res.status);
+
+  const reader=res.body.getReader();
+  const decoder=new TextDecoder();
+  let bubble=null, contentDiv=null, accText='', buf='';
+
+  /* Parse raw SSE text into [{name,data}] event objects.
+   * SSE format: blocks separated by \n\n.
+   * Each block has "event: X" and "data: Y" lines. */
+  function parseSSE(raw){
+    const evts=[];
+    for(const block of raw.split('\n\n')){
+      let name='message', data='';
+      for(const line of block.split('\n')){
+        if(line.startsWith('event: ')) name=line.slice(7).trim();
+        if(line.startsWith('data: '))  data=line.slice(6).trim();
+      }
+      if(data) evts.push({name,data});
+    }
+    return evts;
+  }
+
+  while(true){
+    const {done,value}=await reader.read();
+    if(done) break;
+    buf+=decoder.decode(value,{stream:true});
+
+    /* Only process complete SSE events (those that end with \n\n).
+     * Any incomplete tail is kept in buf for the next read(). */
+    const cut=buf.lastIndexOf('\n\n');
+    if(cut===-1) continue;
+    const complete=buf.slice(0,cut+2);
+    buf=buf.slice(cut+2);
+
+    for(const {name,data} of parseSSE(complete)){
+
+      /* META: create bubble immediately — user sees response start
+       * before any text has arrived. Routing tag + chart render here. */
+      if(name==='meta'){
+        const meta=JSON.parse(data);
+        const msgs=document.getElementById('chatMessages');
+        const ph=document.getElementById('sessPh'); if(ph) ph.remove();
+        const group=document.createElement('div'); group.className='msg-group';
+        const hdr=document.createElement('div'); hdr.className='msg-hdr';
+        let rtag='';
+        if(meta.routing){
+          const cls=meta.routing==='sql'?'rtag-sql':meta.routing==='document'?'rtag-doc':'rtag-hyb';
+          rtag=`<span class="rtag ${cls}">${meta.routing.toUpperCase()}</span>`;
+        }
+        hdr.innerHTML=`<span class="msg-role assistant">◈ ANALYST</span>`+
+          `<span>${new Date().toLocaleTimeString('en',{hour12:false})}</span>${rtag}`;
+        bubble=document.createElement('div'); bubble.className='msg-bubble assistant';
+        if(meta.plot) bubble.appendChild(renderChart(meta.plot,Date.now()));
+        contentDiv=document.createElement('div'); contentDiv.className='mc';
+        contentDiv.innerHTML='<span class="stream-cursor"></span>';
+        bubble.appendChild(contentDiv);
+        group.appendChild(hdr); group.appendChild(bubble);
+        msgs.appendChild(group); msgs.scrollTop=msgs.scrollHeight;
+      }
+
+      /* TOKEN: insert word as raw text node before the cursor span.
+       * Text node avoids innerHTML parse overhead on every word. */
+      else if(name==='token'&&contentDiv){
+        const word=JSON.parse(data);
+        accText+=word;
+        const cur=contentDiv.querySelector('.stream-cursor');
+        contentDiv.insertBefore(document.createTextNode(word),cur);
+        document.getElementById('chatMessages').scrollTop=99999;
+      }
+
+      /* DONE: replace plain streamed text with full markdown render.
+       * We streamed raw text for speed; apply bold/bullets/etc now. */
+      else if(name==='done'&&contentDiv){
+        contentDiv.innerHTML=renderMD(accText);
+      }
+
+      /* ERROR */
+      else if(name==='error'){
+        const err=JSON.parse(data);
+        if(contentDiv) contentDiv.textContent='✗ '+(err.error||'Error');
+        else addMsg('assistant','✗ '+(err.error||'Error'));
+      }
+    }
+  }
+}
+
+function addMsg(role,content,routing,meta,plotData){
+  const msgs=document.getElementById('chatMessages');
+  const ph=document.getElementById('sessPh');if(ph)ph.remove();
+  const mid=Date.now();
+  const group=document.createElement('div');group.className='msg-group';
+  const hdr=document.createElement('div');hdr.className='msg-hdr';
+  let rtag='';
+  if(routing){const cls=routing==='sql'?'rtag-sql':routing==='document'?'rtag-doc':'rtag-hyb';rtag=`<span class="rtag ${cls}">${routing.toUpperCase()}</span>`;}
+  hdr.innerHTML=`<span class="msg-role ${role}">${role==='user'?'▸ USER':'◈ ANALYST'}</span><span>${new Date().toLocaleTimeString('en',{hour12:false})}</span>${rtag}`;
+  const bubble=document.createElement('div');bubble.className='msg-bubble '+role;
+  if(plotData)bubble.appendChild(renderChart(plotData,mid));
+  const cd=document.createElement('div');cd.className='mc';
+  if(role==='assistant')cd.innerHTML=renderMD(content);
+  else cd.textContent=content;
+  bubble.appendChild(cd);
+  group.appendChild(hdr);group.appendChild(bubble);
+  msgs.appendChild(group);msgs.scrollTop=msgs.scrollHeight;
+}
+
+function clearChat(){
+  const msgs=document.getElementById('chatMessages');
+  msgs.innerHTML=`<div class="sess-ph" id="sessPh"><div class="sess-ph-grid"><span></span><span></span><span></span><span></span></div><div class="sess-ph-title">NEW SESSION / READY</div><div class="sess-ph-sub">Attach documents or start querying your data</div></div>`;
+  displayFiles([]);
+}
+
+/* ── NOTIFICATIONS ───────────────────── */
+function showNotif(type,message){
+  const n=document.createElement('div');n.className='notif '+type;n.textContent=message;
+  document.body.appendChild(n);
+  setTimeout(()=>{n.style.opacity='0';n.style.transition='opacity .3s';setTimeout(()=>n.remove(),300);},2700);
+}
+
+function fdate(d){
+  const diff=(new Date()-new Date(d))/1000;
+  if(diff<60)return'NOW';if(diff<3600)return Math.floor(diff/60)+'M';
+  if(diff<86400)return Math.floor(diff/3600)+'H';return Math.floor(diff/86400)+'D';
+}
+
+/* ── TAB SWITCHING ───────────────────── */
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  if(tab==='chat'){
+    document.getElementById('tabChat').classList.add('active');
+    document.getElementById('panelChat').classList.add('active');
+  } else {
+    document.getElementById('tabDash').classList.add('active');
+    document.getElementById('panelDash').classList.add('active');
+  }
+}
+
+/* ── DASHBOARD ───────────────────────── */
+let dbChartInstances={};
+let dbChartData={};
+let dashBuilt=false;
+
+function setPrompt(txt){
+  document.getElementById('dashPromptInput').value=txt;
+  document.getElementById('dashPromptInput').focus();
+}
+
+function resetDashboard(){
+  dashBuilt=false;
+  document.getElementById('dashBoard').style.display='none';
+  document.getElementById('dashEmpty').style.display='flex';
+  document.getElementById('dashPromptInput').value='';
+  Object.values(dbChartInstances).forEach(c=>{try{c.destroy();}catch(e){}});
+  dbChartInstances={};
+  dbChartData={};
+}
+
+async function generateDashboard(){
+  const prompt=document.getElementById('dashPromptInput').value.trim();
+  if(!prompt)return;
+  if(!currentConversationId){showNotif('error','⚠ Start a session and upload data first');return;}
+
+  document.getElementById('dashEmpty').style.display='none';
+  document.getElementById('dashBoard').style.display='none';
+  document.getElementById('dashLoading').style.display='flex';
+  document.getElementById('dashGenBtn').disabled=true;
+
+  const steps=['dlS1','dlS2','dlS3','dlS4'];
+  steps.forEach(s=>document.getElementById(s).classList.remove('lit'));
+  let si=0;
+  const stepTimer=setInterval(()=>{
+    if(si<steps.length)document.getElementById(steps[si++]).classList.add('lit');
+  },600);
+
+  try{
+    const queries=await parseDashboardPrompt(prompt);
+    const results=await Promise.all(queries.map(q=>runDashQuery(q)));
+    clearInterval(stepTimer);
+    steps.forEach(s=>document.getElementById(s).classList.add('lit'));
+    await sleep(300);
+    renderDashboard(prompt,queries,results);
+  } catch(e){
+    clearInterval(stepTimer);
+    showNotif('error','✗ Dashboard failed: '+e.message);
+    document.getElementById('dashLoading').style.display='none';
+    document.getElementById('dashEmpty').style.display='flex';
+  } finally{
+    document.getElementById('dashGenBtn').disabled=false;
+  }
+}
+
+/* Dashboard uses /query (non-streaming) — intentional.
+ * Dashboard fires multiple parallel queries and needs synchronous
+ * JSON responses to build the grid. Streaming would complicate that. */
+async function runDashQuery(question){
+  try{
+    const res=await fetch('/query',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-User-ID':currentUserId,'X-Api-Key':API_KEY},
+      body:JSON.stringify({question,conversation_id:currentConversationId})
+    });
+    return await res.json();
+  } catch(e){
+    return {success:false,error:e.message,question};
+  }
+}
+
+function renderDashboard(prompt,queries,results){
+  document.getElementById('dashLoading').style.display='none';
+
+  const titleEl=document.getElementById('dbTitle');
+  titleEl.textContent=prompt.length>60?prompt.substring(0,57)+'…':prompt.toUpperCase();
+  const ok=results.filter(r=>r.success&&r.data?.length);
+  document.getElementById('dbSubtitle').textContent=
+    new Date().toLocaleString('en',{dateStyle:'medium',timeStyle:'short'})+
+    ' · '+ok.length+' panels generated';
+
+  const grid=document.getElementById('dbGrid');
+  grid.innerHTML='';
+  Object.values(dbChartInstances).forEach(c=>{try{c.destroy();}catch(e){}});
+  dbChartInstances={};
+
+  const colCycle=['','c-blu','c-yel','c-red','c-pur'];
+  let cardIdx=0;
+
+  const kpis=[], charts=[];
+  results.forEach((r,i)=>{
+    if(!r.success||!r.data?.length)return;
+    const d=r.data;
+    const cols=Object.keys(d[0]);
+    const numCols=cols.filter(c=>typeof d[0][c]==='number');
+    if(d.length===1&&numCols.length>=1) kpis.push({r,i,d,cols,numCols});
+    else if(d.length>=2) charts.push({r,i,d,cols,numCols});
+  });
+
+  let kpiQueue=[...kpis];
+
+  function addKPI(k,delay){
+    const {r,i,d,cols,numCols}=k;
+    const col=colCycle[cardIdx%colCycle.length];
+    const valKey=numCols[0];
+    const val=d[0][valKey];
+    const lbl=shortLabel(queries[i]||valKey);
+    const rawSub=r.explanation
+      ? r.explanation.split(/[.\n]/)[0].trim()
+      : valKey.replace(/\b(SUM|AVG|MAX|MIN|COUNT)\s*\(([^)]+)\)/gi,(_,fn,col)=>
+          ({SUM:'Total',AVG:'Average',MAX:'Highest',MIN:'Lowest',COUNT:'Count'}[fn.toUpperCase()]||fn)+' '+col.replace(/_/g,' '));
+    const sub=rawSub.length>72?rawSub.substring(0,70)+'…':rawSub;
+
+    const card=document.createElement('div');
+    card.className=`dbc dbc-kpi ${col}`;
+    card.style.animationDelay=delay+'ms';
+
+    const sparkData=findSparkData(queries[i],results);
+    const sparkId=sparkData?'sp-'+i+'-'+Date.now():'';
+
+    card.innerHTML=`
+      <div class="dbc-lbl">${lbl}</div>
+      <div class="dbc-val">${fmtKPI(val)}</div>
+      <div class="dbc-sub">${sub}</div>
+      ${sparkData?`<div class="dbc-spark"><canvas id="${sparkId}"></canvas></div>`:''}`;
+    grid.appendChild(card);
+    cardIdx++;
+
+    if(sparkData&&sparkId){
+      setTimeout(()=>makeSparkline(sparkId,sparkData),200+delay);
+    }
+  }
+
+  function addChart(k,spanClass,delay){
+    const {r,i,d,cols,numCols}=k;
+    const col=colCycle[cardIdx%colCycle.length];
+    const xCol=cols[0];
+    const yCol=numCols[0]||cols[1];
+    if(!yCol)return;
+
+    const plot=r.plot||inferPlot(d,xCol,yCol,queries[i]||'');
+    const cid='dbc-'+i+'-'+Date.now();
+    const title=shortLabel(queries[i]||plot.title||yCol);
+    const initialType=plot.type||'bar';
+
+    const card=document.createElement('div');
+    card.className=`dbc dbc-chart ${col} ${spanClass}`;
+    card.style.animationDelay=delay+'ms';
+    card.innerHTML=`
+      <div class="dbc-ch">
+        <div class="dbc-ch-title">${title}</div>
+        <div class="dbc-ch-meta">
+          <div class="dbc-ch-switcher">
+            <button class="cts-btn ${initialType==='bar'?'active':''}" onclick="switchChartType('${cid}','bar',this)">BAR</button>
+            <button class="cts-btn ${initialType==='line'?'active':''}" onclick="switchChartType('${cid}','line',this)">LINE</button>
+            <button class="cts-btn ${initialType==='pie'?'active':''}" onclick="switchChartType('${cid}','pie',this)">PIE</button>
+          </div>
+          <button class="dbc-ch-dl" onclick="dlDbChart('${cid}','${title.replace(/'/g,'')}')">↓</button>
+        </div>
+      </div>
+      <div class="dbc-canvas"><canvas id="${cid}"></canvas></div>`;
+    grid.appendChild(card);
+    cardIdx++;
+
+    const pal=['#4ade80','#38bdf8','#fbbf24','#f87171','#a78bfa','#fb923c'];
+    const labels=plot.x||d.map(row=>String(row[xCol]));
+    const values=plot.y||d.map(row=>Number(row[yCol])||0);
+
+    dbChartData[cid]={labels,values,yLabel:plot.y_label||yCol};
+
+    setTimeout(()=>{
+      buildChart(cid, initialType, labels, values, plot.y_label||yCol);
+    },180+delay);
+  }
+
+  let delay=0;
+
+  if(charts.length>=1){
+    const firstSpan=(kpis.length>0||charts.length>1)?'span2':'span3';
+    addChart(charts[0],firstSpan,delay); delay+=80;
+
+    const kpisBeside=kpiQueue.splice(0,Math.min(3,kpiQueue.length));
+    kpisBeside.forEach(k=>{addKPI(k,delay);delay+=60;});
+
+    charts.slice(1).forEach((k,idx)=>{
+      addChart(k,'',delay); delay+=80;
+      if(kpiQueue.length&&(idx+1)%2===0){
+        addKPI(kpiQueue.shift(),delay); delay+=60;
+      }
+    });
+
+    kpiQueue.forEach(k=>{addKPI(k,delay);delay+=60;});
+
+  } else {
+    kpis.forEach(k=>{addKPI(k,delay);delay+=60;});
+  }
+
+  const insightLines = results
+    .filter(r=>r.success&&r.explanation)
+    .map(r=>{
+      const clean = r.explanation
+        .replace(/Top Insights?:[\s\S]*/i,'')
+        .replace(/•[^\n]*/g,'')
+        .split(/\n/)
+        .map(s=>s.trim())
+        .filter(s=>s.length>10)
+        .join(' ')
+        .trim();
+      return clean || r.explanation.split('\n')[0].trim();
+    })
+    .filter(Boolean);
+
+  if(insightLines.length){
+    const ins=document.createElement('div');
+    ins.className='dbc dbc-insight';
+    ins.style.animationDelay=delay+'ms';
+    ins.innerHTML=`<div class="is-lbl">◈ KEY INSIGHTS</div><div class="is-body">${
+      insightLines.map(l=>`<div class="is-line">→ ${l}</div>`).join('')
+    }</div>`;
+    grid.appendChild(ins);
+  }
+
+  document.getElementById('dashBoard').style.display='block';
+  dashBuilt=true;
+  showNotif('success','✓ Dashboard — '+charts.length+' charts, '+kpis.length+' KPIs');
+}
+
+function inferPlot(data,xCol,yCol,question){
+  const q=(question||'').toLowerCase();
+  const isTime=/month|week|day|date|year|quarter/i.test(xCol);
+  let type='bar';
+  if(isTime)type='line';
+  if(/pie|share|portion|breakdown|distribution/i.test(q))type='pie';
+  if(/trend|over time|timeline/i.test(q))type='line';
+  if(/bar/i.test(q))type='bar';
+  return {
+    type,
+    x:data.map(r=>String(r[xCol])),
+    y:data.map(r=>Number(r[yCol])||0),
+    title:yCol, x_label:xCol, y_label:yCol
+  };
+}
+
+async function parseDashboardPrompt(prompt){
+  const parts = prompt
+    .split(/,|;|\band\b|\bwith\b|\bplus\b/i)
+    .map(s => s.trim())
+    .filter(s => s.length > 5);
+
+  if(parts.length >= 2) return parts.slice(0, 5);
+  return [prompt];
+}
+
+function findSparkData(question,results){
+  const q=(question||'').toLowerCase();
+  for(const r of results){
+    if(!r.success||!r.data||r.data.length<3)continue;
+    const cols=Object.keys(r.data[0]);
+    const numCol=cols.find(c=>typeof r.data[0][c]==='number');
+    if(numCol) return r.data.map(row=>Number(row[numCol])||0);
+  }
+  return null;
+}
+
+function makeSparkline(id,values){
+  const cv=document.getElementById(id);
+  if(!cv)return;
+  dbChartInstances[id]=new Chart(cv.getContext('2d'),{
+    type:'line',
+    data:{labels:values.map((_,i)=>i),datasets:[{
+      data:values,borderColor:'#4ade80',borderWidth:1.5,
+      backgroundColor:'rgba(74,222,128,0.08)',fill:true,
+      tension:0.4,pointRadius:0
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{display:false},y:{display:false}}
+    }
+  });
+}
+
+function shortLabel(s){
+  s=String(s);
+  s=s.replace(/^(show|give me|display|list|what is|what are)\s+/i,'');
+  return s.length>52?s.substring(0,49)+'…':s;
+}
+
+function fmtKPI(v){
+  if(typeof v!=='number')return v;
+  if(v>=1e9)return(v/1e9).toFixed(2)+'B';
+  if(v>=1e6)return(v/1e6).toFixed(2)+'M';
+  if(v>=1e3)return(v/1e3).toFixed(1)+'K';
+  if(v===Math.floor(v))return v.toLocaleString();
+  return v.toFixed(2);
+}
+
+/* ── SHARED CHART BUILDER ────────────── */
+function buildChart(cid, type, labels, values, yLabel){
+  const cv=document.getElementById(cid);
+  if(!cv)return;
+  if(dbChartInstances[cid]){try{dbChartInstances[cid].destroy();}catch(e){}}
+  const pal=['#4ade80','#38bdf8','#fbbf24','#f87171','#a78bfa','#fb923c'];
+  const isPie=type==='pie'||type==='doughnut';
+  dbChartInstances[cid]=new Chart(cv.getContext('2d'),{
+    type,
+    data:{labels,datasets:[{
+      label:yLabel,data:values,
+      backgroundColor:isPie
+        ?pal.slice(0,labels.length).map(c=>c+'cc')
+        :(type==='line'?'rgba(74,222,128,0.08)':'rgba(74,222,128,0.18)'),
+      borderColor:isPie?pal.slice(0,labels.length):'#4ade80',
+      borderWidth:isPie?2:1.5,tension:0.4,fill:type==='line',
+      pointRadius:type==='line'?3:0,pointHoverRadius:5,
+      pointBackgroundColor:'#4ade80'
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:isPie,position:'bottom',labels:{color:'#6b7291',font:{family:"'IBM Plex Mono'",size:10},padding:12}},
+        tooltip:{backgroundColor:'#0c0d14',borderColor:'#252840',borderWidth:1,
+          titleColor:'#4ade80',bodyColor:'#d4d8f0',
+          titleFont:{family:"'IBM Plex Mono'",size:11},bodyFont:{family:"'IBM Plex Mono'",size:11},
+          padding:10}
+      },
+      scales:isPie?{}:{
+        x:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:10},maxRotation:0},
+           grid:{color:'rgba(28,31,46,0.8)'},border:{color:'#1c1f2e'}},
+        y:{ticks:{color:'#4a5066',font:{family:"'IBM Plex Mono'",size:10},callback:v=>fmtN(v)},
+           grid:{color:'rgba(28,31,46,0.8)'},border:{color:'#1c1f2e'},beginAtZero:true}
+      }
+    }
+  });
+}
+
+function switchChartType(cid, type, btn){
+  const data=dbChartData[cid];
+  if(!data)return;
+  const switcher=btn.closest('.dbc-ch-switcher');
+  if(switcher) switcher.querySelectorAll('.cts-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  buildChart(cid, type, data.labels, data.values, data.yLabel);
+}
+
+/* ── DOWNLOAD FULL DASHBOARD PNG ─────── */
+async function downloadFullDashboard(){
+  const btn=document.getElementById('dlFullBtn');
+  btn.textContent='⏳ CAPTURING…';
+  btn.disabled=true;
+
+  try{
+    const dashBoard=document.getElementById('dashBoard');
+    const dashArea=document.getElementById('dashArea');
+
+    const prevOverflow=dashArea.style.overflow;
+    const prevMaxH=dashArea.style.maxHeight;
+    dashArea.style.overflow='visible';
+    dashArea.style.maxHeight='none';
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+
+    const baseCanvas=await html2canvas(dashBoard,{
+      backgroundColor:'#07080d',
+      scale:2,
+      useCORS:true,
+      logging:false,
+      ignoreElements:(el)=>el.tagName==='CANVAS'
+    });
+
+    const scale=2;
+    const finalCanvas=document.createElement('canvas');
+    finalCanvas.width=baseCanvas.width;
+    finalCanvas.height=baseCanvas.height;
+    const ctx=finalCanvas.getContext('2d');
+    ctx.drawImage(baseCanvas,0,0);
+
+    const boardRect=dashBoard.getBoundingClientRect();
+    const allCanvases=dashBoard.querySelectorAll('canvas');
+    allCanvases.forEach(cv=>{
+      if(!cv.width||!cv.height)return;
+      const r=cv.getBoundingClientRect();
+      const x=(r.left-boardRect.left)*scale;
+      const y=(r.top-boardRect.top)*scale;
+      const w=r.width*scale;
+      const h=r.height*scale;
+      try{ ctx.drawImage(cv,x,y,w,h); }catch(e){}
+    });
+
+    dashArea.style.overflow=prevOverflow;
+    dashArea.style.maxHeight=prevMaxH;
+
+    const a=document.createElement('a');
+    const ts=new Date().toISOString().slice(0,16).replace(/[T:]/g,'-');
+    a.download='analyst-dashboard-'+ts+'.png';
+    a.href=finalCanvas.toDataURL('image/png',1.0);
+    a.click();
+    showNotif('success','✓ Full dashboard exported');
+  }catch(err){
+    showNotif('error','✗ Export failed: '+err.message);
+    console.error(err);
+  }finally{
+    btn.textContent='⬇ DOWNLOAD PNG';
+    btn.disabled=false;
+  }
+}
+
+function dlDbChart(cid,title){
+  const cv=document.getElementById(cid);
+  if(!cv)return;
+  const a=document.createElement('a');
+  a.download=(title||'chart').replace(/[^a-z0-9]/gi,'_')+'.png';
+  a.href=cv.toDataURL('image/png');a.click();
+  showNotif('success','↓ Chart exported');
+}
+
+/* ── METRICS POLLING ─────────────────── */
+async function refreshMetrics(){
+  if(!currentConversationId)return;
+  try{
+    const res=await fetch('/api/metrics');
+    if(!res.ok)return;
+    const m=await res.json();
+    if(typeof m.total_vectors==='number')
+      document.getElementById('sessionDocs').textContent=m.total_vectors;
+    if(typeof m.total_sessions==='number')
+      document.getElementById('totalChats').textContent=m.total_sessions;
+  }catch(e){}
+}
+setInterval(refreshMetrics,15000);
+
+/* ── KEYBOARD ────────────────────────── */
+document.getElementById('messageInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.ctrlKey){e.preventDefault();sendMessage();}
+});
+document.getElementById('dashPromptInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();generateDashboard();}
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="title"/><w:jc w:val="left"/></w:pPr><w:r><w:t>FUZZY LAB - 1</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val="heading"/><w:jc w:val="left"/></w:pPr><w:r><w:t>Matrix and Vector Operations</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val="text"/><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>Name:</w:t></w:r><w:r><w:t> Shaurya Jain</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val="text"/><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>Enrollment no:</w:t></w:r><w:r><w:rPr/><w:t>  06119051623</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val="text"/><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>Batch:</w:t></w:r><w:r><w:t> AIML-B1</w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 1. Matrix and Vector Construction
+
+m = 3;
+n = 4;
+
+A = ones(m,n)
+v = ones(n,1)]]></w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 2. Random Matrices
+
+A_uniform = rand(m,n)
+
+A_normal = randn(m,n)
+
+A_int = randi([1 100],m,n)]]></w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 3. Sum of Rows, Columns and Total
+
+A = randi([1 10],m,n)
+
+row_sum = sum(A,2)
+
+col_sum = sum(A,1)
+
+total_sum = sum(A(:))]]></w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 4. Mean and Median
+
+v = randi([1 20],10,1)
+
+mean(v)
+
+median(v)]]></w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 4. Mean and Median
+
+v = randi([1 20],10,1)
+
+mean(v)
+
+median(v)]]></w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 5. Size of Matrix and Vector
+
+size(A)
+
+size(v)]]></w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 6. Logical Indexing
+
+A = randi([1 20],3,3)
+
+A(A>10)
+
+A(A<10)]]></w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 7. Inverse of Matrix
+
+B = randi([1 5],3,3)
+
+if det(B) ~= 0
+    inv(B)
+else
+    disp('Matrix is singular')
+end]]></w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 8. Special Matrices
+
+diag([1 2 3 4])
+
+eye(4)
+
+zeros(3,4)]]></w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 9. Matrix Multiplication
+
+A1 = randi([1 5],3,2)
+
+B1 = randi([1 5],2,4)
+
+A1 * B1]]></w:t></w:r></w:p><w:p><w:pPr><w:sectPr/></w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 10. Sorting
+
+A = randi([1 20],3,3)
+
+sort(A)
+
+sort(A(:))]]></w:t></w:r></w:p></w:body></w:document>

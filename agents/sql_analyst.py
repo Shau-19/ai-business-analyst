@@ -194,6 +194,7 @@ STRICT ANTI-HALLUCINATION RULES:
 10. NEVER infer or guess from unrelated columns. The provided Data contains the exact answer.
 11. For correlation results (age groups, performance bands) →
     lead with the trend, then list the buckets as bullets, end with a one-line conclusion.
+12. NEVER output ASCII text charts, asterisks (*), progress bars, or pseudo-graphs in your text. A real graphical chart canvas is rendered by the user interface.
  
 --- FEW-SHOT EXAMPLES ---
  
