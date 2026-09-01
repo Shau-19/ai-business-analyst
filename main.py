@@ -146,8 +146,6 @@ async def root(): return {"service":"AI Business Analyst","version":"3.3.1"}
 
 @app.get("/ui")
 async def serve_ui():
-    if Path("frontend/dist/index.html").exists():
-        return FileResponse("frontend/dist/index.html")
     return FileResponse("static/index.html")
 
 @app.post("/conversations")
