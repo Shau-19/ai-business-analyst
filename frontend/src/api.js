@@ -90,8 +90,9 @@ export const api = {
     return res.data;
   },
 
-  // SSE Stream helper
-  streamQuery: async (conversationId, question, valueCol, { onMeta, onToken, onDone, onError }) => {
+  // SSE Stream helper. Pass `signal` (from an AbortController) so callers can
+  // cancel an in-flight stream, e.g. when the user switches sessions.
+  streamQuery: async (conversationId, question, valueCol, { onMeta, onToken, onDone, onError, signal }) => {
     try {
       const response = await fetch(`${API_BASE}/query/stream`, {
         method: 'POST',
@@ -104,6 +105,7 @@ export const api = {
           conversation_id: conversationId,
           value_col: valueCol,
         }),
+        signal,
       });
 
       if (!response.ok) throw new Error(`Stream error: ${response.statusText}`);
@@ -143,6 +145,7 @@ export const api = {
         }
       }
     } catch (err) {
+      if (err.name === 'AbortError') return;
       if (onError) onError(err);
     }
   },

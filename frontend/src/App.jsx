@@ -1,12 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ChatView from './components/ChatView';
 import DashboardView from './components/DashboardView';
 import ForecastView from './components/ForecastView';
+import LaunchScreen from './components/LaunchScreen';
 import { api } from './api';
 
 export default function App() {
+  const [showLaunch, setShowLaunch] = useState(
+    () => !localStorage.getItem('analyst_launched')
+  );
+
   const [userId] = useState(() => {
     const saved = localStorage.getItem('analyst_user_id');
     if (saved) return saved;
@@ -23,6 +28,20 @@ export default function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [isQueryLoading, setIsQueryLoading] = useState(false);
 
+  // Always holds the current activeSessionId so async callbacks (stream
+  // events, late-arriving fetches) can tell whether they're still relevant
+  // by the time they resolve, instead of blindly writing into state that
+  // now belongs to a different session.
+  const activeSessionRef = useRef(activeSessionId);
+  useEffect(() => {
+    activeSessionRef.current = activeSessionId;
+  }, [activeSessionId]);
+
+  // Aborts the in-flight /query/stream request, if any, when the session
+  // changes or the component unmounts — prevents a stream started under
+  // session A from continuing to append tokens after the user switches to B.
+  const streamAbortRef = useRef(null);
+
   // Load conversations list on mount
   useEffect(() => {
     loadSessions();
@@ -30,12 +49,23 @@ export default function App() {
 
   // Load session data when active session changes
   useEffect(() => {
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    setIsQueryLoading(false);
+
     if (!activeSessionId) {
       setMessages([]);
       setDocuments([]);
       return;
     }
+    setMessages([]);
+    setDocuments([]);
     loadSessionDetails(activeSessionId);
+
+    return () => {
+      streamAbortRef.current?.abort();
+      streamAbortRef.current = null;
+    };
   }, [activeSessionId]);
 
   const loadSessions = async () => {
@@ -55,10 +85,15 @@ export default function App() {
   const loadSessionDetails = async (sessionId) => {
     try {
       const res = await api.getConversation(sessionId);
+      // Ignore this response if the user has since switched to another
+      // session — otherwise a slow fetch for the old session can overwrite
+      // the new session's just-loaded (or empty) state.
+      if (activeSessionRef.current !== sessionId) return;
       if (res.success && res.conversation) {
         setMessages(res.conversation.messages || []);
       }
       const docsRes = await api.getDocuments(sessionId);
+      if (activeSessionRef.current !== sessionId) return;
       if (docsRes.success) {
         setDocuments(docsRes.documents || []);
       }
@@ -71,6 +106,10 @@ export default function App() {
     try {
       const res = await api.createConversation(userId, 'New Session');
       if (res.success) {
+        streamAbortRef.current?.abort();
+        streamAbortRef.current = null;
+        setMessages([]);
+        setDocuments([]);
         setActiveSessionId(res.conversation_id);
         await loadSessions();
       }
@@ -120,6 +159,12 @@ export default function App() {
 
   const handleSendMessage = async (text) => {
     if (!activeSessionId) return;
+    const sessionForThisRequest = activeSessionId;
+
+    // Bail out of a state update if the user has switched away from
+    // `sessionForThisRequest` since this request started — keeps stream
+    // tokens/meta/errors from session A out of session B's message list.
+    const isStale = () => activeSessionRef.current !== sessionForThisRequest;
 
     // Optimistically add user message
     const userMsg = { role: 'user', content: text, timestamp: new Date().toISOString() };
@@ -135,8 +180,13 @@ export default function App() {
 
     setMessages((prev) => [...prev, assistantMsg]);
 
+    const controller = new AbortController();
+    streamAbortRef.current = controller;
+
     await api.streamQuery(activeSessionId, text, null, {
+      signal: controller.signal,
       onMeta: (meta) => {
+        if (isStale()) return;
         setMessages((prev) => {
           const updated = [...prev];
           const last = { ...updated[updated.length - 1] };
@@ -147,6 +197,7 @@ export default function App() {
         });
       },
       onToken: (chunk) => {
+        if (isStale()) return;
         setMessages((prev) => {
           const updated = [...prev];
           const last = { ...updated[updated.length - 1] };
@@ -156,10 +207,14 @@ export default function App() {
         });
       },
       onDone: () => {
+        if (streamAbortRef.current === controller) streamAbortRef.current = null;
+        if (isStale()) return;
         setIsQueryLoading(false);
         loadSessions();
       },
       onError: (err) => {
+        if (streamAbortRef.current === controller) streamAbortRef.current = null;
+        if (isStale()) return;
         setIsQueryLoading(false);
         setMessages((prev) => {
           const updated = [...prev];
@@ -174,8 +229,10 @@ export default function App() {
 
   const handlePinChart = async (plotSpec) => {
     if (!activeSessionId) return;
+    const sessionForThisPin = activeSessionId;
     try {
-      const res = await api.getDashboard(activeSessionId);
+      const res = await api.getDashboard(sessionForThisPin);
+      if (activeSessionRef.current !== sessionForThisPin) return;
       let state = res.state || { dashboards: {}, activeId: null, built: true };
       if (!state.dashboards) state.dashboards = {};
 
@@ -198,15 +255,28 @@ export default function App() {
       state.activeId = targetId;
       state.built = true;
 
-      await api.saveDashboard(activeSessionId, state);
-      setActiveTab('dashboard');
+      await api.saveDashboard(sessionForThisPin, state);
+      if (activeSessionRef.current === sessionForThisPin) setActiveTab('dashboard');
     } catch (e) {
       console.error('Failed to pin chart', e);
     }
   };
 
+  if (showLaunch) {
+    return (
+      <LaunchScreen
+        onStart={() => {
+          localStorage.setItem('analyst_launched', '1');
+          setShowLaunch(false);
+        }}
+      />
+    );
+  }
+
+  const activeConversation = conversations.find((c) => c.conversation_id === activeSessionId);
+
   return (
-    <div className="flex h-screen w-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
       {/* Sidebar */}
       <Sidebar
         conversations={conversations}
@@ -214,7 +284,6 @@ export default function App() {
         onSelectSession={setActiveSessionId}
         onNewSession={handleNewSession}
         onFileUpload={handleFileUpload}
-        documents={documents}
         isUploading={isUploading}
       />
 
@@ -224,6 +293,7 @@ export default function App() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           activeSessionId={activeSessionId}
+          sessionTitle={activeConversation?.title}
           documentsCount={documents.length}
         />
 

@@ -1,63 +1,63 @@
 import React from 'react';
-import { MessageSquare, LayoutDashboard, LineChart, Database, Sparkles } from 'lucide-react';
+import { MessageSquare, LayoutGrid, LineChart, FileStack } from 'lucide-react';
 
-export default function Header({ activeTab, onTabChange, activeSessionId, documentsCount }) {
-  const shortSession = activeSessionId ? `${activeSessionId.substring(0, 8)}...` : 'NO SESSION';
+const TABS = [
+  { id: 'chat', label: 'Chat', icon: MessageSquare },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
+  { id: 'forecast', label: 'Forecast', icon: LineChart },
+];
 
+export default function Header({
+  activeTab,
+  onTabChange,
+  activeSessionId,
+  sessionTitle,
+  documentsCount,
+}) {
   return (
-    <header className="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0">
-      {/* Scope Navigation Tabs */}
-      <div className="flex items-center gap-1">
-        <button
-          onClick={() => onTabChange('chat')}
-          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-            activeTab === 'chat'
-              ? 'bg-slate-800 text-emerald-400 border border-emerald-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-          }`}
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span>CHAT</span>
-        </button>
+    <header
+      className="h-14 flex items-center px-5 gap-1 border-b shrink-0"
+      style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+    >
+      {activeSessionId ? (
+        <>
+          <div className="flex items-center gap-2 pr-4 mr-1 border-r shrink-0 max-w-[220px]" style={{ borderColor: 'var(--border)' }}>
+            <span className="text-[13.5px] font-medium text-[var(--text)] truncate">
+              {sessionTitle || 'New Session'}
+            </span>
+            {documentsCount > 0 && (
+              <span className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] shrink-0">
+                <FileStack className="w-3 h-3" />
+                {documentsCount}
+              </span>
+            )}
+          </div>
 
-        <button
-          onClick={() => onTabChange('dashboard')}
-          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-            activeTab === 'dashboard'
-              ? 'bg-slate-800 text-cyan-400 border border-cyan-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-          }`}
-        >
-          <LayoutDashboard className="w-3.5 h-3.5" />
-          <span>DASHBOARD SUITE</span>
-          <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">MULTI</span>
-        </button>
-
-        <button
-          onClick={() => onTabChange('forecast')}
-          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-            activeTab === 'forecast'
-              ? 'bg-slate-800 text-purple-400 border border-purple-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-          }`}
-        >
-          <LineChart className="w-3.5 h-3.5" />
-          <span>FORECAST STUDIO</span>
-        </button>
-      </div>
-
-      {/* Session Metadata & Badges */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-3 py-1 bg-slate-950/60 border border-slate-800 rounded-md font-mono text-xs text-slate-400">
-          <span className="text-[10px] text-slate-500">SESSION:</span>
-          <span className="text-emerald-400 font-semibold">{shortSession}</span>
-        </div>
-
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-950/60 border border-slate-800 rounded-md font-mono text-xs text-slate-400">
-          <Database className="w-3.5 h-3.5 text-cyan-400" />
-          <span>{documentsCount} Docs</span>
-        </div>
-      </div>
+          <nav className="flex items-center gap-1">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors cursor-pointer"
+                  style={{
+                    background: isActive ? 'var(--accent-soft)' : 'transparent',
+                    color: isActive ? 'var(--accent-text)' : 'var(--text-secondary)',
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--bg-subtle)'; }}
+                  onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <tab.icon className="w-[15px] h-[15px]" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </>
+      ) : (
+        <span className="text-[13.5px] text-[var(--text-muted)]">Select or create a session to begin</span>
+      )}
     </header>
   );
 }
