@@ -224,6 +224,17 @@
 
     /* ─── DASHBOARD ──────────────────────── */
     #dashPanel{background:var(--bg);display:flex;flex-direction:column;overflow:hidden;}
+    #dashTabStrip{display:flex;align-items:center;gap:4px;background:var(--surface);border-bottom:1px solid var(--border);padding:7px 14px;flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+    #dashTabStrip::-webkit-scrollbar{display:none;}
+    .db-tab{display:inline-flex;align-items:center;gap:7px;background:transparent;border:1px solid transparent;border-radius:3px;padding:6px 11px;font-family:var(--fm);font-size:.68rem;color:var(--muted2);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;}
+    .db-tab:hover{background:var(--surface2);color:var(--text-dim);}
+    .db-tab.active{background:var(--surface2);border-color:var(--border2);color:var(--blue);}
+    .db-tab-count{font-size:.6rem;opacity:.6;}
+    .db-tab-x{opacity:0;color:var(--muted);transition:opacity .15s,color .15s;padding:1px;border-radius:2px;}
+    .db-tab:hover .db-tab-x{opacity:1;}
+    .db-tab-x:hover{color:var(--red);}
+    .db-tab-new{display:inline-flex;align-items:center;gap:5px;background:transparent;border:1px dashed var(--border2);border-radius:3px;padding:6px 11px;font-family:var(--fm);font-size:.68rem;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;}
+    .db-tab-new:hover{border-color:var(--blue);color:var(--blue);}
     #dashPromptBar{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 18px;flex-shrink:0;}
     .db-prompt-row{display:flex;gap:9px;align-items:center;}
     #dashPromptInput{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:var(--fm);font-size:.8rem;padding:9px 13px;outline:none;transition:border .15s;}
@@ -498,6 +509,7 @@
     <!-- ── DASHBOARD PANEL ──────────────────────── -->
     <div class="tab-panel" id="panelDash">
       <div id="dashPanel">
+        <div id="dashTabStrip"></div>
         <div id="dashPromptBar">
           <div class="db-prompt-row">
             <input id="dashPromptInput" type="text" placeholder="e.g. &quot;show revenue trend, top products by sales, and monthly churn rate&quot;"/>
@@ -796,16 +808,30 @@ async function loadConversation(id){
       });
       loadConversations();updateSessionStats();updateSessionBadge();
       populateForecastColumns();
+
+      // Dashboard state must be reset/rendered unconditionally here, not only
+      // when panelDash happens to be the active tab — otherwise switching
+      // sessions while on the Chat tab leaves the previous session's charts
+      // (or empty state) stuck in the DOM, and switching to Dashboard later
+      // shows stale content until something else happens to re-render it.
       const state=_ds(id);
-      if(!state.built){
+      if(Object.keys(state.dashboards).length){
+        renderFromPanels(id);
+      } else {
+        document.getElementById('dashTabStrip').innerHTML='';
+        document.getElementById('dashBoard').style.display='none';
+        document.getElementById('dashEmpty').style.display='flex';
         loadDashboardFromServer(id).then(loaded=>{
-          if(!loaded&&document.getElementById('panelDash').classList.contains('active')){
+          // Ignore this response if the user has since switched to a
+          // different session — otherwise a slow fetch for the old
+          // session can render its dashboard on top of the new one.
+          if(currentConversationId!==id) return;
+          if(!loaded){
+            document.getElementById('dashTabStrip').innerHTML='';
             document.getElementById('dashBoard').style.display='none';
             document.getElementById('dashEmpty').style.display='flex';
           }
         });
-      } else if(document.getElementById('panelDash').classList.contains('active')){
-        renderFromPanels(id,state.panels,state.title||'DASHBOARD');
       }
     }
   } catch(e){console.error(e);}
@@ -1043,16 +1069,22 @@ function renderChart(pd,mid){
 
 function pinToDashboard(pd){
   if(!currentConversationId){showNotif('error','⚠ Start a session first');return;}
-  let state = _ds(currentConversationId);
-  if(!state.panels) state.panels = [];
-  state.built = true;
-  state.title = 'SESSION DASHBOARD';
-  state.panels.push({ title: pd.title || 'PINNED CHART', plot: pd });
-  saveDashboardToServer(currentConversationId, state);
+  const cid = currentConversationId;
+  const state = _ds(cid);
+  let dash = _activeDash(cid);
+  if(!dash){
+    // No dashboard exists yet in this session — create the first one to
+    // pin into, rather than failing or silently discarding the chart.
+    const id = createDashboard(cid, 'Session Dashboard');
+    dash = state.dashboards[id];
+  }
+  dash.panels.push({ title: pd.title || 'PINNED CHART', plot: pd });
+  saveDashboardToServer(cid);
 
   switchTab('dash');
-  renderSavedDashboard(state);
-  showNotif('success','📌 Chart pinned to session Dashboard!');
+  renderDashboardTabStrip(cid);
+  renderActiveDashboard(cid);
+  showNotif('success', `📌 Chart pinned to "${dash.title}"!`);
 }
 function makeChart(cv,pd,cid){
   const ctx=cv.getContext('2d');
@@ -1213,8 +1245,12 @@ function switchTab(tab){
     document.getElementById('panelDash').classList.add('active');
     if (currentConversationId) {
       const state = _ds(currentConversationId);
-      if (state.built) renderSavedDashboard(state);
-      else loadDashboardFromServer(currentConversationId);
+      if (Object.keys(state.dashboards).length) {
+        renderDashboardTabStrip(currentConversationId);
+        renderActiveDashboard(currentConversationId);
+      } else {
+        loadDashboardFromServer(currentConversationId);
+      }
     }
   } else if(tab==='forecast'){
     document.getElementById('tabForecast').classList.add('active');
@@ -1223,11 +1259,40 @@ function switchTab(tab){
   }
 }
 
-/* ── DASHBOARD PERSISTENCE ───────────── */
-let sessionDashboards = {}; // cid -> { built, prompt, panels, title }
+/* ── DASHBOARD PERSISTENCE ─────────────
+   One session can hold multiple named dashboards, switched via the tab
+   strip above the prompt bar. Shape kept compatible with the earlier
+   single-dashboard format ({built, title, panels}) — _normalizeDashState
+   upgrades any old-shape state read from the server into the new
+   multi-dashboard shape on first load, so existing saved data still works.
+
+   sessionDashboards[cid] = {
+     dashboards: { [dashId]: { id, title, panels: [{title, plot}] } },
+     activeId: dashId | null
+   }
+*/
+let sessionDashboards = {}; // cid -> { dashboards, activeId }
+
+function _newDashId(){ return 'dash_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+function _normalizeDashState(raw){
+  if (raw && raw.dashboards) return raw; // already multi-dashboard shape
+  if (raw && raw.built && raw.panels && raw.panels.length){
+    // Upgrade legacy single-dashboard shape into one named dashboard.
+    const id = _newDashId();
+    return { dashboards: { [id]: { id, title: raw.title || 'DASHBOARD', panels: raw.panels } }, activeId: id };
+  }
+  return { dashboards: {}, activeId: null };
+}
 
 function _ds(cid){
-  return sessionDashboards[cid] || { built: false, panels: [] };
+  if (!sessionDashboards[cid]) sessionDashboards[cid] = { dashboards: {}, activeId: null };
+  return sessionDashboards[cid];
+}
+
+function _activeDash(cid){
+  const s = _ds(cid);
+  return s.activeId ? s.dashboards[s.activeId] : null;
 }
 
 async function loadDashboardFromServer(cid){
@@ -1235,20 +1300,28 @@ async function loadDashboardFromServer(cid){
   try {
     const res = await fetch('/conversations/' + cid + '/dashboard');
     const r = await res.json();
-    if (r.success && r.state && r.state.built) {
-      sessionDashboards[cid] = r.state;
-      if (document.getElementById('panelDash').classList.contains('active')) {
-        renderSavedDashboard(r.state);
+    // Ignore a response for a session the user has since navigated away
+    // from — prevents a slow fetch for a stale cid from caching/rendering
+    // over whatever session is actually active now.
+    if (currentConversationId !== cid) return false;
+    if (r.success && r.state){
+      const normalized = _normalizeDashState(r.state);
+      if (Object.keys(normalized.dashboards).length){
+        sessionDashboards[cid] = normalized;
+        if (document.getElementById('panelDash').classList.contains('active')) {
+          renderDashboardTabStrip(cid);
+          renderActiveDashboard(cid);
+        }
+        return true;
       }
-      return true;
     }
   } catch(e) { console.error('Dashboard load error:', e); }
   return false;
 }
 
-async function saveDashboardToServer(cid, state){
+async function saveDashboardToServer(cid){
   if (!cid) return;
-  sessionDashboards[cid] = state;
+  const state = _ds(cid);
   try {
     await fetch('/conversations/' + cid + '/dashboard', {
       method: 'POST',
@@ -1258,53 +1331,118 @@ async function saveDashboardToServer(cid, state){
   } catch(e) { console.error('Dashboard save error:', e); }
 }
 
-function renderFromPanels(cid, panels, title){
-  renderSavedDashboard({ built: true, panels: panels || [], title: title || 'DASHBOARD' });
+function renderFromPanels(cid){
+  renderDashboardTabStrip(cid);
+  renderActiveDashboard(cid);
 }
 
-function renderSavedDashboard(state){
-  if (!state || !state.panels || !state.panels.length) {
+/* Tab strip: one pill per dashboard in this session, plus a "+ NEW" pill. */
+function renderDashboardTabStrip(cid){
+  const strip = document.getElementById('dashTabStrip');
+  strip.innerHTML = '';
+  const state = _ds(cid);
+  const ids = Object.keys(state.dashboards);
+
+  ids.forEach(id => {
+    const d = state.dashboards[id];
+    const tab = document.createElement('button');
+    tab.className = 'db-tab' + (id === state.activeId ? ' active' : '');
+    tab.innerHTML = `<span>${escapeHtml(d.title || 'Dashboard')}</span><span class="db-tab-count">${(d.panels||[]).length}</span><span class="db-tab-x" title="Delete dashboard">✕</span>`;
+    tab.onclick = (e) => {
+      if (e.target.classList.contains('db-tab-x')) { e.stopPropagation(); deleteDashboard(cid, id); return; }
+      switchActiveDashboard(cid, id);
+    };
+    strip.appendChild(tab);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'db-tab-new';
+  addBtn.innerHTML = '+ NEW DASHBOARD';
+  addBtn.onclick = () => createDashboard(cid);
+  strip.appendChild(addBtn);
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML;
+}
+
+function createDashboard(cid, initialTitle){
+  const state = _ds(cid);
+  const id = _newDashId();
+  const title = (initialTitle && initialTitle.trim()) || `Dashboard ${Object.keys(state.dashboards).length + 1}`;
+  state.dashboards[id] = { id, title, panels: [] };
+  state.activeId = id;
+  saveDashboardToServer(cid);
+  renderDashboardTabStrip(cid);
+  renderActiveDashboard(cid);
+  return id;
+}
+
+function switchActiveDashboard(cid, id){
+  const state = _ds(cid);
+  if (!state.dashboards[id]) return;
+  state.activeId = id;
+  saveDashboardToServer(cid);
+  renderDashboardTabStrip(cid);
+  renderActiveDashboard(cid);
+}
+
+function deleteDashboard(cid, id){
+  const state = _ds(cid);
+  delete state.dashboards[id];
+  const remaining = Object.keys(state.dashboards);
+  state.activeId = remaining.length ? remaining[0] : null;
+  saveDashboardToServer(cid);
+  renderDashboardTabStrip(cid);
+  renderActiveDashboard(cid);
+}
+
+/* Renders whichever dashboard is currently active within this session. */
+function renderActiveDashboard(cid){
+  const dash = _activeDash(cid);
+  if (!dash || !dash.panels || !dash.panels.length) {
     document.getElementById('dashBoard').style.display = 'none';
     document.getElementById('dashEmpty').style.display = 'flex';
     return;
   }
   document.getElementById('dashEmpty').style.display = 'none';
   document.getElementById('dashBoard').style.display = 'block';
-  document.getElementById('dbTitle').textContent = state.title || 'DASHBOARD';
+  document.getElementById('dbTitle').textContent = dash.title || 'DASHBOARD';
+  document.getElementById('dbSubtitle').textContent = dash.panels.length + (dash.panels.length===1?' chart':' charts');
   const grid = document.getElementById('dbGrid');
   grid.innerHTML = '';
   Object.values(dbChartInstances).forEach(c => { try { c.destroy(); } catch(e){} });
   dbChartInstances = {};
 
-  state.panels.forEach((p, idx) => {
+  dash.panels.forEach((p, idx) => {
     const card = document.createElement('div');
     card.className = `dbc dbc-chart span2`;
-    const cid = 'saved-db-' + idx + '-' + Date.now();
+    const cvid = 'saved-db-' + idx + '-' + Date.now();
     card.innerHTML = `
       <div class="dbc-ch">
-        <div class="dbc-ch-title">${p.title || 'PINNED CHART'}</div>
+        <div class="dbc-ch-title">${escapeHtml(p.title || 'PINNED CHART')}</div>
         <div class="dbc-ch-meta">
           <button class="dbc-ch-dl" onclick="removeDashboardPanel(${idx})">✕ REMOVE</button>
         </div>
       </div>
-      <div class="dbc-canvas"><canvas id="${cid}"></canvas></div>
+      <div class="dbc-canvas"><canvas id="${cvid}"></canvas></div>
     `;
     grid.appendChild(card);
     setTimeout(() => {
-      const cv = document.getElementById(cid);
-      if (cv && p.plot) makeChart(cv, p.plot, cid);
+      const cv = document.getElementById(cvid);
+      if (cv && p.plot) makeChart(cv, p.plot, cvid);
     }, 150);
   });
 }
 
 function removeDashboardPanel(idx){
   if (!currentConversationId) return;
-  let state = _ds(currentConversationId);
-  if (state.panels && state.panels.length > idx) {
-    state.panels.splice(idx, 1);
-    if (!state.panels.length) state.built = false;
-    saveDashboardToServer(currentConversationId, state);
-    renderSavedDashboard(state);
+  const dash = _activeDash(currentConversationId);
+  if (dash && dash.panels && dash.panels.length > idx) {
+    dash.panels.splice(idx, 1);
+    saveDashboardToServer(currentConversationId);
+    renderDashboardTabStrip(currentConversationId);
+    renderActiveDashboard(currentConversationId);
   }
 }
 
@@ -1323,6 +1461,11 @@ async function generateDashboard(){
   const prompt=document.getElementById('dashPromptInput').value.trim();
   if(!prompt)return;
   if(!currentConversationId){showNotif('error','⚠ Start a session and upload data first');return;}
+  // GENERATE renders into whichever dashboard tab is active; create one
+  // first if this session has none yet, so the KPI grid always has a home.
+  if(!_activeDash(currentConversationId)){
+    createDashboard(currentConversationId, 'Session Dashboard');
+  }
   document.getElementById('dashEmpty').style.display='none';
   document.getElementById('dashBoard').style.display='none';
   document.getElementById('dashLoading').style.display='flex';
