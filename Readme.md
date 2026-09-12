@@ -18,77 +18,40 @@
 
 ## 📊 Evaluation Results
 
-Comprehensive evaluation on 23 benchmark test cases demonstrates production-ready performance:
+`evaluation/eval_suite.py` is a self-contained, non-interactive evaluation harness — it runs entirely in-process against the real orchestrator/agents with real Groq LLM calls (no server, no manual setup) and produces a machine-readable + human-readable report on every run.
 
 <div align="center">
 
-### System Performance Dashboard
+### Latest Run — 40/42 (95.2%)
 
-<img src="evaluation/figurres/dashboard.png" alt="Evaluation Dashboard" width="100%"/>
+| Suite | Result | What it actually checks |
+|-------|--------|--------------------------|
+| **Routing Accuracy** | 87% (13/15) | SQL / DOCUMENT / HYBRID / FORECAST / GENERAL classification, each category tested in its own correctly-scoped session |
+| **SQL Correctness** | 100% (8/8) | Exact-match: generated SQL is executed and the numeric result is diffed against ground truth computed independently in Python from the fixed sample data — not just "did it run without erroring" |
+| **RAG Faithfulness** | 100% (5/5) | Real `.docx` files ingested through the actual hybrid pipeline; answers checked against facts extracted directly from the source documents |
+| **RAG Refusal (hallucination guard)** | 100% (5/5) | Out-of-scope questions (CEO's phone number, live stock price, SSN, …) must be refused, not hallucinated — exercises the dual-threshold rerank-score guard |
+| **Language Detection** | 100% (9/9) | 9 languages: en, es, fr, de, hi, zh-cn, ja, ar, pt |
 
-### Key Metrics
-
-| Metric | Result | Status |
-|--------|--------|--------|
-| **Routing Accuracy** | 76.9% (10/13) | ✅ Good |
-| **SQL Routing** | 100% (5/5) | 🏆 **Perfect** |
-| **Hybrid Detection** | 100% (3/3) | 🏆 **Perfect** |
-| **Language Detection** | 90.9% (10/11) | ✅ Excellent |
-| **Avg Response Time** | 0.09s | ⚡ Ultra Fast |
-| **Languages Supported** | 9 | 🌍 Multilingual |
-| **Retrieval Method** | BM25+FAISS+Reranking | 🔍 Production |
+The two routing misses are genuinely ambiguous hybrid-classification edge cases (e.g. "explain the sales trend and show the underlying numbers"), reported as-is rather than tuned away.
 
 </div>
 
-### Detailed Performance Analysis
+### Reproduce it
 
-<div align="center">
+```bash
+python evaluation/eval_suite.py              # full suite, ~1-2 min (real LLM calls)
+python evaluation/eval_suite.py --skip-rag   # routing + SQL + language only, faster
+```
 
-<table>
-<tr>
-<td width="50%">
+Writes `evaluation/eval_report.txt` (human-readable, includes the routing confusion matrix) and `evaluation/eval_results.json` (machine-readable, per-case detail).
 
-**System Performance Metrics**
-<img src="evaluation/figurres/overall_metrics.png" alt="Performance Metrics" width="100%"/>
+### What building this caught
 
-</td>
-<td width="50%">
+The eval isn't just a scorecard — writing it surfaced three real, latent bugs that were fixed as a direct result:
 
-**Routing Confusion Matrix**
-<img src="evaluation/figurres/confusion_matrix.png" alt="Confusion Matrix" width="100%"/>
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-**Multilingual Language Coverage**
-<img src="evaluation/figurres/language_coverage.png" alt="Language Coverage" width="100%"/>
-
-</td>
-<td width="50%">
-
-**Response Time Distribution**
-<img src="evaluation/figurres/response_times.png" alt="Response Times" width="100%"/>
-
-</td>
-</tr>
-<tr>
-<td colspan="2" align="center">
-
-**Three-Stage Retrieval Pipeline (BM25 + FAISS + Cross-Encoder Reranking)**
-<img src="evaluation/figurres/retrieval_architecture.png" alt="Retrieval Architecture" width="50%"/>
-</table>
-
-</div>
-
-### Key Findings
-
-✅ **Perfect SQL Classification** - 100% accuracy (5/5) on database queries  
-✅ **Perfect Hybrid Detection** - 100% accuracy (3/3) on combined SQL+RAG queries  
-✅ **Strong Multilingual Support** - 90.9% accuracy across 9 languages  
-✅ **Production RAG Architecture** - 3-stage retrieval (BM25+FAISS→Rerank→LLM)  
-✅ **Ultra-Fast Response** - 0.09s average (classification only)  
+- **Unquoted SQL identifiers** in `database/db_manager.py` (`PRAGMA table_info(x)`, `SELECT * FROM x`) meant any table name containing a non-alphanumeric character crashed schema introspection for the *entire* database, not just that one table.
+- **Inconsistent session→table-name sanitization** across `main.py`, `parsers/hybrid_csv_processor.py`, and `agents/forecast_agent.py` — unified into one shared method so table creation and lookup can never disagree.
+- **Two missing dependencies** (`rank_bm25`, `prophet`, `slowapi`) absent from `requirements.txt` meant the BM25 half of the hybrid retrieval pipeline was silently broken on a clean install.
 
 ---
 
@@ -556,25 +519,14 @@ print(result["explanation"])
 ### Run Full Evaluation
 
 ```bash
-# Complete evaluation suite
-python tests/test_full_system.py
+# Self-contained, non-interactive — real LLM calls, no server needed
+python evaluation/eval_suite.py
 
-# Select option 2 for full evaluation with visualizations
+# Faster pass (skips document ingestion + RAG evals)
+python evaluation/eval_suite.py --skip-rag
 ```
 
-### Generate Performance Charts
-
-```bash
-# Creates all evaluation visualizations
-python tests/test_visual.py
-
-# Charts saved to: evaluation/figures/
-# - dashboard.png
-# - confusion_matrix.png
-# - language_coverage.png
-# - overall_metrics.png
-# - response_times.png
-```
+Writes `evaluation/eval_report.txt` and `evaluation/eval_results.json`. See [Evaluation Results](#-evaluation-results) above for the latest scores and what each suite checks.
 
 ### Test Individual Components
 
@@ -628,15 +580,10 @@ ai-business-analyst/
 │   ├── test_visual.py           # Visualization generator
 │   └── test_system.py           # Evaluation framework
 │
-├── evaluation/                   # Evaluation Results
-│   ├── results.json             # Latest evaluation data
-│   ├── results_report.txt       # Human-readable report
-│   └── figures/                 # Generated charts
-│       ├── dashboard.png
-│       ├── confusion_matrix.png
-│       ├── language_coverage.png
-│       ├── overall_metrics.png
-│       └── response_times.png
+├── evaluation/                   # Evaluation
+│   ├── eval_suite.py             # Self-contained, non-interactive eval harness
+│   ├── eval_report.txt           # Human-readable report (latest run)
+│   └── eval_results.json         # Machine-readable results (latest run)
 │
 ├── data/                         # Data Storage
 │   ├── business.db              # SQLite database (auto-created)
