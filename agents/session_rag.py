@@ -17,7 +17,7 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import shutil
 import re
-from collections import Counter
+from collections import Counter, OrderedDict
  
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -38,6 +38,35 @@ from database.db_manager import DatabaseManager
 from tools.language_detector import LanguageDetector
 from config import settings, ENABLE_HYBRID_CSV
 from utils.logger import logger, log_section
+
+
+class _LRUSessionCache(OrderedDict):
+    """
+    Bounded in-memory cache of loaded FAISS sessions, evicted least-recently-used.
+
+    Each session's FAISS index is also persisted to disk (get_or_create_session
+    reloads via FAISS.load_local on a miss), so evicting an entry here only
+    means the next access pays a reload cost — it never loses data. Without
+    this bound, session_stores grows for the life of the process: every
+    conversation ever opened keeps its FAISS index resident in memory until
+    the user explicitly deletes that conversation.
+    """
+
+    def __init__(self, max_size: int = 50):
+        super().__init__()
+        self.max_size = max_size
+
+    def __getitem__(self, key):
+        value = super().__getitem__(key)
+        self.move_to_end(key)
+        return value
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.move_to_end(key)
+        if len(self) > self.max_size:
+            evicted_id, _ = self.popitem(last=False)
+            logger.info(f"🧹  Evicted session from memory (LRU): {evicted_id}")
  
  
 # ── Pydantic v2 compatible pre-retrieved retriever ───────────────────────────
@@ -119,7 +148,7 @@ class SessionAwareRAGAgent:
             temperature=0.1,
         )
  
-        self.session_stores: Dict[str, Dict[str, Any]] = {}
+        self.session_stores: Dict[str, Dict[str, Any]] = _LRUSessionCache(max_size=50)
         logger.info("🤖  RAG Agent initialized")
  
     # ── Session management ────────────────────────────────────────────────────

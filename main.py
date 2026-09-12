@@ -452,7 +452,7 @@ async def get_numeric_columns(cid: str):
     """
     try:
         tables = db_manager.list_tables()
-        session_prefix = f"upload_{cid[:8].replace('-', '')}"
+        session_prefix = HybridCSVProcessor.session_table_prefix(cid)
         session_tables = [t for t in tables if t.lower().startswith(session_prefix)]
         if not session_tables:
             return {"success": True, "columns": []}
@@ -551,6 +551,7 @@ from database import DatabaseManager
 from agents import OrchestratorAgent
 from mcp import MCPServer, MCPTool
 from chat.chat_history import ChatHistoryManager
+from parsers.hybrid_csv_processor import HybridCSVProcessor
 from config import settings
 from utils.logger import logger, log_section
 from auth import verify_key, limiter
@@ -854,8 +855,11 @@ async def get_conversation(cid: str, limit: int = 50):
 async def delete_conversation(cid: str):
     chat_manager.delete_conversation(cid)
     orchestrator.rag_agent.delete_session(cid)
+    orchestrator.sql_agent.invalidate_schema_cache(cid)
+    _processing_state.pop(cid, None)
     try:
-        to_drop = [t for t in db_manager.list_tables() if t.startswith(f"upload_{cid[:8]}_")]
+        prefix  = HybridCSVProcessor.session_table_prefix(cid)
+        to_drop = [t for t in db_manager.list_tables() if t.startswith(prefix)]
         if to_drop:
             _drop_tables(to_drop)
     except Exception as e:

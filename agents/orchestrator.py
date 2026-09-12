@@ -137,6 +137,7 @@ Question: {question}""",
             return self.sql_agent.analyze(
                 question=message.payload.get("question"),
                 allowed_tables=message.payload.get("allowed_tables"),
+                conversation_id=message.payload.get("conversation_id"),
             )
 
         agent.register_handler(MessageType.QUERY, handle_query)
@@ -580,7 +581,7 @@ Question: {question}""",
                 message  = await self.send_message(
                     to_agent="sql_agent",
                     message_type=MessageType.QUERY,
-                    payload={"question": question, "allowed_tables": session_tables},
+                    payload={"question": question, "allowed_tables": session_tables, "conversation_id": conversation_id},
                 )
                 response = await self.registry.route_message(message)
                 result   = response.payload
@@ -599,7 +600,7 @@ Question: {question}""",
                 sql_msg = await self.send_message(
                     to_agent="sql_agent",
                     message_type=MessageType.QUERY,
-                    payload={"question": question, "allowed_tables": session_tables},
+                    payload={"question": question, "allowed_tables": session_tables, "conversation_id": conversation_id},
                 )
                 rag_msg = await self.send_message(
                     to_agent="rag_agent",

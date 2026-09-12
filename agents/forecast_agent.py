@@ -14,6 +14,7 @@ PROPHET_AVAILABLE is exported so the orchestrator can gate the FORECAST
 routing path at classification time without trying to import Prophet itself.
 """
 
+import re
 from typing import Dict, Any, List, Optional
 
 import pandas as pd
@@ -191,10 +192,15 @@ class ForecastAgent:
             import sqlite3
             conn = sqlite3.connect(self.db_manager.db_path)
 
-            # Session-scoped tables first
+            # Session-scoped tables first. Table names have any non-
+            # alphanumeric character in the id prefix replaced with "_"
+            # (see HybridCSVProcessor.session_table_prefix) — sanitize the
+            # same way here so a conversation_id containing e.g. a hyphen
+            # still matches its own tables via LIKE.
+            id_sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', conversation_id[:8]).lower()
             cursor = conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE ?",
-                (f"%{conversation_id[:8]}%",),
+                (f"%{id_sanitized}%",),
             )
             tables = [r[0] for r in cursor.fetchall()]
 

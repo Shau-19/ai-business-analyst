@@ -15,6 +15,12 @@ except ImportError:
     REDIS_AVAILABLE = False
     logger.warning("⚠️ Redis not installed, using SQLite only")
 
+try:
+    import fakeredis
+    FAKEREDIS_AVAILABLE = True
+except ImportError:
+    FAKEREDIS_AVAILABLE = False
+
 
 class ChatHistoryManager:
     """
@@ -41,21 +47,32 @@ class ChatHistoryManager:
         # Initialize SQLite database
         self._init_database()
         
-        # Initialize Redis if available
+        # Initialize Redis if available — falls back to an in-process,
+        # Redis-protocol-compatible store (fakeredis) when no real Redis
+        # server is reachable, so the cache-aside path above still runs
+        # instead of silently degrading to SQLite-only.
         self.redis_client = None
+        self.using_fake_redis = False
         if REDIS_AVAILABLE:
             try:
                 self.redis_client = redis.Redis(
                     host=redis_host,
                     port=redis_port,
                     decode_responses=True,
-                    socket_connect_timeout=2
+                    socket_connect_timeout=0.3
                 )
                 self.redis_client.ping()
                 logger.info("✅ Redis connected")
             except Exception as e:
-                logger.warning(f"⚠️ Redis unavailable: {e}, using SQLite only")
+                logger.warning(f"⚠️ Redis server unavailable: {e}")
                 self.redis_client = None
+
+        if self.redis_client is None and FAKEREDIS_AVAILABLE:
+            self.redis_client = fakeredis.FakeStrictRedis(decode_responses=True)
+            self.using_fake_redis = True
+            logger.info("✅ Using in-process fakeredis cache (no Redis server reachable)")
+        elif self.redis_client is None:
+            logger.warning("⚠️ No Redis or fakeredis available, using SQLite only")
         
         logger.info("💬 Chat History Manager initialized")
     
@@ -88,6 +105,18 @@ class ChatHistoryManager:
                 metadata TEXT,
                 is_visible INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id)
+            )
+        """)
+
+        # Dashboards table — persists per-session pinned-chart dashboard state.
+        # Read/written directly by main.py's /conversations/{cid}/dashboard
+        # endpoints via raw sqlite3 connections to this same database file.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS dashboards (
+                conversation_id TEXT PRIMARY KEY,
+                state TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id)
             )
         """)

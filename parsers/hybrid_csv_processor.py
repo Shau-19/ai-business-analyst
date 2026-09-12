@@ -467,10 +467,27 @@ class HybridCSVProcessor:
     # METADATA & UTILITIES (unchanged)
     # ================================================================
 
+    @staticmethod
+    def session_table_prefix(conversation_id: str) -> str:
+        """
+        The exact table-name prefix used for every CSV table belonging to a
+        session. Shared by table creation (_generate_table_name) and lookup
+        (get_uploaded_tables) so the two can never disagree.
+
+        conversation_id is usually a UUID (hyphens only after position 8, so
+        [:8] happens to dodge them) but is not guaranteed to be one —
+        sanitizing it the same way as an uploaded filename ensures no
+        non-alphanumeric character (hyphens included) can ever produce an
+        unquoted SQL identifier SQLite fails to parse
+        (e.g. "near '-': syntax error").
+        """
+        id_sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', conversation_id[:8]).lower()
+        return f"{CSV_TABLE_PREFIX}{id_sanitized}_"
+
     def _generate_table_name(self, file_path: str, conversation_id: str) -> str:
         base_name  = Path(file_path).stem
         sanitized  = re.sub(r'[^a-zA-Z0-9_]', '_', base_name).lower()
-        table_name = f"{CSV_TABLE_PREFIX}{conversation_id[:8]}_{sanitized}"
+        table_name = f"{self.session_table_prefix(conversation_id)}{sanitized}"
         if len(table_name) > 63:
             table_name = table_name[:63]
         return table_name
@@ -492,7 +509,7 @@ class HybridCSVProcessor:
 
     def get_uploaded_tables(self, conversation_id: str) -> List[str]:
         all_tables    = self.db.list_tables()
-        prefix        = f"{CSV_TABLE_PREFIX}{conversation_id[:8]}_"
+        prefix        = self.session_table_prefix(conversation_id)
         session_tables = [t for t in all_tables if t.startswith(prefix)]
         logger.info(f"📊 Found {len(session_tables)} uploaded tables for session")
         return session_tables

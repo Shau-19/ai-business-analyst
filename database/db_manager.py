@@ -1,8 +1,36 @@
 
+import re
 import pandas as pd
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 from utils.logger import logger
+
+
+# Statements permitted through execute_query(). LLM-generated SQL is never
+# trusted to self-police — this allow-list is the first of two independent
+# guards (the second is opening the DB connection itself in read-only mode).
+_READ_ONLY_STATEMENT_RE = re.compile(r"^\s*(SELECT|WITH|EXPLAIN|PRAGMA\s+table_info)\b", re.IGNORECASE)
+
+# Any of these appearing as a standalone SQL keyword anywhere in the query
+# is grounds for rejection, even if the statement starts with SELECT/WITH —
+# guards against smuggled mutations via CTEs, subqueries, or stacked
+# statements (e.g. "SELECT 1; DROP TABLE x").
+_FORBIDDEN_KEYWORDS_RE = re.compile(
+    r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|REPLACE|ATTACH|DETACH|"
+    r"GRANT|REVOKE|VACUUM|REINDEX|PRAGMA(?!\s+table_info))\b",
+    re.IGNORECASE,
+)
+
+
+def _assert_read_only_sql(query: str) -> None:
+    """Raise ValueError if `query` is anything other than a single read-only statement."""
+    stripped = query.strip().rstrip(";")
+    if ";" in stripped:
+        raise ValueError("Multiple/stacked SQL statements are not allowed")
+    if not _READ_ONLY_STATEMENT_RE.match(stripped):
+        raise ValueError("Only SELECT/WITH/EXPLAIN queries are allowed")
+    if _FORBIDDEN_KEYWORDS_RE.search(stripped):
+        raise ValueError("Query contains a disallowed (non-read-only) SQL keyword")
 
 
 class DatabaseManager:
@@ -125,7 +153,11 @@ class DatabaseManager:
         
         schema = {}
         for table in tables:
-            cursor.execute(f"PRAGMA table_info({table});")
+            # Table name must be quoted — PRAGMA table_info(x) does not
+            # accept bind parameters, and an unquoted identifier containing
+            # any non-alphanumeric character (a hyphen, for example) is a
+            # syntax error rather than a valid table reference.
+            cursor.execute(f'PRAGMA table_info("{table}");')
             columns = cursor.fetchall()
             schema[table] = [
                 {
@@ -204,31 +236,48 @@ class DatabaseManager:
         return schema_text
     
     def execute_query(self, query: str) -> pd.DataFrame:
-        """Execute SQL query"""
+        """
+        Execute a read-only SQL query (the path LLM-generated SQL runs through).
+
+        Two independent guards, since the SQL text here originates from an LLM
+        and must never be trusted to only contain SELECT statements on its own:
+          1. Statement allow-list — reject anything that isn't a single
+             read-only SELECT/WITH/EXPLAIN/PRAGMA-table-info statement before
+             it ever reaches the database driver.
+          2. A connection opened read-only at the OS/driver level (SQLite URI
+             mode=ro; Postgres/MySQL default-transaction READ ONLY) as
+             defense-in-depth, so even a guard bypass can't mutate data.
+        """
+        _assert_read_only_sql(query)
         logger.info(f"🔍 Executing query: {query[:100]}...")
-        
+
         try:
             if self.db_type == "sqlite":
                 import sqlite3
-                conn = sqlite3.connect(self.db_path)
+                conn = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
             else:
                 from sqlalchemy import create_engine
-                engine = create_engine(self.connection_string)
+                engine = create_engine(
+                    self.connection_string,
+                    execution_options={"postgresql_readonly": True} if self.db_type == "postgresql" else {},
+                )
                 conn = engine.connect()
-            
+                if self.db_type == "mysql":
+                    conn.execute("SET SESSION TRANSACTION READ ONLY")
+
             df = pd.read_sql_query(query, conn)
             conn.close()
-            
+
             logger.info(f"✅ Query returned {len(df)} rows")
             return df
-        
+
         except Exception as e:
             logger.error(f"❌ Query error: {e}")
             raise
     
     def get_table_sample(self, table: str, limit: int = 5) -> pd.DataFrame:
         """Get sample rows"""
-        query = f"SELECT * FROM {table} LIMIT {limit}"
+        query = f'SELECT * FROM "{table}" LIMIT {int(limit)}'
         return self.execute_query(query)
     
     def list_tables(self) -> List[str]:
