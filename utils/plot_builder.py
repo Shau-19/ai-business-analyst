@@ -3,13 +3,17 @@
 FIXED Plot Builder - Respects user's chart type requests
 """
 
+import re
 from typing import Dict, Any, List, Optional
 from utils.logger import logger
 
 
 class PlotBuilder:
     """Build chart specifications from query results"""
-    
+
+    MAX_POINTS = 100   # matches SQLExecutor's `data` cap
+    MAX_SERIES = 4
+
     # Keywords that indicate need for plotting
     PLOT_KEYWORDS = [
         "chart", "plot", "graph", "visualize", "show",
@@ -43,60 +47,72 @@ class PlotBuilder:
             logger.warning("⚠️ Cannot plot failed query")
             return None
         
-        rows = sql_result.get("data_preview", [])
-        
+        # Use the full result (up to 100 rows), not the 10-row preview — the
+        # preview silently cut e.g. "revenue by product" to 10 of 25 bars.
+        rows = sql_result.get("data") or sql_result.get("data_preview", [])
+        rows = rows[: self.MAX_POINTS]
+
         if not rows or len(rows) < 2:
             logger.warning("⚠️ Insufficient data for plotting (need 2+ rows)")
             return None
-        
+
         keys = list(rows[0].keys())
-        if len(keys) < 1:
+        if not keys:
             logger.warning("⚠️ No columns found")
             return None
-        
-        # Smart column detection: find which column is numeric and which is categorical
-        col1 = keys[0]
-        col2 = keys[1] if len(keys) > 1 else keys[0]
 
-        try:
-            col1_vals = [row[col1] for row in rows]
-            col2_vals = [row[col2] for row in rows]
+        def is_num_col(col):
+            vals = [r.get(col) for r in rows if r.get(col) is not None]
+            return bool(vals) and all(
+                (isinstance(v, (int, float)) and not isinstance(v, bool)) or self._is_numeric_string(v)
+                for v in vals
+            )
 
-            col1_is_num = all(isinstance(v, (int, float)) or self._is_numeric_string(v) for v in col1_vals if v is not None)
-            col2_is_num = all(isinstance(v, (int, float)) or self._is_numeric_string(v) for v in col2_vals if v is not None)
+        numeric_cols = [k for k in keys if is_num_col(k)]
+        label_cols   = [k for k in keys if k not in numeric_cols]
 
-            if col1_is_num and not col2_is_num:
-                x_col, y_col = col2, col1
-            else:
-                x_col, y_col = col1, col2
-
-            x_values = [str(row[x_col]) if row[x_col] is not None else "" for row in rows]
-            y_values = [row[y_col] for row in rows]
-
-            if not all(isinstance(v, (int, float)) or self._is_numeric_string(v) for v in y_values if v is not None):
-                logger.warning("⚠️ Y-axis values are not numeric")
-                return None
-
-            y_values = [float(v) if v is not None and isinstance(v, str) else (v or 0.0) for v in y_values]
-
-        except Exception as e:
-            logger.error(f"❌ Failed to extract values: {e}")
+        if label_cols:
+            x_col = label_cols[0]
+        elif len(numeric_cols) >= 2:
+            # e.g. (year, revenue): first numeric column becomes the axis
+            x_col = numeric_cols.pop(0)
+        else:
+            logger.warning("⚠️ Need a label column and a numeric column to plot")
             return None
-        
-        # FIXED: Detect chart type from question FIRST
-        chart_type = self._infer_chart_type(question, x_col, y_col)
-        
+
+        # ID-like numeric columns are not measures
+        y_cols = [c for c in numeric_cols if not re.search(r'(^|_)id$', c, re.IGNORECASE)] or numeric_cols
+        if not y_cols:
+            logger.warning("⚠️ Y-axis values are not numeric")
+            return None
+
+        def num(v):
+            if v is None:
+                return None          # gap in the chart, not a fake zero
+            return float(v) if isinstance(v, str) else v
+
+        x_values = [str(r.get(x_col)) if r.get(x_col) is not None else "" for r in rows]
+        datasets = [{"label": c, "data": [num(r.get(c)) for r in rows]} for c in y_cols[: self.MAX_SERIES]]
+
+        chart_type = self._infer_chart_type(question, x_col, y_cols[0])
+        if chart_type == "pie" and len(datasets) > 1:
+            datasets = datasets[:1]   # a pie can only show one measure
+
         plot_spec = {
-            "type": chart_type,
-            "x": x_values,
-            "y": y_values,
-            "x_label": x_col,
-            "y_label": y_col,
-            "title": self._generate_title(question, x_col, y_col)
+            "type":     chart_type,
+            "x":        x_values,
+            "y":        datasets[0]["data"],      # first series (back-compat)
+            "datasets": datasets,                 # all series
+            "x_label":  x_col,
+            "y_label":  datasets[0]["label"] if len(datasets) == 1 else "value",
+            "title":    self._generate_title(question, x_col, ", ".join(d["label"] for d in datasets)),
+            "truncated": bool(sql_result.get("row_count", 0) > len(rows)),
         }
-        
-        logger.info(f"✅ Plot spec created: {chart_type} chart with {len(x_values)} points")
-        
+
+        logger.info(
+            f"✅ Plot spec created: {chart_type} chart, {len(x_values)} points, "
+            f"{len(datasets)} series"
+        )
         return plot_spec
     
     def _infer_chart_type(self, question: str, x_col: str, y_col: str) -> str:
@@ -114,10 +130,11 @@ class PlotBuilder:
         x_lower = x_col.lower()
         
         # PRIORITY 1: Explicit user request (HIGHEST PRIORITY)
-        # Check in order: bar → line → pie
+        # Check in order: bar → line → pie. Whole words only — substring
+        # matching turned "online" into a line chart and "pieces" into a pie.
         for chart_type, keywords in self.CHART_TYPE_KEYWORDS.items():
             for keyword in keywords:
-                if keyword in q:
+                if re.search(rf'\b{re.escape(keyword)}\b', q):
                     logger.info(f"📊 Chart type: {chart_type} (explicit user request: '{keyword}')")
                     return chart_type
         

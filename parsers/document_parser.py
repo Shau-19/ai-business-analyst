@@ -72,12 +72,44 @@ class DocumentParser:
             },
         ))
 
-        for idx, para in enumerate(doc.paragraphs):
-            if para.text.strip():
+        # Group paragraphs into sections instead of one chunk per paragraph.
+        # Per-paragraph chunks orphaned headings from their content (e.g.
+        # "Key Decisions" and its list were separate 60-char chunks), so the
+        # reranker surfaced titles/headings instead of the actual facts.
+        SECTION_CHARS = 800
+
+        def is_heading(p) -> bool:
+            style = (getattr(p.style, "name", "") or "").lower()
+            text  = p.text.strip()
+            return style.startswith(("heading", "title")) or (
+                len(text) < 60 and not text.endswith((".", ":", ";", ","))
+                and "\n" not in text
+            )
+
+        buf, start_idx = [], None
+
+        def flush():
+            if buf:
                 documents.append(Document(
-                    page_content=f"From {filename}, Paragraph {idx}:\n{para.text.strip()}",
-                    metadata={"source": filename, "type": "docx_paragraph", "paragraph": idx},
+                    page_content=f"From {filename}, Section starting at paragraph {start_idx}:\n"
+                                 + "\n".join(buf),
+                    metadata={"source": filename, "type": "docx_section", "paragraph": start_idx},
                 ))
+
+        for idx, para in enumerate(doc.paragraphs):
+            text = para.text.strip()
+            if not text:
+                continue
+            size = sum(len(t) + 1 for t in buf)
+            # Start a new section at a heading or when full — but never leave
+            # a heading as the last line of the previous section.
+            if buf and (is_heading(para) or size + len(text) > SECTION_CHARS):
+                flush()
+                buf, start_idx = [], None
+            if start_idx is None:
+                start_idx = idx
+            buf.append(text)
+        flush()
 
         for tidx, table in enumerate(doc.tables):
             rows = "\n".join(

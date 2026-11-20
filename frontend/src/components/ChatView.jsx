@@ -110,7 +110,12 @@ export default function ChatView({
                         <ChartCanvas plotSpec={plotData} />
                         <div className="mt-2 flex items-center justify-end pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
                           <button
-                            onClick={() => onPinChart(plotData)}
+                            onClick={() => {
+                              // Pass the question that produced this chart so the
+                              // dashboard panel can be refreshed later.
+                              const prev = messages[index - 1];
+                              onPinChart(plotData, prev?.role === 'user' ? prev.content : null);
+                            }}
                             className="btn btn-ghost !text-[12px] !py-1 !px-2"
                             style={{ color: 'var(--purple)' }}
                           >

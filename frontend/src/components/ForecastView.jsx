@@ -52,7 +52,7 @@ export default function ForecastView({ activeSessionId }) {
       : `forecast the main metric for next ${periods} periods`;
 
     try {
-      const res = await api.runQuery(sessionForThisForecast, question, selectedCol);
+      const res = await api.runSilentQuery(sessionForThisForecast, question, selectedCol || null);
       if (activeSessionRef.current !== sessionForThisForecast) return;
       if (res.success) setForecastResult(res);
     } catch (e) {

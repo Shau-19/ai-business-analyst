@@ -99,9 +99,11 @@ class SessionAwareRAGAgent:
         base_vector_store_path: str = "./data/vector_stores",
         db_manager: DatabaseManager = None,
         sql_executor=None,
+        uploads_root: str = "./uploads",
     ):
         self.base_vector_store_path = Path(base_vector_store_path)
         self.base_vector_store_path.mkdir(parents=True, exist_ok=True)
+        self.uploads_root = Path(uploads_root)   # where main.py stores raw uploads
  
         self.parser            = DocumentParser()
         self.language_detector = LanguageDetector()
@@ -153,8 +155,15 @@ class SessionAwareRAGAgent:
  
     # ── Session management ────────────────────────────────────────────────────
  
+    _SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
     def _get_session_path(self, conversation_id: str) -> Path:
-        return self.base_vector_store_path / (conversation_id or "default_session")
+        cid = conversation_id or "default_session"
+        # Defense in depth: this path is rmtree'd by delete_session(), so an
+        # id like ".." must never resolve outside base_vector_store_path.
+        if not self._SESSION_ID_RE.match(cid):
+            raise ValueError(f"Invalid conversation_id: {cid!r}")
+        return self.base_vector_store_path / cid
  
     def _is_structured_file(self, filename: str) -> bool:
         return filename.lower().endswith(('.csv', '.xlsx', '.xls'))
@@ -184,8 +193,12 @@ class SessionAwareRAGAgent:
                     session = self._create_empty_session()
                     session["vectorstore"]  = vectorstore
                     session["total_chunks"] = vectorstore.index.ntotal
+                    self._restore_session_state(conversation_id, session)
                     self.session_stores[conversation_id] = session
-                    logger.info(f"✅  Loaded: {vectorstore.index.ntotal} vectors")
+                    logger.info(
+                        f"✅  Loaded: {vectorstore.index.ntotal} vectors, "
+                        f"files={session['loaded_files']}, csv_tables={session['csv_tables']}"
+                    )
                 except Exception as e:
                     logger.warning(f"⚠️  Load error: {e} — creating fresh session")
                     self.session_stores[conversation_id] = self._create_empty_session()
@@ -194,7 +207,87 @@ class SessionAwareRAGAgent:
                 self.session_stores[conversation_id] = self._create_empty_session()
  
         return self.session_stores[conversation_id]
- 
+
+    def _restore_session_state(self, conversation_id: str, session: Dict[str, Any]) -> None:
+        """
+        Rebuild the in-memory parts of a session that was reloaded from disk.
+
+        Only the FAISS index is persisted, so without this a session reloaded
+        after a server restart (or LRU eviction) had documents=[] — BM25 then
+        crashed on every query ("not enough values to unpack") — and lost its
+        loaded_files / csv_tables, so CSV questions were routed to DOCUMENT.
+        Everything needed is recoverable: chunks + metadata live in the FAISS
+        docstore, and the CSV tables still exist in the DB.
+        """
+        vs = session["vectorstore"]
+        try:
+            docs = list(getattr(vs.docstore, "_dict", {}).values())
+        except Exception as e:
+            logger.warning(f"⚠️  Could not read docstore for {conversation_id}: {e}")
+            docs = []
+        session["documents"] = docs
+
+        files = []
+        for d in docs:
+            src = d.metadata.get("source")
+            if src and src not in files:
+                files.append(src)
+        session["loaded_files"]    = files
+        session["total_documents"] = len(files)
+
+        if self.csv_processor and any(d.metadata.get("source_type") == "csv" for d in docs):
+            try:
+                tables = self.csv_processor.get_uploaded_tables(conversation_id)
+            except Exception as e:
+                logger.warning(f"⚠️  Could not list CSV tables for {conversation_id}: {e}")
+                tables = []
+
+            # A table can be missing if it was dropped while the session was
+            # offline (older builds dropped every upload_ table on startup).
+            # Re-import it from the original upload when that file still exists.
+            csv_sources = {d.metadata.get("source") for d in docs
+                           if d.metadata.get("source_type") == "csv"}
+            reimported = set()
+            for src in filter(None, csv_sources):
+                path = self.uploads_root / conversation_id / src
+                expected = self.csv_processor._generate_table_name(str(path), conversation_id)
+                if expected in tables or not path.exists():
+                    continue
+                try:
+                    tables.append(self.csv_processor._import_to_sql(str(path), conversation_id))
+                    reimported.update(tables[-1:])
+                    logger.info(f"♻️  Re-imported missing table from {path}")
+                except Exception as e:
+                    logger.warning(f"⚠️  Could not re-import {path}: {e}")
+            session["csv_tables"] = tables
+            # Rebuild the value-normalisation index the SQL executor relies on
+            # (_import_to_sql already indexed anything it just re-imported).
+            executor = getattr(self.csv_processor, "sql_executor", None)
+            if executor is not None:
+                for t in (t for t in tables if t not in reimported):
+                    try:
+                        df = self.csv_processor.db.execute_query(f'SELECT * FROM "{t}"')
+                        executor.index_table(df, t)
+                    except Exception as e:
+                        logger.warning(f"⚠️  Value index rebuild failed for {t}: {e}")
+
+        if docs:
+            self._build_source_vocabulary(session)
+
+    def _remove_file_from_session(self, session: Dict[str, Any], filename: str) -> None:
+        """Drop a previously-ingested file's chunks so re-uploading it replaces, not duplicates."""
+        vs = session.get("vectorstore")
+        if vs is not None:
+            ids = [
+                doc_id for doc_id, d in getattr(vs.docstore, "_dict", {}).items()
+                if d.metadata.get("source") == filename
+            ]
+            if ids:
+                vs.delete(ids)
+                logger.info(f"♻️  Replaced {len(ids)} old chunks of {filename}")
+        session["documents"]    = [d for d in session["documents"] if d.metadata.get("source") != filename]
+        session["loaded_files"] = [f for f in session["loaded_files"] if f != filename]
+
     # ── Document loading ──────────────────────────────────────────────────────
  
     def load_documents(self, conversation_id: str, file_paths: List[str]) -> Dict[str, Any]:
@@ -202,24 +295,32 @@ class SessionAwareRAGAgent:
         session = self.get_or_create_session(conversation_id)
         regular_docs, structured_docs = [], []
         loaded_files_info = []
- 
+        errors: List[str] = []
+
         for file_path in file_paths:
             if not Path(file_path).exists():
                 logger.error(f"❌  Not found: {file_path}")
+                errors.append(f"{Path(file_path).name}: file not found")
                 continue
- 
+
             filename = Path(file_path).name
             ext      = Path(file_path).suffix.lower()
- 
+
+            if filename in session["loaded_files"]:
+                self._remove_file_from_session(session, filename)
+
             try:
                 if self._is_structured_file(filename) and self.csv_processor:
                     logger.info(f"📊  HYBRID ingest: {filename}")
                     result = self.csv_processor.process_file(file_path, conversation_id)
- 
+
                     # Read column names so they can be pinned in vocab later
                     try:
                         import pandas as _pd
-                        col_names = list(_pd.read_csv(file_path, nrows=0).columns)
+                        col_names = list(
+                            _pd.read_csv(file_path, nrows=0).columns if ext == '.csv'
+                            else _pd.read_excel(file_path, nrows=0).columns
+                        )
                     except Exception:
                         col_names = []
  
@@ -230,7 +331,8 @@ class SessionAwareRAGAgent:
  
                     structured_docs.extend(result['rag_documents'])
                     session["loaded_files"].append(filename)
-                    session["csv_tables"].append(result['sql_table'])
+                    if result['sql_table'] not in session["csv_tables"]:
+                        session["csv_tables"].append(result['sql_table'])
                     loaded_files_info.append({
                         "filename":   filename,
                         "format":     ext,
@@ -250,6 +352,7 @@ class SessionAwareRAGAgent:
                         docs = self.parser.parse_txt(file_path)
                     else:
                         logger.warning(f"⚠️  Unsupported format: {ext}")
+                        errors.append(f"{filename}: unsupported format '{ext or 'none'}'")
                         continue
  
                     for doc in docs:
@@ -268,9 +371,11 @@ class SessionAwareRAGAgent:
  
             except Exception as e:
                 logger.error(f"❌  Error processing {filename}: {e}")
- 
+                errors.append(f"{filename}: {e}")
+
         if not regular_docs and not structured_docs:
-            return {"success": False, "message": "No documents loaded"}
+            session["total_documents"] = len(session["loaded_files"])
+            return {"success": False, "message": "No documents loaded", "errors": errors}
  
         logger.info("✂️  Splitting chunks...")
         split_docs = []
@@ -326,6 +431,7 @@ class SessionAwareRAGAgent:
             "files_loaded":    loaded_files_info,
             "total_chunks":    len(split_docs),
             "total_vectors":   total_vectors,
+            "errors":          errors,
         }
  
     # ── Dynamic vocabulary builder ────────────────────────────────────────────
@@ -467,11 +573,12 @@ class SessionAwareRAGAgent:
         """
         session = self.get_or_create_session(conversation_id)
  
-        if not session["vectorstore"]:
+        if not session["vectorstore"] or not session["documents"]:
             return {
-                "success": False,
-                "error":   "No documents loaded",
-                "answer":  "Please upload documents first.",
+                "success":   False,
+                "error":     "No documents loaded",
+                "answer":    "Please upload documents first.",
+                "not_found": True,
             }
  
         log_section(f"QUERYING: {conversation_id}")
@@ -572,7 +679,21 @@ class SessionAwareRAGAgent:
                     src["page"] = doc.metadata["page"]
                 sources.append(src)
  
-            source_files = list({s["source"] for s in sources})
+            # The LLM can still decline after retrieval — treat that as
+            # not-found (no source citation on a refusal; lets HYBRID know).
+            if "not available in the uploaded" in answer.lower():
+                return {
+                    "success":          True,
+                    "answer":           "This information is not available in the uploaded documents.",
+                    "sources":          [],
+                    "language":         language,
+                    "source_count":     0,
+                    "conversation_id":  conversation_id,
+                    "retrieval_method": "hybrid_bm25_faiss_reranking",
+                    "not_found":        True,
+                }
+
+            source_files = list(dict.fromkeys(s["source"] for s in sources))
             if source_files and "Source" not in answer:
                 suffix = (
                     f"\n\n*Source: {source_files[0]}*"
@@ -617,7 +738,10 @@ class SessionAwareRAGAgent:
  
 STRICT ANTI-HALLUCINATION RULES:
 1. ONLY use facts, numbers, and names that appear verbatim in the context below.
-2. If the answer is NOT in the context → respond ONLY with:
+2. The question may use different wording than the document (e.g. "priorities"
+   vs "key decisions", "staff" vs "employees"). If the context clearly covers
+   the topic, answer from it. Only if the context does NOT address the topic →
+   respond ONLY with:
    "This information is not available in the uploaded documents."
 3. NEVER use your training knowledge to fill gaps.
 4. NEVER invent numbers, names, dates, or facts.

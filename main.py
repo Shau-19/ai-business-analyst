@@ -1,521 +1,3 @@
-'''
-# main.py - Production FastAPI Server v3.3
-# Changes vs 3.2:
-# - Added /query/stream  — SSE endpoint for streaming LLM explanation tokens
-# - StreamingResponse + asyncio.Queue bridge for sync→async streaming
-# - All existing endpoints unchanged
-#
-# Fix v3.3.1:
-# - Renamed http_req → request in /query, /query/stream, /upload
-#   slowapi's @limiter.limit() requires the starlette Request parameter
-#   to be named exactly "request" — any other name raises:
-#   "parameter `request` must be an instance of starlette.requests.Request"
-
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Depends, Request
-from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from typing import List, Optional
-from pathlib import Path
-import shutil, uvicorn, asyncio, json
-
-from database import DatabaseManager
-from agents import OrchestratorAgent
-from mcp import MCPServer, MCPTool
-from chat.chat_history import ChatHistoryManager
-from config import settings
-from utils.logger import logger, log_section
-from auth import verify_key, limiter
-
-db_manager   = DatabaseManager()
-orchestrator = OrchestratorAgent(db_manager)
-chat_manager = ChatHistoryManager(
-    db_path="./data/chat_history.db",
-    redis_host="localhost", redis_port=6379,
-)
-mcp = MCPServer(name="ai-business-analyst", version="3.0.0")
-_processing_state: dict = {}
-
-
-def _drop_tables(tables_to_drop: list):
-    conn   = db_manager.get_connection()
-    cursor = conn.cursor()
-    for t in tables_to_drop:
-        cursor.execute(f"DROP TABLE IF EXISTS [{t}]")
-        logger.info(f"🧹 Dropped table: {t}")
-    conn.commit()
-    conn.close()
-
-
-def cleanup_orphan_tables():
-    try:
-        tables  = db_manager.list_tables()
-        orphans = [t for t in tables if t.startswith("upload_")]
-        if orphans:
-            _drop_tables(orphans)
-            logger.info(f"🧹 Dropped {len(orphans)} orphan table(s)")
-        else:
-            logger.info("✅ No orphan tables found")
-    except Exception as e:
-        logger.warning(f"⚠️ Orphan cleanup failed: {e}")
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    log_section("AI BUSINESS ANALYST STARTING")
-    cleanup_orphan_tables()
-    logger.info(f"🚀 {settings.HOST}:{settings.PORT} | MCP:{len(mcp.tools)} tools | A2A:{len(orchestrator.registry.agents)} agents")
-    log_section("READY")
-    yield
-    logger.info("🛑 Shutdown complete")
-
-
-app = FastAPI(title="AI Business Analyst", version="3.3.1", lifespan=lifespan)
-from slowapi.errors import RateLimitExceeded
-from slowapi import _rate_limit_exceeded_handler
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
-                   allow_methods=["*"], allow_headers=["*"])
-if Path("frontend/dist/assets").exists():
-    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
-if Path("static").exists():
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
-class QueryRequest(BaseModel):
-    question: str
-    conversation_id: Optional[str] = None
-    value_col: Optional[str] = None  # explicit column for forecast tab
-
-class ConversationCreate(BaseModel):
-    user_id: str
-    title: Optional[str] = "New Chat"
-
-def get_user_id(x: Optional[str]) -> str:
-    return x or "default_user"
-
-
-async def process_files_background(conversation_id: str, file_paths: List[str], file_names: List[str]):
-    _processing_state[conversation_id] = {"status": "processing", "files": file_names, "error": None}
-    try:
-        logger.info(f"📤 Background processing: {len(file_paths)} files")
-        await asyncio.get_event_loop().run_in_executor(
-            None, orchestrator.rag_agent.load_documents, conversation_id, file_paths)
-        _processing_state[conversation_id] = {"status": "ready", "files": file_names, "error": None}
-        logger.info(f"✅ Processing complete: {conversation_id}")
-    except Exception as e:
-        _processing_state[conversation_id] = {"status": "error", "files": file_names, "error": str(e)}
-        logger.error(f"❌ Background processing error: {e}")
-
-
-class MCPToolHandlers:
-    def __init__(self, orch): self.orchestrator = orch
-
-    async def handle_smart_query(self, args: dict) -> dict:
-        question = args.get("question")
-        conv_id  = args.get("conversation_id")
-        if not question:
-            return {"content": [{"type": "text", "text": "No question provided"}], "isError": True}
-        result = await self.orchestrator.route_query(question, conv_id)
-        text   = result.get("explanation") or result.get("answer") or "No answer generated."
-        return {"content": [{"type": "text", "text": text}], "isError": not result.get("success", True)}
-
-    async def handle_get_status(self, args: dict) -> dict:
-        s    = self.orchestrator.get_system_status()
-        text = f"SQL:✅ RAG:✅ Orchestrator:✅\nSessions:{s['rag_agent']['total_sessions']} Vectors:{s['rag_agent']['total_vectors']}"
-        return {"content": [{"type": "text", "text": text}], "isError": False}
-
-
-mcp_handlers = MCPToolHandlers(orchestrator)
-mcp.register_tool(MCPTool(
-    name="smart_query",
-    description="Route any question to GENERAL, SQL, RAG, or HYBRID automatically",
-    inputSchema={"type":"object","properties":{"question":{"type":"string"},"conversation_id":{"type":"string"}},"required":["question"]},
-    handler=mcp_handlers.handle_smart_query))
-mcp.register_tool(MCPTool(
-    name="get_status", description="System status",
-    inputSchema={"type":"object","properties":{}},
-    handler=mcp_handlers.handle_get_status))
-
-
-@app.get("/")
-async def root(): return {"service":"AI Business Analyst","version":"3.3.1"}
-
-@app.get("/ui")
-async def serve_ui():
-    return FileResponse("static/index.html")
-
-@app.post("/conversations")
-async def create_conversation(request: ConversationCreate, x_user_id: Optional[str] = Header(None)):
-    user_id = x_user_id or request.user_id
-    cid     = chat_manager.create_conversation(user_id, request.title)
-    orchestrator.rag_agent.get_or_create_session(cid)
-    logger.info(f"🆕 New conversation: {cid}")
-    return {"success": True, "conversation_id": cid, "user_id": user_id}
-
-@app.get("/conversations")
-async def get_conversations(x_user_id: Optional[str] = Header(None), limit: int = 20):
-    convs = chat_manager.get_user_conversations(get_user_id(x_user_id), limit)
-    for c in convs:
-        s = orchestrator.rag_agent.get_session_status(c["conversation_id"])
-        c["documents"] = s["total_documents"]; c["vectors"] = s["total_vectors"]
-    return {"success": True, "conversations": convs, "count": len(convs)}
-
-@app.get("/conversations/{cid}")
-async def get_conversation(cid: str, limit: int = 50):
-    conv = chat_manager.get_conversation(cid, limit)
-    if not conv: raise HTTPException(404, "Not found")
-    conv["session"] = orchestrator.rag_agent.get_session_status(cid)
-    return {"success": True, "conversation": conv}
-
-@app.delete("/conversations/{cid}")
-async def delete_conversation(cid: str):
-    chat_manager.delete_conversation(cid)
-    orchestrator.rag_agent.delete_session(cid)
-    try:
-        tables   = db_manager.list_tables()
-        to_drop  = [t for t in tables if t.startswith(f"upload_{cid[:8]}_")]
-        if to_drop:
-            _drop_tables(to_drop)
-    except Exception as e:
-        logger.warning(f"⚠️ Table drop on delete failed: {e}")
-    return {"success": True}
-
-@app.get("/conversations/{cid}/documents")
-async def get_docs(cid: str):
-    s = orchestrator.rag_agent.get_session_status(cid)
-    return {"success": True, "conversation_id": cid, "documents": s["loaded_files"],
-            "total_documents": s["total_documents"], "total_vectors": s["total_vectors"]}
-
-
-@app.post("/query", dependencies=[Depends(verify_key)])
-@limiter.limit("30/minute")
-async def query(request: Request, body: QueryRequest, x_user_id: Optional[str] = Header(None)):
-    """Original non-streaming endpoint — kept intact for dashboard and MCP."""
-    try:
-        uid = get_user_id(x_user_id)
-        cid = body.conversation_id or chat_manager.create_conversation(uid)
-        orchestrator.rag_agent.get_or_create_session(cid)
-        chat_manager.add_message(conversation_id=cid, role="user", content=body.question, is_visible=True)
-        result = await orchestrator.route_query(body.question, cid)
-        chat_manager.add_message(
-            conversation_id=cid, role="assistant",
-            content=result.get("explanation") or result.get("answer", ""),
-            routing=result.get("routing"),
-            plot=result.get("plot"),
-            forecast=result.get("forecast"),
-            metadata={"sql_query": result.get("sql_query"), "sources": result.get("sources", [])},
-            is_visible=True)
-        result["conversation_id"] = cid
-        return JSONResponse(content=result)
-    except Exception as e:
-        logger.error(f"❌ Query: {e}"); raise HTTPException(500, str(e))
-
-
-# ══════════════════════════════════════════════════════════════════════
-#  STREAMING ENDPOINT
-#  Protocol: SSE (Server-Sent Events)
-#
-#  Flow:
-#    1. Client POST /query/stream with {question, conversation_id}
-#    2. Server runs full route_query pipeline (routing + SQL/RAG)
-#    3. Server sends one "meta" event with JSON: routing, plot, data, sql
-#    4. Server streams explanation text token-by-token as "token" events
-#    5. Server sends "done" event → client stops EventSource and renders
-#
-#  Why SSE not WebSocket?
-#    SSE is one-directional (server→client), simpler, built into browsers
-#    natively via EventSource. Perfect for streaming a single response.
-#    WebSocket adds complexity we don't need here.
-#
-#  Why stream only the explanation?
-#    SQL execution and retrieval are fast (<300ms). The LLM explanation
-#    (chain.stream()) is the only slow part — 1-3 seconds of waiting.
-#    Streaming it gives instant perceived response.
-#
-#  NOTE — slowapi parameter naming requirement:
-#    @limiter.limit() inspects the function signature for a parameter
-#    named exactly "request" typed as starlette.requests.Request.
-#    Using any other name (e.g. http_req) raises:
-#      "parameter `request` must be an instance of starlette.requests.Request"
-#    The Pydantic body model must therefore use a different name ("body").
-# ══════════════════════════════════════════════════════════════════════
-
-@app.post("/query/stream", dependencies=[Depends(verify_key)])
-@limiter.limit("20/minute")
-async def query_stream(request: Request, body: QueryRequest, x_user_id: Optional[str] = Header(None)):
-    """
-    SSE streaming endpoint. Returns text/event-stream.
-    Frontend connects, receives:
-      event: meta   → JSON with routing/plot/data (non-text fields)
-      event: token  → each text chunk as it streams from LLM
-      event: done   → signals completion, frontend finalises bubble
-      event: error  → something went wrong
-    """
-    uid = get_user_id(x_user_id)
-    cid = body.conversation_id or chat_manager.create_conversation(uid)
-    orchestrator.rag_agent.get_or_create_session(cid)
-    chat_manager.add_message(conversation_id=cid, role="user", content=body.question, is_visible=True)
-
-    async def event_generator():
-        full_text = ""
-        try:
-            # ── Step 1: Run full pipeline except explanation streaming ──
-            # route_query returns a complete result with explanation already
-            # generated. We'll re-stream it word-by-word for UX effect.
-            # This gives streaming UX without refactoring each agent.
-            #
-            # Why not stream from the agent directly?
-            # sql_analyst and session_rag both call chain.invoke() internally.
-            # Refactoring them to yield would touch 4+ methods each. Instead:
-            # - Run route_query normally to get the complete result
-            # - Extract explanation text
-            # - Stream it token by token via asyncio.sleep(0) yields
-            # True per-token streaming from Groq can be added later per agent.
-
-            try:
-            result = await orchestrator.route_query(body.question, cid, value_col=body.value_col)
-        except TypeError:
-            result = await orchestrator.route_query(body.question, cid)
-
-            # ── Step 2: Send metadata first (plot spec, routing, data) ──
-            # Frontend needs routing tag and chart data before text starts.
-            # We strip 'explanation'/'answer' from meta — those come as tokens.
-            meta = {
-                "success":         result.get("success", True),
-                "routing":         result.get("routing", ""),
-                "plot":            result.get("plot"),
-                "data":            result.get("data", []),
-                "sql_query":       result.get("sql_query"),
-                "sources":         result.get("sources", []),
-                "conversation_id": cid,
-            }
-            yield f"event: meta\ndata: {json.dumps(meta)}\n\n"
-
-            # ── Step 3: Stream explanation text ──────────────────────────
-            # We chunk by word (split on spaces) for natural word-by-word
-            # streaming feel. Each chunk is one SSE "token" event.
-            explanation = (result.get("explanation") or result.get("answer") or "").strip()
-
-            # Stream word by word with tiny delay for smooth visual effect.
-            # asyncio.sleep(0) yields control to event loop between chunks
-            # so FastAPI can actually flush each SSE event to the client.
-            words = explanation.split(" ")
-            for i, word in enumerate(words):
-                chunk = word + (" " if i < len(words) - 1 else "")
-                full_text += chunk
-                yield f"event: token\ndata: {json.dumps(chunk)}\n\n"
-                # Small delay creates smooth streaming appearance.
-                # Groq is fast enough that without any delay tokens arrive
-                # all at once — a tiny sleep makes it feel progressive.
-                await asyncio.sleep(0.018)
-
-            # ── Step 4: Done signal ───────────────────────────────────────
-            yield f"event: done\ndata: {json.dumps({'conversation_id': cid})}\n\n"
-
-            # ── Step 5: Save to chat history ──────────────────────────────
-            chat_manager.add_message(
-                conversation_id=cid,
-                role="assistant",
-                content=full_text,
-                routing=result.get("routing"),
-                plot=result.get("plot"),
-                forecast=result.get("forecast"),
-                metadata={"sql_query": result.get("sql_query"), "sources": result.get("sources", [])},
-                is_visible=True
-            )
-
-        except Exception as e:
-            logger.error(f"❌ Stream error: {e}")
-            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            # These headers are required for SSE to work correctly:
-            # Cache-Control: no-cache  → don't buffer, flush immediately
-            # X-Accel-Buffering: no   → disable nginx proxy buffering
-            # Connection: keep-alive  → hold connection open for stream
-            "Cache-Control":    "no-cache",
-            "X-Accel-Buffering": "no",
-            "Connection":       "keep-alive",
-        }
-    )
-
-
-@app.post("/upload", dependencies=[Depends(verify_key)])
-@limiter.limit("10/minute")
-async def upload(request: Request, files: List[UploadFile] = File(...),
-                 conversation_id: Optional[str] = Header(None, alias="X-Conversation-ID")):
-    if not conversation_id: raise HTTPException(400, "X-Conversation-ID header required")
-    upload_dir = Path("./uploads") / conversation_id
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    paths, names = [], []
-    for f in files:
-        dest = upload_dir / f.filename
-        with open(dest, "wb") as buf: shutil.copyfileobj(f.file, buf)
-        paths.append(str(dest)); names.append(f.filename)
-        logger.info(f"✅ Saved: {f.filename}")
-    asyncio.create_task(process_files_background(conversation_id, paths, names))
-    return JSONResponse({"success": True, "loaded_files": names, "processing": True})
-
-
-@app.get("/status")
-async def status(): return JSONResponse(orchestrator.get_system_status())
-
-@app.get("/api/metrics")
-async def api_metrics():
-    sys = orchestrator.get_system_status()
-    return {"success": True, "sql_agent": sys["sql_agent"]["status"], "rag_agent": sys["rag_agent"]["status"],
-            "total_sessions": sys["rag_agent"]["total_sessions"], "total_vectors": sys["rag_agent"]["total_vectors"],
-            "a2a_agents": sys["a2a_registry"]["registered_agents"]}
-
-@app.post("/query/silent", dependencies=[Depends(verify_key)])
-@limiter.limit("60/minute")
-async def query_silent(
-    request: Request,
-    body: QueryRequest,
-    x_user_id: Optional[str] = Header(None),
-):
-    """
-    Silent query — runs the full pipeline but saves NO chat history.
-    Used exclusively by the Dashboard auto-build to prevent backend
-    queries from leaking into the user's chat thread.
-    """
-    try:
-        cid = body.conversation_id
-        if not cid:
-            raise HTTPException(400, "conversation_id required for silent query")
-        orchestrator.rag_agent.get_or_create_session(cid)
-        # Dashboard silent queries never need value_col
-        result = await orchestrator.route_query(body.question, cid)
-        result["conversation_id"] = cid
-        return JSONResponse(content=result)
-    except Exception as e:
-        logger.error(f"❌ Silent query error: {e}")
-        raise HTTPException(500, str(e))
-
-
-@app.get("/conversations/{cid}/dashboard")
-async def get_dashboard(cid: str):
-    """Load persisted dashboard state for a session."""
-    import sqlite3 as _sqlite3
-    try:
-        conn = _sqlite3.connect("./data/chat_history.db")
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT state FROM dashboards WHERE conversation_id = ?", (cid,)
-        )
-        row = cursor.fetchone()
-        conn.close()
-        if row:
-            import json as _json
-            return {"success": True, "state": _json.loads(row[0])}
-        return {"success": True, "state": None}
-    except Exception as e:
-        return {"success": False, "state": None, "error": str(e)}
-
-
-@app.post("/conversations/{cid}/dashboard")
-async def save_dashboard(cid: str, request: Request):
-    """Persist dashboard state for a session."""
-    import sqlite3 as _sqlite3
-    try:
-        body = await request.json()
-        state_json = __import__("json").dumps(body.get("state", {}))
-        conn = _sqlite3.connect("./data/chat_history.db")
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO dashboards (conversation_id, state, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(conversation_id) DO UPDATE SET
-                state      = excluded.state,
-                updated_at = CURRENT_TIMESTAMP
-        """, (cid, state_json))
-        conn.commit()
-        conn.close()
-        return {"success": True}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-@app.get("/conversations/{cid}/numeric-columns")
-async def get_numeric_columns(cid: str):
-    """
-    Return numeric column names for all upload tables in this session.
-    Uses pragma_table_info directly — no LLM, no chat history, instant.
-    Called by the Forecast tab to populate the column selector.
-    """
-    try:
-        tables = db_manager.list_tables()
-        session_prefix = HybridCSVProcessor.session_table_prefix(cid)
-        session_tables = [t for t in tables if t.lower().startswith(session_prefix)]
-        if not session_tables:
-            return {"success": True, "columns": []}
-
-        numeric_types = {"integer", "real", "numeric", "float", "double"}
-        columns = []
-        conn = db_manager.get_connection()
-        cursor = conn.cursor()
-        for table in session_tables:
-            cursor.execute(f"PRAGMA table_info([{table}])")
-            for row in cursor.fetchall():
-                col_name = row[1]
-                col_type = str(row[2]).lower()
-                if any(nt in col_type for nt in numeric_types):
-                    if col_name not in columns:
-                        columns.append(col_name)
-        conn.close()
-        return {"success": True, "columns": columns}
-    except Exception as e:
-        logger.error(f"❌ numeric-columns error: {e}")
-        return {"success": False, "columns": [], "error": str(e)}
-
-
-
-
-@app.get("/conversations/{cid}/processing-status")
-async def processing_status(cid: str):
-    state = _processing_state.get(cid)
-    if not state:
-        s = orchestrator.rag_agent.get_session_status(cid)
-        if s.get("total_documents", 0) > 0:
-            return {"status": "ready", "files": s.get("loaded_files", []), "error": None}
-        return {"status": "unknown", "files": [], "error": None}
-    return {"status": state["status"], "files": state["files"], "error": state["error"]}
-
-@app.get("/analytics")
-async def analytics(x_user_id: Optional[str] = Header(None)):
-    return {"success": True, "analytics": chat_manager.get_analytics(get_user_id(x_user_id))}
-
-@app.post("/mcp/initialize")
-async def mcp_init(req: dict): return await mcp.handle_initialize(req)
-
-@app.get("/mcp/tools/list")
-async def mcp_tools_list(): return await mcp.handle_list_tools()
-
-class MCPCallRequest(BaseModel):
-    name: str
-    arguments: dict = {}
-
-@app.post("/mcp/tools/call")
-async def mcp_call(body: MCPCallRequest):
-    return JSONResponse(await mcp.handle_call_tool(body.name, body.arguments))
-
-@app.get("/mcp/info")
-async def mcp_info(): return mcp.get_server_info()
-
-if __name__ == "__main__":
-    uvicorn.run(app, host=settings.HOST, port=settings.PORT, log_level="info")
-
-
-    '''
-
-
 # main.py — AI Business Analyst API Server v3.3.1
 #
 # Endpoints:
@@ -543,9 +25,9 @@ from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Any
 from pathlib import Path
-import shutil, uvicorn, asyncio, json
+import math, re, shutil, uvicorn, asyncio, json
 
 from database import DatabaseManager
 from agents import OrchestratorAgent
@@ -570,6 +52,41 @@ mcp = MCPServer(name="ai-business-analyst", version="3.0.0")
 
 # Background processing state keyed by conversation_id
 _processing_state: dict = {}
+_background_tasks: set = set()
+_MAX_DASHBOARD_BYTES = 5 * 1024 * 1024
+
+
+# ── Input safety helpers ──────────────────────────────────────────────────────
+
+# conversation_id is used to build filesystem paths (uploads/<cid>,
+# data/vector_stores/<cid>) and is rmtree'd on delete — so it must never be
+# able to contain path separators or be "." / "..".
+_CID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def _require_cid(cid: Optional[str]) -> str:
+    if not cid or not _CID_RE.match(cid):
+        raise HTTPException(400, "Invalid conversation_id")
+    return cid
+
+
+def _safe_filename(name: Optional[str]) -> str:
+    """Reduce a client-supplied filename to a bare basename (no ../ or ..\\)."""
+    base = Path((name or "").replace("\\", "/")).name.strip()
+    if base in ("", ".", ".."):
+        raise HTTPException(400, f"Invalid filename: {name!r}")
+    return base
+
+
+def _json_safe(obj: Any) -> Any:
+    """Replace NaN/±inf floats (invalid JSON) with None, recursively."""
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_safe(v) for v in obj]
+    return obj
 
 
 # ── Startup helpers ───────────────────────────────────────────────────────────
@@ -585,9 +102,23 @@ def _drop_tables(tables: list):
 
 
 def _cleanup_orphan_tables():
-    """Remove upload_ tables left over from previous runs."""
+    """
+    Remove upload_ tables whose session no longer exists on disk.
+
+    Tables belonging to a session that still has a persisted vector store are
+    kept, so the session's SQL/forecast features keep working after a restart.
+    """
     try:
-        orphans = [t for t in db_manager.list_tables() if t.startswith("upload_")]
+        vs_root     = Path(orchestrator.rag_agent.base_vector_store_path)
+        live_prefix = {
+            HybridCSVProcessor.session_table_prefix(d.name)
+            for d in vs_root.iterdir() if d.is_dir()
+        } if vs_root.exists() else set()
+        orphans = [
+            t for t in db_manager.list_tables()
+            if t.startswith(settings.CSV_TABLE_PREFIX)
+            and not any(t.startswith(p) for p in live_prefix)
+        ]
         if orphans:
             _drop_tables(orphans)
             logger.info(f"🧹 Dropped {len(orphans)} orphan table(s)")
@@ -636,6 +167,7 @@ class QueryRequest(BaseModel):
     question: str
     conversation_id: Optional[str] = None
     value_col: Optional[str] = None  # explicit column for forecast tab
+    want_chart: bool = False         # dashboard: always build a chart from the data
 
 class ConversationCreate(BaseModel):
     user_id: str
@@ -662,16 +194,25 @@ async def _process_files_background(
     }
     try:
         logger.info(f"📤  Background indexing: {file_names}")
-        await asyncio.get_event_loop().run_in_executor(
-            None,
+        result = await asyncio.to_thread(
             orchestrator.rag_agent.load_documents,
             conversation_id,
             file_paths,
         )
-        _processing_state[conversation_id] = {
-            "status": "ready", "files": file_names, "error": None
-        }
         orchestrator.sql_agent.invalidate_schema_cache(conversation_id)  # only clear THIS session's cache
+        errors = result.get("errors") or []
+        if not result.get("success"):
+            msg = "; ".join(errors) or result.get("message", "No documents could be loaded")
+            _processing_state[conversation_id] = {
+                "status": "error", "files": file_names, "error": msg
+            }
+            logger.error(f"❌  Indexing failed: {msg}")
+            return
+        _processing_state[conversation_id] = {
+            "status": "ready", "files": file_names,
+            # Partial success: some files loaded, others failed
+            "error": "; ".join(errors) if errors else None,
+        }
         logger.info(f"✅  Indexing complete: {conversation_id}")
     except Exception as e:
         _processing_state[conversation_id] = {
@@ -708,6 +249,8 @@ class MCPToolHandlers:
         conv_id  = args.get("conversation_id")
         if not question:
             return {"content": [{"type": "text", "text": "No question provided"}], "isError": True}
+        if conv_id is not None and not _CID_RE.match(str(conv_id)):
+            return {"content": [{"type": "text", "text": "Invalid conversation_id"}], "isError": True}
         result = await self.orchestrator.route_query(question, conv_id)
         text   = result.get("explanation") or result.get("answer") or "No answer generated."
         return {
@@ -735,12 +278,13 @@ class MCPToolHandlers:
         """
         question = args.get("question", "forecast the main metric for next 6 months")
         conv_id  = args.get("conversation_id", "")
-        if not conv_id:
+        if not conv_id or not _CID_RE.match(str(conv_id)):
             return {
-                "content": [{"type": "text", "text": "conversation_id is required"}],
+                "content": [{"type": "text", "text": "A valid conversation_id is required"}],
                 "isError": True,
             }
-        result = await self.orchestrator.route_query(question, conv_id)
+        result = await self.orchestrator.route_query(
+            question, conv_id, value_col=args.get("value_col"))
         text   = (
             result.get("explanation")
             or result.get("answer")
@@ -844,6 +388,7 @@ async def get_conversations(
 
 @app.get("/conversations/{cid}")
 async def get_conversation(cid: str, limit: int = 50):
+    _require_cid(cid)
     conv = chat_manager.get_conversation(cid, limit)
     if not conv:
         raise HTTPException(404, "Conversation not found")
@@ -851,8 +396,9 @@ async def get_conversation(cid: str, limit: int = 50):
     return {"success": True, "conversation": conv}
 
 
-@app.delete("/conversations/{cid}")
+@app.delete("/conversations/{cid}", dependencies=[Depends(verify_key)])
 async def delete_conversation(cid: str):
+    _require_cid(cid)
     chat_manager.delete_conversation(cid)
     orchestrator.rag_agent.delete_session(cid)
     orchestrator.sql_agent.invalidate_schema_cache(cid)
@@ -869,6 +415,7 @@ async def delete_conversation(cid: str):
 
 @app.get("/conversations/{cid}/documents")
 async def get_documents(cid: str):
+    _require_cid(cid)
     s = orchestrator.rag_agent.get_session_status(cid)
     return {
         "success":         True,
@@ -887,6 +434,7 @@ async def get_schema(cid: str):
     Classifies every column as: date | numeric | categorical | id
     Used by Forecast tab (numeric_columns) and Dashboard (all_columns).
     """
+    _require_cid(cid)
     import pandas as pd
 
     DATE_KEYWORDS   = {"date","time","month","year","week","day","created","updated","period","timestamp","dt"}
@@ -900,9 +448,9 @@ async def get_schema(cid: str):
         date_cols     = []
         categorical   = []
         table_names   = []
+        schema        = orchestrator.sql_agent.db.get_schema() if csv_tables else {}
 
         for table in csv_tables:
-            schema   = orchestrator.sql_agent.db.get_schema()
             cols     = schema.get(table, [])
             table_names.append(table)
 
@@ -979,6 +527,21 @@ async def get_schema(cid: str):
         return {"success": False, "numeric_columns": [], "all_columns": [], "error": str(e)}
 
 
+@app.get("/conversations/{cid}/numeric-columns")
+async def get_numeric_columns(cid: str):
+    """
+    Numeric (forecastable) columns across this session's CSV tables.
+    Called by the Forecast tab in both the React frontend and static/index.html
+    to populate its column selector.
+    """
+    s = await get_schema(cid)
+    return {
+        "success": s.get("success", False),
+        "columns": s.get("numeric_columns", []),
+        **({"error": s["error"]} if s.get("error") else {}),
+    }
+
+
 @app.post("/query/silent", dependencies=[Depends(verify_key)])
 @limiter.limit("60/minute")
 async def query_silent(
@@ -988,18 +551,16 @@ async def query_silent(
 ):
     """
     Silent query — runs the full pipeline but saves NO chat history.
-    Used exclusively by the Dashboard auto-build to prevent backend
-    queries from leaking into the user's chat thread.
+    Used by the Dashboard / Forecast tabs so backend queries don't leak into
+    the user's chat thread.
     """
+    cid = _require_cid(body.conversation_id)
     try:
-        cid = body.conversation_id
-        if not cid:
-            raise HTTPException(400, "conversation_id required for silent query")
         orchestrator.rag_agent.get_or_create_session(cid)
-        # Dashboard silent queries never need value_col
-        result = await orchestrator.route_query(body.question, cid)
+        result = await orchestrator.route_query(
+            body.question, cid, value_col=body.value_col, want_chart=body.want_chart)
         result["conversation_id"] = cid
-        return JSONResponse(content=result)
+        return JSONResponse(content=_json_safe(result))
     except Exception as e:
         logger.error(f"❌ Silent query error: {e}")
         raise HTTPException(500, str(e))
@@ -1008,6 +569,7 @@ async def query_silent(
 @app.get("/conversations/{cid}/dashboard")
 async def get_dashboard(cid: str):
     """Load persisted dashboard state for a session."""
+    _require_cid(cid)
     import sqlite3 as _sqlite3
     try:
         conn = _sqlite3.connect("./data/chat_history.db")
@@ -1025,13 +587,16 @@ async def get_dashboard(cid: str):
         return {"success": False, "state": None, "error": str(e)}
 
 
-@app.post("/conversations/{cid}/dashboard")
+@app.post("/conversations/{cid}/dashboard", dependencies=[Depends(verify_key)])
 async def save_dashboard(cid: str, request: Request):
     """Persist dashboard state for a session."""
+    _require_cid(cid)
     import sqlite3 as _sqlite3
     try:
         body = await request.json()
-        state_json = __import__("json").dumps(body.get("state", {}))
+        state_json = json.dumps(_json_safe(body.get("state", {})))
+        if len(state_json) > _MAX_DASHBOARD_BYTES:
+            return {"success": False, "error": "Dashboard state too large"}
         conn = _sqlite3.connect("./data/chat_history.db")
         cursor = conn.cursor()
         cursor.execute("""
@@ -1050,6 +615,7 @@ async def save_dashboard(cid: str, request: Request):
 
 @app.get("/conversations/{cid}/processing-status")
 async def processing_status(cid: str):
+    _require_cid(cid)
     state = _processing_state.get(cid)
     if not state:
         s = orchestrator.rag_agent.get_session_status(cid)
@@ -1072,25 +638,28 @@ async def query(
     Synchronous query — dashboard tab, benchmark.py, and MCP tool internals.
     Returns full JSON: data, plot spec, explanation, routing, sql_query, sources.
     """
+    if body.conversation_id:
+        _require_cid(body.conversation_id)
     try:
         uid = _get_user_id(x_user_id)
         cid = body.conversation_id or chat_manager.create_conversation(uid)
         orchestrator.rag_agent.get_or_create_session(cid)
 
         chat_manager.add_message(conversation_id=cid, role="user", content=body.question)
-        result = await orchestrator.route_query(body.question, cid)
+        result = await orchestrator.route_query(body.question, cid, value_col=body.value_col)
         chat_manager.add_message(
             conversation_id=cid,
             role="assistant",
             content=result.get("explanation") or result.get("answer", ""),
             routing=result.get("routing"),
+            plot=_json_safe(result.get("plot")),   # so the chart survives a reload
             metadata={
                 "sql_query": result.get("sql_query"),
                 "sources":   result.get("sources", []),
             },
         )
         result["conversation_id"] = cid
-        return JSONResponse(content=result)
+        return JSONResponse(content=_json_safe(result))
 
     except Exception as e:
         logger.error(f"❌  Query error: {e}")
@@ -1116,56 +685,63 @@ async def query_stream(
     Note: slowapi requires the starlette Request parameter to be named
     exactly "request". The Pydantic body uses "body" to avoid conflict.
     """
+    if body.conversation_id:
+        _require_cid(body.conversation_id)
     uid = _get_user_id(x_user_id)
     cid = body.conversation_id or chat_manager.create_conversation(uid)
     orchestrator.rag_agent.get_or_create_session(cid)
     chat_manager.add_message(conversation_id=cid, role="user", content=body.question)
 
     async def event_generator():
-        full_text = ""
         try:
-            try:
-                result = await orchestrator.route_query(body.question, cid, value_col=body.value_col)
-            except TypeError:
-                result = await orchestrator.route_query(body.question, cid)
+            result = await orchestrator.route_query(body.question, cid, value_col=body.value_col)
 
             # Send non-text fields first so the UI can render routing tag
             # and charts before the explanation text starts streaming.
-            meta = {
+            # _json_safe: json.dumps would otherwise emit bare NaN, which the
+            # browser's JSON.parse rejects (silently dropping the chart).
+            meta = _json_safe({
                 "success":         result.get("success", True),
                 "routing":         result.get("routing", ""),
                 "plot":            result.get("plot"),
                 "data":            result.get("data", []),
                 "sql_query":       result.get("sql_query"),
                 "sources":         result.get("sources", []),
+                "error":           result.get("error"),
                 "conversation_id": cid,
-            }
+            })
             yield f"event: meta\ndata: {json.dumps(meta)}\n\n"
 
-            # Stream explanation word-by-word. route_query() runs the full
-            # pipeline synchronously then we re-stream the result. A small
-            # sleep between words creates smooth progressive UX without
-            # requiring per-token streaming changes in each agent.
-            explanation = (result.get("explanation") or result.get("answer") or "").strip()
-            words = explanation.split(" ")
-            for i, word in enumerate(words):
-                chunk      = word + (" " if i < len(words) - 1 else "")
-                full_text += chunk
-                yield f"event: token\ndata: {json.dumps(chunk)}\n\n"
-                await asyncio.sleep(0.018)
+            explanation = (
+                result.get("explanation") or result.get("answer")
+                or (f"Sorry, something went wrong: {result['error']}" if result.get("error") else "")
+            ).strip()
 
-            yield f"event: done\ndata: {json.dumps({'conversation_id': cid})}\n\n"
-
+            # Persist before streaming so a client disconnect mid-stream
+            # doesn't lose the assistant message.
             chat_manager.add_message(
                 conversation_id=cid,
                 role="assistant",
-                content=full_text,
+                content=explanation,
                 routing=result.get("routing"),
+                plot=meta.get("plot"),   # so the chart (and its Pin button) survives a reload
                 metadata={
                     "sql_query": result.get("sql_query"),
                     "sources":   result.get("sources", []),
                 },
             )
+
+            # Stream explanation word-by-word. route_query() runs the full
+            # pipeline then we re-stream the result. A small sleep between
+            # words creates smooth progressive UX without requiring
+            # per-token streaming changes in each agent.
+            words = explanation.split(" ")
+            for i, word in enumerate(words):
+                chunk = word + (" " if i < len(words) - 1 else "")
+                yield f"event: token\ndata: {json.dumps(chunk)}\n\n"
+                await asyncio.sleep(0.018)
+
+            yield f"event: done\ndata: {json.dumps({'conversation_id': cid})}\n\n"
 
         except Exception as e:
             logger.error(f"❌  Stream error: {e}")
@@ -1193,20 +769,29 @@ async def upload(
 ):
     if not conversation_id:
         raise HTTPException(400, "X-Conversation-ID header required")
+    _require_cid(conversation_id)
 
     upload_dir = Path("./uploads") / conversation_id
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     paths, names = [], []
     for f in files:
-        dest = upload_dir / f.filename
+        # Never trust the client's filename as a path: "../../main.py" or
+        # "..\\main.py" would otherwise write outside the session folder.
+        name = _safe_filename(f.filename)
+        dest = upload_dir / name
         with open(dest, "wb") as buf:
             shutil.copyfileobj(f.file, buf)
         paths.append(str(dest))
-        names.append(f.filename)
-        logger.info(f"✅  Saved: {f.filename}")
+        names.append(name)
+        logger.info(f"✅  Saved: {name}")
 
-    asyncio.create_task(_process_files_background(conversation_id, paths, names))
+    # Mark as processing immediately so a status poll fired right after this
+    # response can't see a stale "ready" from a previous upload.
+    _processing_state[conversation_id] = {"status": "processing", "files": names, "error": None}
+    task = asyncio.create_task(_process_files_background(conversation_id, paths, names))
+    _background_tasks.add(task)               # keep a strong ref (asyncio docs)
+    task.add_done_callback(_background_tasks.discard)
     return JSONResponse({"success": True, "loaded_files": names, "processing": True})
 
 
@@ -1250,7 +835,7 @@ async def mcp_tools_list():
     return await mcp.handle_list_tools()
 
 
-@app.post("/mcp/tools/call")
+@app.post("/mcp/tools/call", dependencies=[Depends(verify_key)])
 async def mcp_tools_call(body: MCPCallRequest):
     return JSONResponse(await mcp.handle_call_tool(body.name, body.arguments))
 

@@ -36,11 +36,19 @@ class CSVQueryRouter:
     )
 
     def __init__(self):
+        # Reasoning models (gpt-oss) spend completion tokens on hidden reasoning
+        # before the answer — a tiny max_tokens (was 10) is used up entirely by
+        # reasoning and returns an empty string, which silently routed EVERY
+        # ambiguous question to SQL. Give it headroom and keep reasoning short.
+        extra = {}
+        if "gpt-oss" in settings.LLM_MODEL.lower():
+            extra["model_kwargs"] = {"reasoning_effort": "low"}
         self._llm = ChatGroq(
             api_key=settings.GROQ_API_KEY,
             model=settings.LLM_MODEL,
             temperature=0,          # deterministic routing
-            max_tokens=10,          # we only need one word back
+            max_tokens=256,
+            **extra,
         )
         logger.info("🧭 CSV Query Router initialized")
 
@@ -85,6 +93,8 @@ Category:"""
         try:
             response = self._llm.invoke(prompt).content.strip().upper()
             logger.info(f"🤖 LLM Route: {response}")
+            if not response:
+                logger.warning("⚠️ LLM router returned empty output — defaulting to SQL")
 
             if "HYBRID" in response:
                 return "HYBRID"

@@ -18,7 +18,8 @@ Routing priorities:
   5    LLM fallback classifier           → SQL / DOCUMENT / HYBRID
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+import asyncio
 import re
 from collections import Counter
 
@@ -134,10 +135,14 @@ Question: {question}""",
         ))
 
         async def handle_query(message: A2AMessage) -> Dict[str, Any]:
-            return self.sql_agent.analyze(
+            # analyze() is synchronous (LLM + DB calls) — run it in a worker
+            # thread so it doesn't freeze the event loop for every other request.
+            return await asyncio.to_thread(
+                self.sql_agent.analyze,
                 question=message.payload.get("question"),
                 allowed_tables=message.payload.get("allowed_tables"),
                 conversation_id=message.payload.get("conversation_id"),
+                want_chart=bool(message.payload.get("want_chart")),
             )
 
         agent.register_handler(MessageType.QUERY, handle_query)
@@ -161,7 +166,8 @@ Question: {question}""",
         ))
 
         async def handle_query(message: A2AMessage) -> Dict[str, Any]:
-            return self.rag_agent.query(
+            return await asyncio.to_thread(
+                self.rag_agent.query,
                 message.payload.get("conversation_id"),
                 message.payload.get("question"),
                 message.payload.get("language"),
@@ -213,6 +219,8 @@ Question: {question}""",
                 question=question,
                 conversation_id=message.payload.get("conversation_id", ""),
                 periods=periods,
+                value_col=message.payload.get("value_col"),
+                tables=self.rag_agent.get_csv_tables(message.payload.get("conversation_id", "")),
             )
 
         agent.register_handler(MessageType.QUERY, handle_forecast)
@@ -500,24 +508,41 @@ Question: {question}""",
 
     # ── Main routing method ───────────────────────────────────────────────────
 
-    async def route_query(self, question: str, conversation_id: str = None) -> Dict[str, Any]:
+    async def route_query(
+        self,
+        question: str,
+        conversation_id: str = None,
+        value_col: Optional[str] = None,
+        want_chart: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        want_chart=True is used by the Dashboard: the answer must be a chart
+        built from the uploaded data, so any non-forecast question in a CSV
+        session goes to SQL and the SQL agent always attempts a chart.
+        """
         log_section("ORCHESTRATING QUERY")
         logger.info(f"❓  Question: {question}")
         logger.info(f"💬  Session:  {conversation_id or 'None'}")
 
-        classification = self._classify_query(question, conversation_id)
-
+        classification = "UNCLASSIFIED"
         try:
+            # Classification may call the LLM and run retrieval — keep it off the loop.
+            classification = await asyncio.to_thread(self._classify_query, question, conversation_id)
+
+            # An explicit column chosen in the Forecast tab is an unambiguous
+            # forecast request, regardless of keyword classification.
+            if value_col and PROPHET_AVAILABLE and self.rag_agent.has_csv_data(conversation_id):
+                classification = "FORECAST"
+            elif (want_chart and classification != "FORECAST"
+                  and self.rag_agent.has_csv_data(conversation_id)):
+                classification = "SQL"
             # ── FORECAST ─────────────────────────────────────────────────────
             if classification == "FORECAST":
                 logger.info("📤  A2A → forecast_agent")
-                message  = await self.send_message(
-                    to_agent="forecast_agent",
-                    message_type=MessageType.QUERY,
-                    payload={"question": question, "conversation_id": conversation_id},
-                )
-                response = await self.registry.route_message(message)
-                result   = response.payload
+                result = await self._dispatch("forecast_agent", {
+                    "question": question, "conversation_id": conversation_id,
+                    "value_col": value_col,
+                })
                 result.update({
                     "routing":        "forecast",
                     "agent":          "forecast_agent",
@@ -528,33 +553,14 @@ Question: {question}""",
             # ── GENERAL ──────────────────────────────────────────────────────
             elif classification == "GENERAL":
                 logger.info("💬  GENERAL → LLM direct")
-                system_prompt = (
-                    "You are an AI Business Analyst assistant. "
-                    "Help users analyse documents and CSV data. "
-                    "Answer conversational questions naturally and helpfully. "
-                    "If asked who you are: explain you are an AI analyst that can analyse "
-                    "uploaded documents (PDF, TXT, DOCX) and CSV/Excel files. "
-                    "Keep answers concise and friendly."
-                )
-                response = self.llm.invoke(f"{system_prompt}\n\nUser: {question}")
-                return {
-                    "success":        True,
-                    "answer":         response.content.strip(),
-                    "routing":        "general",
-                    "agent":          "llm",
-                    "routing_reason": "Conversational or general knowledge query",
-                }
+                return await self._general_answer(question, "Conversational or general knowledge query")
 
             # ── DOCUMENT ─────────────────────────────────────────────────────
             elif classification == "DOCUMENT":
                 logger.info("📤  A2A → rag_agent")
-                message  = await self.send_message(
-                    to_agent="rag_agent",
-                    message_type=MessageType.QUERY,
-                    payload={"question": question, "conversation_id": conversation_id},
-                )
-                response = await self.registry.route_message(message)
-                result   = response.payload
+                result = await self._dispatch("rag_agent", {
+                    "question": question, "conversation_id": conversation_id,
+                })
                 result.update({
                     "routing":        "document",
                     "agent":          "rag_agent",
@@ -569,22 +575,12 @@ Question: {question}""",
 
                 if not session_tables:
                     logger.warning("⚠️  SQL route but no CSV tables — falling back to GENERAL")
-                    response = self.llm.invoke(question)
-                    return {
-                        "success":        True,
-                        "answer":         response.content.strip(),
-                        "routing":        "general",
-                        "agent":          "llm",
-                        "routing_reason": "SQL requested but no CSV uploaded",
-                    }
+                    return await self._general_answer(question, "SQL requested but no CSV uploaded")
 
-                message  = await self.send_message(
-                    to_agent="sql_agent",
-                    message_type=MessageType.QUERY,
-                    payload={"question": question, "allowed_tables": session_tables, "conversation_id": conversation_id},
-                )
-                response = await self.registry.route_message(message)
-                result   = response.payload
+                result = await self._dispatch("sql_agent", {
+                    "question": question, "allowed_tables": session_tables,
+                    "conversation_id": conversation_id, "want_chart": want_chart,
+                })
                 result.update({
                     "routing":        "sql",
                     "agent":          "sql_agent",
@@ -597,60 +593,58 @@ Question: {question}""",
                 logger.info("📤  A2A → sql_agent + rag_agent (HYBRID)")
                 session_tables = self.rag_agent.get_csv_tables(conversation_id)
 
-                sql_msg = await self.send_message(
-                    to_agent="sql_agent",
-                    message_type=MessageType.QUERY,
-                    payload={"question": question, "allowed_tables": session_tables, "conversation_id": conversation_id},
+                # The two agents are independent — run them concurrently.
+                sql_payload, rag_payload = await asyncio.gather(
+                    self._dispatch("sql_agent", {
+                        "question": question, "allowed_tables": session_tables,
+                        "conversation_id": conversation_id,
+                    }),
+                    self._dispatch("rag_agent", {
+                        "question": question, "conversation_id": conversation_id,
+                    }),
                 )
-                rag_msg = await self.send_message(
-                    to_agent="rag_agent",
-                    message_type=MessageType.QUERY,
-                    payload={"question": question, "conversation_id": conversation_id},
-                )
-
-                sql_response = await self.registry.route_message(sql_msg)
-                rag_response = await self.registry.route_message(rag_msg)
-
-                sql_payload = sql_response.payload
-                rag_payload = rag_response.payload
-                sql_text    = sql_payload.get("explanation", "")
-                rag_text    = rag_payload.get("answer", "")
+                sql_text = sql_payload.get("explanation", "") if sql_payload.get("success") else ""
+                rag_text = rag_payload.get("answer", "")      if rag_payload.get("success") else ""
 
                 sql_empty = (
                     not sql_text
                     or "not available" in sql_text.lower()
                     or sql_payload.get("row_count", 1) == 0
                 )
-                rag_empty = rag_payload.get("not_found", False)
+                rag_empty = rag_payload.get("not_found", False) or not rag_text.strip()
 
                 if sql_empty and rag_empty:
                     combined = "This information is not available in the uploaded files."
                 elif sql_empty:
-                    combined = (
-                        self._synthesize_partial(
-                            question, rag_text,
-                            "The uploaded CSV data does not contain the specific "
-                            "columns needed to answer this numerically.",
-                        )
-                        if rag_text.strip()
-                        else rag_text.strip()
+                    combined = await asyncio.to_thread(
+                        self._synthesize_partial,
+                        question, rag_text,
+                        "The uploaded CSV data does not contain the specific "
+                        "columns needed to answer this numerically.",
                     )
                 elif rag_empty:
                     combined = sql_text.strip()
                 else:
-                    combined = self._synthesize_hybrid(question, sql_text, rag_text)
+                    combined = await asyncio.to_thread(self._synthesize_hybrid, question, sql_text, rag_text)
 
-                return {
+                result = {
                     "success":        True,
                     "question":       question,
                     "answer":         combined,
                     "explanation":    combined,
                     "sql_result":     sql_payload,
                     "rag_result":     rag_payload,
+                    "sources":        rag_payload.get("sources", []),
                     "routing":        "hybrid",
                     "agent":          "both",
                     "routing_reason": "Needs both calculation and context",
                 }
+                # Surface the SQL side's table/chart so the UI can render them.
+                if not sql_empty:
+                    for k in ("sql_query", "data", "row_count", "plot"):
+                        if sql_payload.get(k) is not None:
+                            result[k] = sql_payload[k]
+                return result
 
         except Exception as e:
             logger.error(f"❌  Routing error: {e}")
@@ -659,6 +653,41 @@ Question: {question}""",
 
         finally:
             logger.info(f"✅  Routed as: {classification}")
+
+    # ── Dispatch helpers ──────────────────────────────────────────────────────
+
+    async def _dispatch(self, to_agent: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Send an A2A query and return the reply payload (success=False on A2A ERROR)."""
+        message  = await self.send_message(
+            to_agent=to_agent, message_type=MessageType.QUERY, payload=payload,
+        )
+        response = await self.registry.route_message(message)
+        result   = dict(response.payload or {})
+        if response.message_type == MessageType.ERROR:
+            result.setdefault("error", "Agent error")
+            result["success"] = False
+        return result
+
+    async def _general_answer(self, question: str, reason: str) -> Dict[str, Any]:
+        system_prompt = (
+            "You are an AI Business Analyst assistant. "
+            "Help users analyse documents and CSV data. "
+            "Answer conversational questions naturally and helpfully. "
+            "If asked who you are: explain you are an AI analyst that can analyse "
+            "uploaded documents (PDF, TXT, DOCX) and CSV/Excel files. "
+            "You have NO access to any company data unless the user uploads it — "
+            "never invent figures, names or records; if asked about specific data, "
+            "ask the user to upload the relevant file. "
+            "Keep answers concise and friendly."
+        )
+        response = await self.llm.ainvoke(f"{system_prompt}\n\nUser: {question}")
+        return {
+            "success":        True,
+            "answer":         response.content.strip(),
+            "routing":        "general",
+            "agent":          "llm",
+            "routing_reason": reason,
+        }
 
     # ── Hybrid synthesis helpers ──────────────────────────────────────────────
 

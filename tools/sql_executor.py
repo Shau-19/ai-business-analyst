@@ -6,6 +6,7 @@ Logs exactly once per step — no duplicates.
 """
 
 import re
+import numpy as np
 import pandas as pd
 from typing import Dict, Any, Optional
 
@@ -53,6 +54,13 @@ class SQLExecutor:
 
             # FIX: removed duplicate 📝/🔍 log lines — caller (sql_analyst) logs SQL
             df = self.db.execute_query(cleaned)
+
+            # SQL NULLs become NaN in float columns (e.g. LAG() on the first
+            # row) and ±inf can come from division — neither is valid JSON, and
+            # one such cell made the whole /query response a 500. Use None.
+            if not df.empty:
+                df = df.replace([np.inf, -np.inf], np.nan)
+                df = df.astype(object).where(pd.notna(df), None)
 
             return {
                 "success":      True,
