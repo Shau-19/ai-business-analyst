@@ -1,31 +1,64 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Sparkles, Trash2, RefreshCw, BarChart2, X } from 'lucide-react';
+import { Plus, Sparkles, Trash2, RefreshCw, BarChart2, X, AlertCircle } from 'lucide-react';
 import ChartCanvas from './ChartCanvas';
 import { api } from '../api';
 
+// Ask the backend for a chart built from this session's data.
+// Returns { panel } on success or { error } with a user-facing reason.
+async function buildPanel(sessionId, prompt) {
+  try {
+    const res = await api.runSilentQuery(sessionId, prompt, null, true);
+    if (!res.success) {
+      return { error: res.error || 'The query failed.' };
+    }
+    if (!res.plot) {
+      const answer = (res.explanation || res.answer || '').trim();
+      return {
+        error: answer
+          ? `No chart for this — the answer is: "${answer.slice(0, 160)}". Try asking for a breakdown, e.g. "… by region" or "… per month".`
+          : 'This question did not return chartable data (need a label column and a numeric column with 2+ rows).',
+      };
+    }
+    return { panel: { title: res.plot.title || prompt, plot: res.plot, query: prompt } };
+  } catch (e) {
+    return { error: e?.response?.data?.detail || e.message || 'Request failed.' };
+  }
+}
+
 export default function DashboardView({ activeSessionId }) {
-  // sessionDashboards structure: { [dashId]: { id, title, prompt, panels: [{ title, plot }] } }
+  // dashboards: { [dashId]: { id, title, prompt, panels: [{ title, plot, query? }] } }
   const [dashboards, setDashboards] = useState({});
   const [activeDashId, setActiveDashId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newDashTitle, setNewDashTitle] = useState('');
   const [newDashPrompt, setNewDashPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [modalError, setModalError] = useState('');
+  const [addPrompt, setAddPrompt] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [refreshing, setRefreshing] = useState({}); // { [panelIndex]: true }
 
-  // Tracks the session the most recently loaded/saved dashboard state
-  // belongs to, so a late-arriving response for a session the user has
-  // since left can't overwrite the newly active session's dashboard.
+  // Async work (chart generation can take seconds) must never write one
+  // session's dashboards into another: every async path re-checks the
+  // active session, and reads the latest state through refs rather than
+  // the render-time closure.
   const activeSessionRef = useRef(activeSessionId);
-  useEffect(() => {
-    activeSessionRef.current = activeSessionId;
-  }, [activeSessionId]);
+  const dashboardsRef = useRef(dashboards);
+  const activeDashIdRef = useRef(activeDashId);
+  useEffect(() => { activeSessionRef.current = activeSessionId; }, [activeSessionId]);
+  useEffect(() => { dashboardsRef.current = dashboards; }, [dashboards]);
+  useEffect(() => { activeDashIdRef.current = activeDashId; }, [activeDashId]);
 
   // Load dashboards when session changes
   useEffect(() => {
-    // Reset immediately so a brand-new/different session never briefly
-    // shows the previous session's dashboards while the fetch is in flight.
     setDashboards({});
     setActiveDashId(null);
+    setNotice('');
+    setRefreshing({});
+    setIsGenerating(false);   // in-flight work for the old session is dropped
+    setIsAdding(false);
+    setModalError('');
     if (!activeSessionId) return;
     loadDashboardState(activeSessionId);
   }, [activeSessionId]);
@@ -47,78 +80,151 @@ export default function DashboardView({ activeSessionId }) {
           setDashboards({ default: defaultDash });
           setActiveDashId('default');
         }
-      } else {
-        setDashboards({});
-        setActiveDashId(null);
       }
     } catch (e) {
       console.error('Failed to load dashboard state', e);
     }
   };
 
-  const saveDashboardState = async (updatedDict, newActiveId) => {
-    setDashboards(updatedDict);
-    setActiveDashId(newActiveId);
-    if (!activeSessionId) return;
+  // Persist to an explicit session. UI state is only touched if that session
+  // is still the one on screen.
+  const persist = async (sessionId, updatedDict, newActiveId) => {
+    if (activeSessionRef.current === sessionId) {
+      dashboardsRef.current = updatedDict;
+      activeDashIdRef.current = newActiveId;
+      setDashboards(updatedDict);
+      setActiveDashId(newActiveId);
+    }
     try {
-      await api.saveDashboard(activeSessionId, {
+      await api.saveDashboard(sessionId, {
         dashboards: updatedDict,
         activeId: newActiveId,
         built: Object.keys(updatedDict).length > 0,
       });
     } catch (e) {
       console.error('Failed to save dashboard state', e);
+      if (activeSessionRef.current === sessionId) setNotice('Could not save the dashboard. Changes may be lost on reload.');
     }
   };
 
-  const handleCreateDashboard = async (e) => {
-    e.preventDefault();
-    if (!newDashTitle.trim() || !activeSessionId) return;
-
-    setIsGenerating(true);
-    const newId = `dash_${Date.now()}`;
-    let panels = [];
-
-    if (newDashPrompt.trim()) {
-      try {
-        const queryRes = await api.runQuery(activeSessionId, newDashPrompt.trim());
-        if (queryRes.success && queryRes.plot) {
-          panels.push({ title: queryRes.plot.title || 'Overview Chart', plot: queryRes.plot });
-        }
-      } catch (err) {
-        console.error('Auto query failed', err);
-      }
-    }
-
-    const updatedDict = {
-      ...dashboards,
-      [newId]: { id: newId, title: newDashTitle.trim(), prompt: newDashPrompt.trim(), panels },
-    };
-
-    await saveDashboardState(updatedDict, newId);
-    setIsGenerating(false);
+  const closeModal = () => {
     setIsModalOpen(false);
+    setModalError('');
     setNewDashTitle('');
     setNewDashPrompt('');
   };
 
+  const handleCreateDashboard = async (e) => {
+    e.preventDefault();
+    const sessionId = activeSessionId;
+    const title = newDashTitle.trim();
+    const prompt = newDashPrompt.trim();
+    if (!title || !sessionId) return;
+
+    setIsGenerating(true);
+    setModalError('');
+    const panels = [];
+
+    if (prompt) {
+      const { panel, error } = await buildPanel(sessionId, prompt);
+      if (activeSessionRef.current !== sessionId) return; // user left; drop it
+      if (error) {
+        // Keep the modal open so the user can rephrase (or clear the prompt
+        // to create an empty dashboard) instead of silently getting nothing.
+        setModalError(error);
+        setIsGenerating(false);
+        return;
+      }
+      panels.push(panel);
+    }
+
+    const newId = `dash_${Date.now()}`;
+    await persist(sessionId, {
+      ...dashboardsRef.current,
+      [newId]: { id: newId, title, prompt, panels },
+    }, newId);
+    setIsGenerating(false);
+    closeModal();
+  };
+
+  const handleAddChart = async (e) => {
+    e.preventDefault();
+    const sessionId = activeSessionId;
+    const dashId = activeDashIdRef.current;
+    const prompt = addPrompt.trim();
+    if (!prompt || !sessionId || !dashId) return;
+
+    setIsAdding(true);
+    setNotice('');
+    const { panel, error } = await buildPanel(sessionId, prompt);
+    if (activeSessionRef.current !== sessionId) return;
+    setIsAdding(false);
+    if (error) { setNotice(error); return; }
+
+    const current = dashboardsRef.current;
+    const dash = current[dashId];
+    if (!dash) return;
+    setAddPrompt('');
+    await persist(sessionId, { ...current, [dashId]: { ...dash, panels: [...dash.panels, panel] } }, dashId);
+  };
+
+  const refreshPanel = async (dashId, idx) => {
+    const sessionId = activeSessionId;
+    const panel = dashboardsRef.current[dashId]?.panels?.[idx];
+    if (!panel?.query) return null;
+    setRefreshing((r) => ({ ...r, [idx]: true }));
+    const { panel: fresh, error } = await buildPanel(sessionId, panel.query);
+    if (activeSessionRef.current !== sessionId) return null;
+    setRefreshing((r) => ({ ...r, [idx]: false }));
+    if (error) { setNotice(`Refresh failed for "${panel.title}": ${error}`); return null; }
+
+    const current = dashboardsRef.current;
+    const dash = current[dashId];
+    if (!dash || !dash.panels[idx]) return null;
+    const panels = [...dash.panels];
+    panels[idx] = { ...fresh, title: panel.title };
+    await persist(sessionId, { ...current, [dashId]: { ...dash, panels } }, dashId);
+    return true;
+  };
+
+  const refreshAll = async () => {
+    const dashId = activeDashIdRef.current;
+    const dash = dashboardsRef.current[dashId];
+    if (!dash) return;
+    setNotice('');
+    // Sequential: each refresh persists the latest state before the next.
+    for (let i = 0; i < dash.panels.length; i++) {
+      if (dash.panels[i].query) await refreshPanel(dashId, i);
+    }
+  };
+
   const handleDeleteDashboard = (dashId) => {
-    const nextDict = { ...dashboards };
+    const dash = dashboardsRef.current[dashId];
+    if (dash?.panels?.length && !window.confirm(`Delete dashboard "${dash.title}" and its ${dash.panels.length} chart(s)?`)) return;
+    const nextDict = { ...dashboardsRef.current };
     delete nextDict[dashId];
     const keys = Object.keys(nextDict);
-    saveDashboardState(nextDict, keys.length > 0 ? keys[0] : null);
+    const nextActive = activeDashIdRef.current === dashId ? (keys[0] || null) : activeDashIdRef.current;
+    persist(activeSessionId, nextDict, nextActive);
   };
 
   const handleRemovePanel = (dashId, panelIndex) => {
-    const dash = dashboards[dashId];
+    const dash = dashboardsRef.current[dashId];
     if (!dash) return;
     const updatedPanels = [...dash.panels];
     updatedPanels.splice(panelIndex, 1);
-    saveDashboardState({ ...dashboards, [dashId]: { ...dash, panels: updatedPanels } }, dashId);
+    persist(activeSessionId, { ...dashboardsRef.current, [dashId]: { ...dash, panels: updatedPanels } }, dashId);
+  };
+
+  const selectDashboard = (dashId) => {
+    setActiveDashId(dashId);
+    setNotice('');
   };
 
   const dashList = Object.values(dashboards);
   const activeDash = activeDashId ? dashboards[activeDashId] : null;
+  const anyRefreshable = activeDash?.panels?.some((p) => p.query);
+  const anyRefreshing = Object.values(refreshing).some(Boolean);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: 'var(--bg)' }}>
@@ -132,7 +238,7 @@ export default function DashboardView({ activeSessionId }) {
           return (
             <button
               key={d.id}
-              onClick={() => setActiveDashId(d.id)}
+              onClick={() => selectDashboard(d.id)}
               className="group flex items-center gap-2 px-3 py-1.5 rounded-md text-[12.5px] font-medium shrink-0 transition-colors cursor-pointer"
               style={{
                 background: isActive ? 'var(--accent-soft)' : 'transparent',
@@ -161,6 +267,42 @@ export default function DashboardView({ activeSessionId }) {
         </button>
       </div>
 
+      {/* Add-chart bar for the active dashboard */}
+      {activeDash && (
+        <div className="px-6 pt-4 shrink-0">
+          <div className="max-w-5xl mx-auto flex items-center gap-2">
+            <form onSubmit={handleAddChart} className="flex-1 flex items-center gap-2">
+              <input
+                type="text"
+                value={addPrompt}
+                onChange={(e) => setAddPrompt(e.target.value)}
+                placeholder='Add a chart, e.g. "revenue by region" or "units sold per month"'
+                className="input flex-1"
+                disabled={isAdding}
+              />
+              <button type="submit" disabled={isAdding || !addPrompt.trim()} className="btn btn-primary shrink-0">
+                {isAdding ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                <span>Add chart</span>
+              </button>
+            </form>
+            {anyRefreshable && (
+              <button onClick={refreshAll} disabled={anyRefreshing} className="btn btn-secondary shrink-0" title="Re-run every chart against the current data">
+                <RefreshCw className={`w-3.5 h-3.5 ${anyRefreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh all</span>
+              </button>
+            )}
+          </div>
+          {notice && (
+            <div className="max-w-5xl mx-auto mt-2 flex items-start gap-2 text-[12.5px] px-3 py-2 rounded-md"
+                 style={{ background: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: 'var(--red)' }} />
+              <span className="flex-1">{notice}</span>
+              <X className="w-3.5 h-3.5 cursor-pointer opacity-60 hover:opacity-100" onClick={() => setNotice('')} />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Main Grid View */}
       <div className="flex-1 overflow-y-auto p-6">
         {!activeDash || activeDash.panels.length === 0 ? (
@@ -175,7 +317,7 @@ export default function DashboardView({ activeSessionId }) {
               <p className="text-[13px] text-[var(--text-muted)] mt-1.5 max-w-sm">
                 {!activeDash
                   ? 'Create a dashboard to start pinning charts.'
-                  : 'Pin a chart from any chat answer, or click "New dashboard" above.'}
+                  : 'Add a chart above, or pin one from any chat answer.'}
               </p>
               {!activeDash && (
                 <button onClick={() => setIsModalOpen(true)} className="btn btn-primary mt-4">
@@ -188,15 +330,28 @@ export default function DashboardView({ activeSessionId }) {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-5xl mx-auto">
             {activeDash.panels.map((panel, idx) => (
-              <div key={idx} className="card p-4 flex flex-col">
-                <div className="flex items-center justify-between pb-3 mb-3 border-b" style={{ borderColor: 'var(--border)' }}>
-                  <h4 className="text-[13px] font-semibold text-[var(--text)]">{panel.title}</h4>
-                  <button
-                    onClick={() => handleRemovePanel(activeDash.id, idx)}
-                    className="text-[var(--text-muted)] hover:text-[var(--red)] transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+              <div key={`${activeDash.id}-${idx}-${panel.title}`} className="card p-4 flex flex-col">
+                <div className="flex items-center justify-between pb-3 mb-3 border-b gap-2" style={{ borderColor: 'var(--border)' }}>
+                  <h4 className="text-[13px] font-semibold text-[var(--text)] truncate" title={panel.query || panel.title}>{panel.title}</h4>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {panel.query && (
+                      <button
+                        onClick={() => refreshPanel(activeDash.id, idx)}
+                        disabled={!!refreshing[idx]}
+                        title="Re-run against the current data"
+                        className="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing[idx] ? 'animate-spin' : ''}`} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleRemovePanel(activeDash.id, idx)}
+                      title="Remove chart"
+                      className="text-[var(--text-muted)] hover:text-[var(--red)] transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex-1 min-h-[260px]">
                   <ChartCanvas plotSpec={panel.plot} />
@@ -235,19 +390,25 @@ export default function DashboardView({ activeSessionId }) {
                 <input
                   type="text"
                   value={newDashPrompt}
-                  onChange={(e) => setNewDashPrompt(e.target.value)}
-                  placeholder="e.g. Show a bar chart of total revenue by region"
+                  onChange={(e) => { setNewDashPrompt(e.target.value); setModalError(''); }}
+                  placeholder="e.g. Total revenue by region"
                   className="input"
                 />
+                {modalError && (
+                  <p className="mt-2 text-[12px] flex items-start gap-1.5" style={{ color: 'var(--red)' }}>
+                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>{modalError} Clear the prompt to create an empty dashboard.</span>
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-1">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">
+                <button type="button" onClick={closeModal} className="btn btn-secondary">
                   Cancel
                 </button>
                 <button type="submit" disabled={isGenerating || !newDashTitle.trim()} className="btn btn-primary">
                   {isGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                  <span>Create</span>
+                  <span>{isGenerating ? 'Building chart…' : 'Create'}</span>
                 </button>
               </div>
             </form>

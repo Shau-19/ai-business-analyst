@@ -82,10 +82,16 @@ export const api = {
     return res.data;
   },
 
-  runSilentQuery: async (conversationId, question) => {
+  // Runs the full pipeline without writing to chat history — for the
+  // Dashboard and Forecast tabs, so their queries don't leak into the chat.
+  // wantChart: the Dashboard needs a chart back, so the backend routes to SQL
+  // and builds a chart whenever the result is chartable.
+  runSilentQuery: async (conversationId, question, valueCol = null, wantChart = false) => {
     const res = await client.post('/query/silent', {
       question,
       conversation_id: conversationId,
+      value_col: valueCol,
+      want_chart: wantChart,
     });
     return res.data;
   },

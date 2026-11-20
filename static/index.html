@@ -904,7 +904,7 @@ async function runForecast(){
   try{
     const res=await fetch('/mcp/tools/call',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','X-Api-Key':API_KEY},
       body:JSON.stringify({name:'forecast_query',arguments:{question,conversation_id:currentConversationId}})
     });
     const mcpResult=await res.json();
@@ -1325,7 +1325,7 @@ async function saveDashboardToServer(cid){
   try {
     await fetch('/conversations/' + cid + '/dashboard', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Api-Key': API_KEY },
       body: JSON.stringify({ state })
     });
   } catch(e) { console.error('Dashboard save error:', e); }

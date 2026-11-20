@@ -1,8 +1,13 @@
 '''Detects language of input text using langdetect library, with support for multiple languages 
 and graceful fallback to English if detection fails.'''
 
-from langdetect import detect, LangDetectException
+from langdetect import detect, LangDetectException, DetectorFactory
 from typing import Optional
+
+# langdetect is randomized by default — the same text can come back as a
+# different language on different runs (e.g. French → Catalan). Seed it so
+# detection is deterministic.
+DetectorFactory.seed = 0
 from utils.logger import logger
 
 

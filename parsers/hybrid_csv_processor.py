@@ -25,6 +25,13 @@ class HybridCSVProcessor:
         self.sql_executor = sql_executor
         logger.info("📊 Hybrid CSV Processor initialized")
 
+    @staticmethod
+    def _read_frame(file_path: str) -> pd.DataFrame:
+        """Read CSV/Excel by extension, case-insensitively ("DATA.CSV" is a CSV)."""
+        if str(file_path).lower().endswith('.csv'):
+            return pd.read_csv(file_path)
+        return pd.read_excel(file_path)
+
     def is_structured_file(self, filename: str) -> bool:
         return filename.lower().endswith(('.csv', '.xlsx', '.xls'))
 
@@ -55,7 +62,7 @@ class HybridCSVProcessor:
 
         logger.info(f"""
                 ✅ Hybrid Processing Complete: {filename}
-                📊 SQL Table: {sql_table} ({metadata['row_count']} rows)
+                📊 SQL Table: {sql_table} ({metadata.get('row_count', '?')} rows)
                 📄 RAG Chunks: {len(rag_docs)} documents
                 ✨ Capabilities: SQL calculations + Semantic understanding
                     """)
@@ -68,8 +75,7 @@ class HybridCSVProcessor:
 
     def _import_to_sql(self, file_path: str, conversation_id: str) -> str:
         try:
-            df = pd.read_csv(file_path) if file_path.endswith('.csv') \
-                 else pd.read_excel(file_path)
+            df = self._read_frame(file_path)
         except Exception as e:
             logger.error(f"❌ Failed to read file: {e}")
             raise
@@ -119,8 +125,7 @@ class HybridCSVProcessor:
         semantic questions about CSV data correctly.
         """
         try:
-            df = pd.read_csv(file_path) if file_path.endswith('.csv') \
-                 else pd.read_excel(file_path)
+            df = self._read_frame(file_path)
         except Exception as e:
             logger.error(f"❌ RAG parsing failed: {e}")
             raise
@@ -494,8 +499,7 @@ class HybridCSVProcessor:
 
     def _extract_metadata(self, file_path: str) -> Dict[str, Any]:
         try:
-            df = pd.read_csv(file_path) if file_path.endswith('.csv') \
-                 else pd.read_excel(file_path)
+            df = self._read_frame(file_path)
             return {
                 "row_count":    len(df),
                 "column_count": len(df.columns),

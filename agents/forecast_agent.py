@@ -14,7 +14,7 @@ PROPHET_AVAILABLE is exported so the orchestrator can gate the FORECAST
 routing path at classification time without trying to import Prophet itself.
 """
 
-import re
+import asyncio
 from typing import Dict, Any, List, Optional
 
 import pandas as pd
@@ -22,6 +22,7 @@ import numpy as np
 
 from protocols.a2a import A2AAgent, AgentCapability, MessageType, A2AMessage
 from database.db_manager import DatabaseManager
+from parsers.hybrid_csv_processor import HybridCSVProcessor
 from config import settings
 from utils.logger import logger
 
@@ -69,11 +70,27 @@ class ForecastAgent:
         conversation_id: str,
         periods: int = 6,
         value_col: Optional[str] = None,
+        tables: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Fit Prophet on the session CSV, generate a forecast, detect anomalies,
         and return a structured result with LLM narrative and chart-ready data.
+
+        Prophet fitting and the LLM narrative are blocking — run them in a
+        worker thread so the server keeps answering other requests.
         """
+        return await asyncio.to_thread(
+            self._forecast_sync, question, conversation_id, periods, value_col, tables,
+        )
+
+    def _forecast_sync(
+        self,
+        question: str,
+        conversation_id: str,
+        periods: int,
+        value_col: Optional[str],
+        tables: Optional[List[str]],
+    ) -> Dict[str, Any]:
         if not PROPHET_AVAILABLE:
             return {
                 "success": False,
@@ -82,7 +99,7 @@ class ForecastAgent:
             }
 
         try:
-            df = self._load_session_csv(conversation_id)
+            df = self._load_session_csv(conversation_id, tables, value_col)
             if df is None or df.empty:
                 return {
                     "success": False,
@@ -186,38 +203,44 @@ class ForecastAgent:
 
     # ── Data loading ──────────────────────────────────────────────────────────
 
-    def _load_session_csv(self, conversation_id: str) -> Optional[pd.DataFrame]:
-        """Load the first CSV table available for this session."""
+    def _load_session_csv(
+        self,
+        conversation_id: str,
+        tables: Optional[List[str]] = None,
+        value_col: Optional[str] = None,
+    ) -> Optional[pd.DataFrame]:
+        """
+        Load the session's CSV table best suited for forecasting.
+
+        Only this session's tables are considered (the old fallback to "any
+        csv_% table" could forecast another user's data). With several CSVs,
+        prefer the one containing the requested value column, then the first
+        one with a usable date column — not blindly the first table.
+        """
         try:
-            import sqlite3
-            conn = sqlite3.connect(self.db_manager.db_path)
-
-            # Session-scoped tables first. Table names have any non-
-            # alphanumeric character in the id prefix replaced with "_"
-            # (see HybridCSVProcessor.session_table_prefix) — sanitize the
-            # same way here so a conversation_id containing e.g. a hyphen
-            # still matches its own tables via LIKE.
-            id_sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', conversation_id[:8]).lower()
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE ?",
-                (f"%{id_sanitized}%",),
-            )
-            tables = [r[0] for r in cursor.fetchall()]
-
-            # Fallback: any csv_ prefixed table
+            if tables is None:
+                prefix = HybridCSVProcessor.session_table_prefix(conversation_id or "")
+                tables = [t for t in self.db_manager.list_tables() if t.startswith(prefix)]
             if not tables:
-                cursor = conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'csv_%'"
-                )
-                tables = [r[0] for r in cursor.fetchall()]
-
-            if not tables:
-                conn.close()
                 return None
 
-            df = pd.read_sql_query(f'SELECT * FROM "{tables[0]}"', conn)
-            conn.close()
-            logger.info(f"📊  Loaded {tables[0]}: {len(df)} rows × {len(df.columns)} cols")
+            frames = []
+            for t in tables:
+                try:
+                    frames.append((t, self.db_manager.execute_query(f'SELECT * FROM "{t}"')))
+                except Exception as e:
+                    logger.warning(f"⚠️  Could not read {t}: {e}")
+            if not frames:
+                return None
+
+            chosen = None
+            if value_col:
+                chosen = next(((t, f) for t, f in frames if value_col in f.columns), None)
+            if chosen is None:
+                chosen = next(((t, f) for t, f in frames if self._detect_date_column(f)), frames[0])
+
+            table, df = chosen
+            logger.info(f"📊  Loaded {table}: {len(df)} rows × {len(df.columns)} cols")
             return df
 
         except Exception as e:

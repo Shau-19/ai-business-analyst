@@ -392,6 +392,7 @@ class ChatHistoryManager:
         cursor = conn.cursor()
         
         cursor.execute("DELETE FROM messages WHERE conversation_id = ?", (conversation_id,))
+        cursor.execute("DELETE FROM dashboards WHERE conversation_id = ?", (conversation_id,))
         cursor.execute("DELETE FROM conversations WHERE conversation_id = ?", (conversation_id,))
         
         conn.commit()

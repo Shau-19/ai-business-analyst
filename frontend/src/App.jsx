@@ -227,7 +227,7 @@ export default function App() {
     });
   };
 
-  const handlePinChart = async (plotSpec) => {
+  const handlePinChart = async (plotSpec, question = null) => {
     if (!activeSessionId) return;
     const sessionForThisPin = activeSessionId;
     try {
@@ -250,6 +250,7 @@ export default function App() {
       state.dashboards[targetId].panels.push({
         title: plotSpec.title || 'Pinned Chart',
         plot: plotSpec,
+        ...(question ? { query: question } : {}),
       });
 
       state.activeId = targetId;

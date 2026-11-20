@@ -68,6 +68,14 @@ class SQLAnalystAgent:
         r'\b(how many|count of|number of|sum of|overall total)\b',
         re.IGNORECASE,
     )
+
+    # Text of each FROM list, up to the next clause keyword / closing paren.
+    _FROM_CLAUSE_RE = re.compile(
+        r'\bFROM\b(.*?)(?=\b(?:SELECT|FROM|WHERE|GROUP|ORDER|LIMIT|HAVING|UNION|EXCEPT|'
+        r'INTERSECT|WINDOW|JOIN|INNER|LEFT|RIGHT|FULL|CROSS|OUTER|NATURAL)\b|\)|$)',
+        re.IGNORECASE | re.DOTALL,
+    )
+    _JOIN_TARGET_RE = re.compile(r'\bJOIN\s+[`"\[]?([A-Za-z_]\w*)', re.IGNORECASE)
  
     def __init__(self, db_manager: DatabaseManager):
         self.db                = db_manager
@@ -259,6 +267,32 @@ Answer in {language_name}:""",
                 return True
         return False
  
+    def _foreign_table_refs(self, sql: str, allowed_tables: List[str]) -> List[str]:
+        """
+        Return table references in `sql` (FROM-list entries and JOIN targets)
+        that name a real DB table outside `allowed_tables`, plus any sqlite_*
+        system table. Only names that are actual tables are flagged, so CTE
+        names, aliases, and columns that share a table's name never trip it.
+        """
+        allowed = {t.lower() for t in allowed_tables}
+        try:
+            existing = {t.lower() for t in self.db.list_tables()}
+        except Exception:
+            existing = set()
+
+        refs = set()
+        for clause in self._FROM_CLAUSE_RE.findall(sql):
+            for part in clause.split(','):
+                m = re.match(r'\s*[`"\[]?([A-Za-z_]\w*)', part)
+                if m:
+                    refs.add(m.group(1).lower())
+        refs |= {m.lower() for m in self._JOIN_TARGET_RE.findall(sql)}
+
+        bad = {i for i in re.findall(r'\bsqlite_\w+', sql, re.IGNORECASE)}
+        bad = {b.lower() for b in bad}
+        bad |= {r for r in refs & existing if r not in allowed}
+        return sorted(bad)
+
     # ── Smart chronological sort ──────────────────────────────────────────────
  
     def _smart_sort_results(self, result: Dict[str, Any]) -> Dict[str, Any]:
@@ -276,6 +310,12 @@ Answer in {language_name}:""",
                 df['_sort'] = df[col].str.lower().str.strip().map(self.MONTH_ORDER)
                 df = df.sort_values('_sort').drop(columns='_sort').reset_index(drop=True)
                 result['data_preview'] = df.to_dict('records')
+                # Charts are built from the full `data`, so sort it the same way
+                if result.get('data'):
+                    full = pd.DataFrame(result['data'])
+                    full['_sort'] = full[col].astype(str).str.lower().str.strip().map(self.MONTH_ORDER)
+                    result['data'] = (full.sort_values('_sort').drop(columns='_sort')
+                                          .reset_index(drop=True).to_dict('records'))
                 logger.info(f"  Sorted '{col}' chronologically")
                 break
         except Exception as e:
@@ -295,8 +335,14 @@ Answer in {language_name}:""",
         first_row = result.get('data_preview', [{}])[0]
         if first_row:
             col = list(first_row.keys())[0]
-            return re.sub(r'(COUNT|SUM|AVG|MAX|MIN)\s*\(|\)', '', col,
-                          flags=re.IGNORECASE).replace('_', ' ').strip()
+            label = re.sub(r'(COUNT|SUM|AVG|MAX|MIN)\s*\(|\)|\*', '', col,
+                           flags=re.IGNORECASE).replace('_', ' ')
+            # "item_count" → "items", "total_revenue" → "revenue"
+            is_count = bool(re.search(r'count|cnt|\bnum', col, re.IGNORECASE))
+            label = re.sub(r'\b(count|total|num|number|cnt|sum)\b', '', label,
+                           flags=re.IGNORECASE).strip()
+            if label:
+                return label + 's' if is_count and not label.endswith('s') else label
         return 'items'
  
     # ── Main analysis method ──────────────────────────────────────────────────
@@ -306,7 +352,10 @@ Answer in {language_name}:""",
         question: str,
         allowed_tables: Optional[List[str]] = None,
         conversation_id: Optional[str] = None,
+        want_chart: bool = False,
     ) -> Dict[str, Any]:
+        """want_chart=True (dashboard) builds a chart whenever the result is
+        chartable, instead of only when the question mentions a chart."""
         log_section("ANALYZING QUESTION")
         logger.info(f"❓  Question: {question}")
  
@@ -346,6 +395,22 @@ Answer in {language_name}:""",
             })
             sql_query = self._sanitize_sql(raw_sql)
             logger.info(f"📝  SQL: {sql_query}")
+
+            # Session isolation: the prompt *asks* the LLM to use only the
+            # allowed tables, but a prompt-injected question could still make
+            # it read another session's upload_* table or sqlite_master.
+            forbidden = self._foreign_table_refs(sql_query, allowed_tables)
+            if forbidden:
+                logger.warning(f"🚫  SQL references non-session tables: {forbidden}")
+                return {
+                    'success':     True,
+                    'question':    question,
+                    'explanation': "This information is not available in the uploaded data.",
+                    'answer':      "This information is not available in the uploaded data.",
+                    'data':        [],
+                    'row_count':   0,
+                    'language':    lang_code,
+                }
  
             logger.info("⚙️   Executing...")
             result = self.sql_executor.execute_query(sql_query)
@@ -388,21 +453,27 @@ Answer in {language_name}:""",
  
             result = self._smart_sort_results(result)
  
-            # Fast path for simple count/sum queries — skip LLM
-            if self._is_simple_aggregation(question):
-                nums = [
-                    v for row in result.get('data_preview', [])
-                    for v in row.values()
-                    if isinstance(v, (int, float))
-                ]
-                if nums:
-                    explanation = (
-                        f"Total: {int(sum(nums)):,} "
-                        f"{self._extract_entity(question, result)}"
-                    )
-                    return self._build_response(
-                        question, lang_code, lang_name, sql_query, result, explanation
-                    )
+            # Fast path for simple count/sum queries — skip LLM.
+            # Only when the result is exactly ONE number (one row, one column):
+            # summing every numeric cell collapsed grouped results like
+            # "how many customers per month" into a single meaningless total,
+            # and also summed unrelated numeric columns (years, IDs). It is
+            # also English-only text, so skip it for other languages.
+            if self._is_simple_aggregation(question) and lang_code == 'en':
+                preview = result.get('data_preview', [])
+                if len(preview) == 1 and len(preview[0]) == 1:
+                    (val,) = preview[0].values()
+                    if isinstance(val, (int, float)) and not isinstance(val, bool):
+                        num_txt = (f"{int(val):,}" if float(val).is_integer()
+                                   else f"{val:,.2f}")
+                        explanation = (
+                            f"Total: {num_txt} "
+                            f"{self._extract_entity(question, result)}"
+                        ).strip()
+                        return self._build_response(
+                            question, lang_code, lang_name, sql_query, result, explanation,
+                            want_chart,
+                        )
  
             results_text = self.sql_executor.format_results_as_text(result)
             logger.info("💬  Generating explanation...")
@@ -416,7 +487,8 @@ Answer in {language_name}:""",
  
             logger.info("✅  Analysis complete")
             return self._build_response(
-                question, lang_code, lang_name, sql_query, result, explanation
+                question, lang_code, lang_name, sql_query, result, explanation,
+                want_chart,
             )
  
         except Exception as e:
@@ -502,6 +574,7 @@ Answer in {language_name}:""",
         sql_query:   str,
         result:      Dict[str, Any],
         explanation: str,
+        want_chart:  bool = False,
     ) -> Dict[str, Any]:
         response = {
             'success':       True,
@@ -514,7 +587,7 @@ Answer in {language_name}:""",
             'explanation':   explanation,
             'raw_results':   result,
         }
-        if self.plot_builder.needs_plot(question):
+        if want_chart or self.plot_builder.needs_plot(question):
             plot_spec = self.plot_builder.build_plot_spec(result, question)
             if plot_spec:
                 response['plot'] = plot_spec
