@@ -177,6 +177,9 @@ class ConversationCreate(BaseModel):
     user_id: str
     title: Optional[str] = "New Chat"
 
+class ConversationRename(BaseModel):
+    title: str
+
 class MCPCallRequest(BaseModel):
     name: str
     arguments: dict = {}
@@ -417,6 +420,17 @@ async def delete_conversation(cid: str):
     return {"success": True}
 
 
+@app.patch("/conversations/{cid}", dependencies=[Depends(verify_key)])
+async def rename_conversation(cid: str, body: ConversationRename):
+    _require_cid(cid)
+    title = " ".join(body.title.split())[:80]
+    if not title:
+        raise HTTPException(400, "Title can't be empty")
+    if not chat_manager.rename_conversation(cid, title):
+        raise HTTPException(404, "Conversation not found")
+    return {"success": True, "conversation_id": cid, "title": title}
+
+
 @app.get("/conversations/{cid}/documents")
 async def get_documents(cid: str):
     _require_cid(cid)
@@ -544,6 +558,25 @@ async def get_numeric_columns(cid: str):
         "columns": s.get("numeric_columns", []),
         **({"error": s["error"]} if s.get("error") else {}),
     }
+
+
+@app.get("/conversations/{cid}/profile")
+async def get_profile(cid: str):
+    """
+    Instant, LLM-free profile of the session's data for the BI overview:
+    KPIs with sparklines, column roles + stats, auto charts, suggested
+    questions, and sample rows. Read-only; computed with pandas.
+    """
+    _require_cid(cid)
+    from tools.data_profile import build_profile
+    try:
+        status = orchestrator.rag_agent.get_session_status(cid)
+        result = await asyncio.to_thread(
+            build_profile, db_manager, orchestrator.rag_agent.get_csv_tables(cid), status["loaded_files"])
+        return JSONResponse(_json_safe({"success": True, "conversation_id": cid, **result}))
+    except Exception as e:
+        logger.error(f"❌ Profile error: {e}")
+        return JSONResponse({"success": False, "error": str(e), "datasets": [], "documents": [], "files": []})
 
 
 @app.post("/query/silent", dependencies=[Depends(verify_key), Depends(enforce_daily_quota)])

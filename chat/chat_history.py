@@ -406,7 +406,25 @@ class ChatHistoryManager:
                 logger.warning(f"⚠️ Redis delete failed: {e}")
         
         logger.info(f"🗑️ Deleted conversation: {conversation_id}")
-    
+
+    def rename_conversation(self, conversation_id: str, title: str) -> bool:
+        """Set a conversation's title. Returns False if it doesn't exist."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE conversations SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE conversation_id = ?",
+            (title, conversation_id),
+        )
+        changed = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        if self.redis_client:
+            try:
+                self.redis_client.delete(f"conv:{conversation_id}")
+            except Exception as e:
+                logger.warning(f"⚠️ Redis delete failed: {e}")
+        return changed
+
     def search_conversations(
         self,
         user_id: str,
