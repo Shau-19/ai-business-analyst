@@ -153,8 +153,16 @@ class PlotBuilder:
         return "bar"
     
     def _generate_title(self, question: str, x_col: str, y_col: str) -> str:
-        """Generate chart title"""
-        return f"{y_col} by {x_col}"
+        """Generate a readable chart title: 'new_customers' → 'New customers'."""
+        def human(raw: str) -> str:
+            raw = str(raw)
+            s = re.sub(r"([a-z])([A-Z])", r"\1 \2", raw).replace("_", " ")
+            s = re.sub(r"\s+", " ", s).strip()
+            # Column-style names (snake_case, CamelCase, ALLCAPS) → sentence case
+            if "_" in raw or raw.isupper() or re.search(r"[a-z][A-Z]", raw):
+                s = s.lower()
+            return s[:1].upper() + s[1:]
+        return f"{human(y_col)} by {human(x_col).lower()}"
     
     def _is_numeric_string(self, value: Any) -> bool:
         """Check if string can be converted to number"""

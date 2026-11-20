@@ -108,6 +108,17 @@ class ForecastAgent:
                 }
 
             date_col  = self._detect_date_column(df)
+            date_note = None
+            if not date_col:
+                # Month names without a year ("Jan", "Feb", …) are common in
+                # business sheets. Turn them into consecutive monthly dates,
+                # taking the year from the file name when it has one.
+                month_col = self._month_name_column(df)
+                if month_col:
+                    df, year, guessed = self._dates_from_month_names(df, month_col)
+                    date_col = "__month_date"
+                    date_note = (f"“{month_col}” has month names without a year, so they were read as consecutive "
+                                 f"months starting in {year}" + (" (the current year)." if guessed else " (from the file name)."))
             # Use explicitly selected column from UI if provided,
             # otherwise fall back to question-text matching
             if not value_col:
@@ -189,7 +200,8 @@ class ForecastAgent:
                 "anomalies":     anomalies,
                 "plot":          plot_spec,
                 "value_column":  value_col,
-                "date_column":   date_col,
+                "date_column":   date_col if date_col != "__month_date" else self._month_name_column(df),
+                "date_note":     date_note,
                 "periods":       periods,
                 "data_points":   len(pdf),
                 "last_actual":   round(float(pdf["y"].iloc[-1]), 2),
@@ -240,6 +252,7 @@ class ForecastAgent:
                 chosen = next(((t, f) for t, f in frames if self._detect_date_column(f)), frames[0])
 
             table, df = chosen
+            df.attrs["table"] = table
             logger.info(f"📊  Loaded {table}: {len(df)} rows × {len(df.columns)} cols")
             return df
 
@@ -248,6 +261,40 @@ class ForecastAgent:
             return None
 
     # ── Column detection ──────────────────────────────────────────────────────
+
+    _MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+
+    def _month_name_column(self, df: pd.DataFrame) -> Optional[str]:
+        """A text column whose values are month names (Jan / January …)."""
+        for col in df.columns:
+            if df[col].dtype != object:
+                continue
+            vals = df[col].dropna().astype(str).str.strip().str.lower().str[:3]
+            if len(vals) >= 2 and vals.isin(self._MONTHS).mean() >= 0.9:
+                return col
+        return None
+
+    def _dates_from_month_names(self, df: pd.DataFrame, col: str):
+        """Return (df with __month_date, start year, whether the year was guessed)."""
+        import re as _re
+        from datetime import date
+        m = _re.search(r"(19|20)\d{2}", str(df.attrs.get("table", "")))
+        year, guessed = (int(m.group(0)), False) if m else (date.today().year, True)
+        start = year
+        dates, prev = [], -1
+        for v in df[col].astype(str).str.strip().str.lower().str[:3]:
+            idx = self._MONTHS.index(v) if v in self._MONTHS else None
+            if idx is None:
+                dates.append(pd.NaT)
+                continue
+            if idx <= prev:          # wrapped past December: next year
+                year += 1
+            prev = idx
+            dates.append(pd.Timestamp(year=year, month=idx + 1, day=1))
+        out = df.copy()
+        out.attrs = dict(df.attrs)
+        out["__month_date"] = dates
+        return out, start, guessed
 
     def _detect_date_column(self, df: pd.DataFrame) -> Optional[str]:
         """Return the first parseable date column, preferring name-hint matches."""
