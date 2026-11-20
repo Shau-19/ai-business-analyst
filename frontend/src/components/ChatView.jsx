@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Pin, Bot, User, Sparkles } from 'lucide-react';
-import { marked } from 'marked';
+import { renderMarkdown } from '../markdown';
 import ChartCanvas from './ChartCanvas';
 
-marked.setOptions({ breaks: true, gfm: true });
 
 const ROUTING_BADGE = {
   sql: 'badge-accent',
@@ -101,7 +100,7 @@ export default function ChatView({
                     ) : (
                       <div
                         className="prose-answer"
-                        dangerouslySetInnerHTML={{ __html: marked.parse(msg.content || '') }}
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content || '') }}
                       />
                     )}
 

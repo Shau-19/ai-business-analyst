@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Play, Sparkles, Loader2 } from 'lucide-react';
 import ChartCanvas from './ChartCanvas';
 import { api } from '../api';
-import { marked } from 'marked';
+import { renderMarkdown } from '../markdown';
 
 export default function ForecastView({ activeSessionId }) {
   const [columns, setColumns] = useState([]);
@@ -146,7 +146,7 @@ export default function ForecastView({ activeSessionId }) {
               </h3>
               <div
                 className="prose-answer"
-                dangerouslySetInnerHTML={{ __html: marked.parse(forecastResult.explanation || '') }}
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(forecastResult.explanation || '') }}
               />
             </div>
           </div>
