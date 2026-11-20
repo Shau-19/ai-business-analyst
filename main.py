@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional, Any
 from pathlib import Path
-import math, re, shutil, uvicorn, asyncio, json
+import math, os, re, shutil, uvicorn, asyncio, json
 
 from database import DatabaseManager
 from agents import OrchestratorAgent
@@ -36,7 +36,10 @@ from chat.chat_history import ChatHistoryManager
 from parsers.hybrid_csv_processor import HybridCSVProcessor
 from config import settings
 from utils.logger import logger, log_section
-from auth import verify_key, limiter
+from auth import (
+    verify_key, limiter, enforce_daily_quota,
+    auth_required, key_is_valid, quota_status,
+)
 
 
 # ── Core singletons ───────────────────────────────────────────────────────────
@@ -54,6 +57,7 @@ mcp = MCPServer(name="ai-business-analyst", version="3.0.0")
 _processing_state: dict = {}
 _background_tasks: set = set()
 _MAX_DASHBOARD_BYTES = 5 * 1024 * 1024
+_MAX_UPLOAD_BYTES    = int(os.getenv("MAX_UPLOAD_MB", "25")) * 1024 * 1024
 
 
 # ── Input safety helpers ──────────────────────────────────────────────────────
@@ -542,7 +546,7 @@ async def get_numeric_columns(cid: str):
     }
 
 
-@app.post("/query/silent", dependencies=[Depends(verify_key)])
+@app.post("/query/silent", dependencies=[Depends(verify_key), Depends(enforce_daily_quota)])
 @limiter.limit("60/minute")
 async def query_silent(
     request: Request,
@@ -627,7 +631,7 @@ async def processing_status(cid: str):
 
 # ── Query endpoints ───────────────────────────────────────────────────────────
 
-@app.post("/query", dependencies=[Depends(verify_key)])
+@app.post("/query", dependencies=[Depends(verify_key), Depends(enforce_daily_quota)])
 @limiter.limit("30/minute")
 async def query(
     request: Request,
@@ -666,7 +670,7 @@ async def query(
         raise HTTPException(500, str(e))
 
 
-@app.post("/query/stream", dependencies=[Depends(verify_key)])
+@app.post("/query/stream", dependencies=[Depends(verify_key), Depends(enforce_daily_quota)])
 @limiter.limit("20/minute")
 async def query_stream(
     request: Request,
@@ -780,8 +784,19 @@ async def upload(
         # "..\\main.py" would otherwise write outside the session folder.
         name = _safe_filename(f.filename)
         dest = upload_dir / name
+        # Stream to disk with a size cap — an unbounded upload can fill the
+        # disk and the embedding step would take minutes on a huge file.
+        written = 0
         with open(dest, "wb") as buf:
-            shutil.copyfileobj(f.file, buf)
+            while chunk := f.file.read(1024 * 1024):
+                written += len(chunk)
+                if written > _MAX_UPLOAD_BYTES:
+                    break
+                buf.write(chunk)
+        if written > _MAX_UPLOAD_BYTES:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(
+                413, f"{name} is larger than the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB upload limit")
         paths.append(str(dest))
         names.append(name)
         logger.info(f"✅  Saved: {name}")
@@ -796,6 +811,15 @@ async def upload(
 
 
 # ── Status / metrics ──────────────────────────────────────────────────────────
+
+@app.get("/auth/check")
+async def auth_check(x_api_key: Optional[str] = Header(default=None, alias="X-Api-Key")):
+    """
+    Lets the frontend decide whether to ask the user for an access key.
+    required=False means open demo mode (API_KEYS unset).
+    """
+    return {"required": auth_required(), "valid": key_is_valid(x_api_key), "quota": quota_status()}
+
 
 @app.get("/status")
 async def status():
@@ -835,7 +859,7 @@ async def mcp_tools_list():
     return await mcp.handle_list_tools()
 
 
-@app.post("/mcp/tools/call", dependencies=[Depends(verify_key)])
+@app.post("/mcp/tools/call", dependencies=[Depends(verify_key), Depends(enforce_daily_quota)])
 async def mcp_tools_call(body: MCPCallRequest):
     return JSONResponse(await mcp.handle_call_tool(body.name, body.arguments))
 
@@ -883,4 +907,12 @@ async def a2a_registry():
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=settings.HOST, port=settings.PORT, log_level="info")
+    uvicorn.run(
+        app, host=settings.HOST, port=settings.PORT, log_level="info",
+        # Behind a hosting proxy, trust its X-Forwarded-For so per-IP rate
+        # limits see real client IPs instead of one shared proxy IP.
+        # Set FORWARDED_ALLOW_IPS="*" only when the app is reachable solely
+        # through that proxy.
+        proxy_headers=True,
+        forwarded_allow_ips=os.getenv("FORWARDED_ALLOW_IPS", "127.0.0.1"),
+    )

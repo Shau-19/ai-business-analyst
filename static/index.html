@@ -6,6 +6,7 @@
   <title>ANALYST — Session-Aware RAG</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
@@ -643,7 +644,32 @@
 
 <script>
 'use strict';
-const API_KEY = 'xyz_123';
+// The access key is never embedded in this page. Same-origin requests get the
+// key the user entered (stored in this browser); a 401 asks for it once and
+// retries. Explicit 'X-Api-Key':API_KEY headers below are overridden here.
+const API_KEY = '';
+const KEY_STORAGE = 'analyst_api_key';
+const _origFetch = window.fetch.bind(window);
+function _storedKey(){ try { return localStorage.getItem(KEY_STORAGE) || ''; } catch(e){ return ''; } }
+function _withKey(opts){
+  const h = new Headers((opts && opts.headers) || {});
+  const k = _storedKey();
+  if (k) h.set('X-Api-Key', k); else h.delete('X-Api-Key');
+  return Object.assign({}, opts || {}, { headers: h });
+}
+window.fetch = async function(url, opts){
+  const sameOrigin = typeof url === 'string' && url.startsWith('/');
+  if (!sameOrigin) return _origFetch(url, opts);
+  let res = await _origFetch(url, _withKey(opts));
+  if (res.status === 401) {
+    const k = window.prompt('This deployment requires an access key:');
+    if (k && k.trim()) {
+      try { localStorage.setItem(KEY_STORAGE, k.trim()); } catch(e) {}
+      res = await _origFetch(url, _withKey(opts));
+    }
+  }
+  return res;
+};
 let currentUserId='user_'+Math.random().toString(36).substr(2,9);
 let currentConversationId=null;
 let isLoading=false;
@@ -751,7 +777,7 @@ function displayFiles(files){
     const fname=typeof f==='string'?f:f.name;
     const st=f.status||'ready';
     const chip=document.createElement('div');chip.className='file-chip';
-    chip.innerHTML=`<span class="fc-icon">${ficon(fname)}</span><span>${fname}</span><span class="fc-status ${st==='processing'?'fc-proc':''}">${st==='processing'?'…':'✓'}</span>`;
+    chip.innerHTML=`<span class="fc-icon">${ficon(fname)}</span><span>${escapeHtml(fname)}</span><span class="fc-status ${st==='processing'?'fc-proc':''}">${st==='processing'?'…':'✓'}</span>`;
     bar.appendChild(chip);
   });
 }
@@ -787,7 +813,7 @@ async function loadConversations(){
       const item=document.createElement('div');
       item.className='conv-item'+(conv.conversation_id===currentConversationId?' active':'');
       const db=conv.documents>0?`<span class="doc-badge">⊡ ${conv.documents}</span>`:'';
-      item.innerHTML=`<div class="conv-title">${conv.title}</div><div class="conv-meta"><span>${conv.message_count} msgs</span>${db}<span>${fdate(conv.updated_at)}</span></div>`;
+      item.innerHTML=`<div class="conv-title">${escapeHtml(conv.title)}</div><div class="conv-meta"><span>${conv.message_count} msgs</span>${db}<span>${fdate(conv.updated_at)}</span></div>`;
       item.onclick=()=>loadConversation(conv.conversation_id);
       list.appendChild(item);
     });
@@ -961,7 +987,7 @@ function renderForecastResult(result,mcpResult,colName,question){
     anomalies.forEach(a=>{
       const d=a.ds?String(a.ds).slice(0,10):(a.date||'—');
       const v=typeof a.y==='number'?fmtKPI(a.y):a.value||'—';
-      tbl+=`<tr><td>${d}</td><td>${v}</td><td><span class="anom-badge">ANOMALY</span></td></tr>`;
+      tbl+=`<tr><td>${escapeHtml(d)}</td><td>${escapeHtml(v)}</td><td><span class="anom-badge">ANOMALY</span></td></tr>`;
     });
     tbl+='</table>';
     anomDiv.innerHTML=tbl;
@@ -975,7 +1001,7 @@ function renderForecastResult(result,mcpResult,colName,question){
 
 function addFcKpi(container,label,value,sub){
   const kpi=document.createElement('div');kpi.className='fc-kpi';
-  kpi.innerHTML=`<div class="fc-kpi-lbl">${label}</div><div class="fc-kpi-val">${value}</div><div class="fc-kpi-sub">${sub}</div>`;
+  kpi.innerHTML=`<div class="fc-kpi-lbl">${escapeHtml(label)}</div><div class="fc-kpi-val">${escapeHtml(value)}</div><div class="fc-kpi-sub">${escapeHtml(sub)}</div>`;
   container.appendChild(kpi);
 }
 
@@ -1038,8 +1064,10 @@ function renderMD(text){
   if(!text)return'';
   try{
     marked.setOptions({breaks:true,gfm:true,headerIds:false,mangle:false,pedantic:false});
-    return marked.parse(text.trim().replace(/\r\n/g,'\n'));
-  } catch(e){return text;}
+    const html = marked.parse(text.trim().replace(/\r\n/g,'\n'));
+    // Answers can quote uploaded documents; marked passes raw HTML through.
+    return window.DOMPurify ? DOMPurify.sanitize(html) : escapeHtml(text);
+  } catch(e){return escapeHtml(text);}
 }
 
 /* ── CHARTS ──────────────────────────── */
@@ -1527,7 +1555,7 @@ function renderDashboard(prompt,queries,results){
     const cid='dbc-'+i+'-'+Date.now();const title=shortLabel(queries[i]||plot.title||yCol);
     const initialType=plot.type||'bar';
     const card=document.createElement('div');card.className=`dbc dbc-chart ${col} ${spanClass}`;card.style.animationDelay=delay+'ms';
-    card.innerHTML=`<div class="dbc-ch"><div class="dbc-ch-title">${title}</div><div class="dbc-ch-meta"><div class="dbc-ch-switcher"><button class="cts-btn ${initialType==='bar'?'active':''}" onclick="switchChartType('${cid}','bar',this)">BAR</button><button class="cts-btn ${initialType==='line'?'active':''}" onclick="switchChartType('${cid}','line',this)">LINE</button><button class="cts-btn ${initialType==='pie'?'active':''}" onclick="switchChartType('${cid}','pie',this)">PIE</button></div><button class="dbc-ch-dl" onclick="dlDbChart('${cid}','${title.replace(/'/g,'')}')">↓</button></div></div><div class="dbc-canvas"><canvas id="${cid}"></canvas></div>`;
+    card.innerHTML=`<div class="dbc-ch"><div class="dbc-ch-title">${escapeHtml(title)}</div><div class="dbc-ch-meta"><div class="dbc-ch-switcher"><button class="cts-btn ${initialType==='bar'?'active':''}" onclick="switchChartType('${cid}','bar',this)">BAR</button><button class="cts-btn ${initialType==='line'?'active':''}" onclick="switchChartType('${cid}','line',this)">LINE</button><button class="cts-btn ${initialType==='pie'?'active':''}" onclick="switchChartType('${cid}','pie',this)">PIE</button></div><button class="dbc-ch-dl" onclick="dlDbChart('${cid}','${title.replace(/'/g,'')}')">↓</button></div></div><div class="dbc-canvas"><canvas id="${cid}"></canvas></div>`;
     grid.appendChild(card);cardIdx++;
     const labels=plot.x||d.map(row=>String(row[xCol]));
     const values=plot.y||d.map(row=>Number(row[yCol])||0);
@@ -1549,7 +1577,7 @@ function renderDashboard(prompt,queries,results){
   }).filter(Boolean);
   if(insightLines.length){
     const ins=document.createElement('div');ins.className='dbc dbc-insight';ins.style.animationDelay=delay+'ms';
-    ins.innerHTML=`<div class="is-lbl">◈ KEY INSIGHTS</div><div class="is-body">${insightLines.map(l=>`<div class="is-line">→ ${l}</div>`).join('')}</div>`;
+    ins.innerHTML=`<div class="is-lbl">◈ KEY INSIGHTS</div><div class="is-body">${insightLines.map(l=>`<div class="is-line">→ ${escapeHtml(l)}</div>`).join('')}</div>`;
     grid.appendChild(ins);
   }
   document.getElementById('dashBoard').style.display='block';dashBuilt=true;

@@ -5,7 +5,8 @@ import ChatView from './components/ChatView';
 import DashboardView from './components/DashboardView';
 import ForecastView from './components/ForecastView';
 import LaunchScreen from './components/LaunchScreen';
-import { api } from './api';
+import AccessKeyModal from './components/AccessKeyModal';
+import { api, AUTH_EVENT } from './api';
 
 export default function App() {
   const [showLaunch, setShowLaunch] = useState(
@@ -41,6 +42,18 @@ export default function App() {
   // changes or the component unmounts — prevents a stream started under
   // session A from continuing to append tokens after the user switches to B.
   const streamAbortRef = useRef(null);
+
+  // Access key gate: ask only if the server requires a key and the stored
+  // one is missing/invalid; any later 401 (key rotated) asks again.
+  const [needsKey, setNeedsKey] = useState(false);
+  useEffect(() => {
+    api.checkAuth()
+      .then((res) => { if (res.required && !res.valid) setNeedsKey(true); })
+      .catch(() => { /* server unreachable — requests will surface errors */ });
+    const onAuthRequired = () => setNeedsKey(true);
+    window.addEventListener(AUTH_EVENT, onAuthRequired);
+    return () => window.removeEventListener(AUTH_EVENT, onAuthRequired);
+  }, []);
 
   // Load conversations list on mount
   useEffect(() => {
@@ -314,6 +327,15 @@ export default function App() {
           {activeTab === 'forecast' && <ForecastView activeSessionId={activeSessionId} />}
         </div>
       </div>
+
+      {needsKey && (
+        <AccessKeyModal
+          onAuthorized={() => {
+            setNeedsKey(false);
+            loadSessions();
+          }}
+        />
+      )}
     </div>
   );
 }
