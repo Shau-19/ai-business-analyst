@@ -24,6 +24,7 @@ from protocols.a2a import A2AAgent, AgentCapability, MessageType, A2AMessage
 from database.db_manager import DatabaseManager
 from parsers.hybrid_csv_processor import HybridCSVProcessor
 from config import settings
+from utils.llm import make_llm
 from utils.logger import logger
 
 try:
@@ -52,11 +53,7 @@ class ForecastAgent:
         self.llm = None
         if GROQ_AVAILABLE:
             try:
-                self.llm = ChatGroq(
-                    api_key=settings.GROQ_API_KEY,
-                    model=settings.LLM_MODEL,
-                    temperature=0.3,
-                )
+                self.llm = make_llm(temperature=0.3)
             except Exception as e:
                 logger.warning(f"⚠️  ForecastAgent LLM init failed: {e}")
 

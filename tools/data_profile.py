@@ -28,9 +28,16 @@ MONTH_INDEX.update({
 })
 
 DATE_HINTS = ("date", "time", "day", "week", "period", "timestamp", "created", "updated", "year")
-ID_HINT = re.compile(r"(^id$|_id$|id$|code$|key$|uuid|^no$|number$)", re.IGNORECASE)
+# "customer_id", "Customer ID", "CustomerID", "OrderId", "invoice number" — but not
+# "Amount Paid", "Bid" or "Prepaid", which merely end in the letters "id".
+ID_HINT = re.compile(r"(^id$|[_\s\-.]id$|code$|key$|uuid|^no\.?$|[_\s]no\.?$|number$)", re.IGNORECASE)
+ID_CAMEL = re.compile(r"[a-z0-9](ID|Id)$")
+
+
+def _id_name(col) -> bool:
+    return bool(ID_HINT.search(str(col).lower()) or ID_CAMEL.search(str(col)))
 MEAN_HINT = re.compile(r"(rate|pct|percent|ratio|avg|average|mean|score|churn|margin|age|price|"
-                       r"size|per_|_per|lpa|days|duration|rating)", re.IGNORECASE)
+                       r"size|per_|_per|lpa|days|duration|rating|discount|temperature|tenure)", re.IGNORECASE)
 MEASURE_PRIORITY = ("revenue", "sales", "amount", "profit", "cost", "spend", "price", "total",
                     "units", "quantity", "qty", "orders", "customers", "value", "salary")
 
@@ -79,9 +86,9 @@ def classify(df: pd.DataFrame) -> Dict[str, str]:
         elif _date_col(name, s) or (any(h in name for h in DATE_HINTS) and _date_col(name, s.astype(str))):
             roles[col] = "date"
         elif pd.api.types.is_numeric_dtype(s) and not pd.api.types.is_bool_dtype(s):
-            is_idlike = ID_HINT.search(name) and s.nunique() >= 0.9 * n
+            is_idlike = _id_name(col) and s.nunique() >= 0.9 * n
             roles[col] = "id" if is_idlike else "numeric"
-        elif ID_HINT.search(name) and s.nunique() >= 0.5 * n:
+        elif _id_name(col) and s.nunique() >= 0.5 * n:
             roles[col] = "id"
         elif s.nunique(dropna=True) <= max(30, int(0.05 * n)) and s.nunique(dropna=True) < n:
             roles[col] = "categorical"
@@ -99,7 +106,9 @@ def _measures(df: pd.DataFrame, roles: Dict[str, str]) -> List[str]:
             if key in n:
                 return i
         return len(MEASURE_PRIORITY)
-    return sorted(nums, key=lambda c: (rank(c), list(df.columns).index(c)))
+    # Additive measures (revenue, units) make better headline KPIs than
+    # per-unit ones (price, rating), so they lead.
+    return sorted(nums, key=lambda c: (_agg_name(c) == "mean", rank(c), list(df.columns).index(c)))
 
 
 def _agg_name(col: str) -> str:
@@ -123,6 +132,9 @@ def _period_frame(df: pd.DataFrame, roles: Dict[str, str]):
             key = d.dt.to_period("M").astype(str)       # YYYY-MM sorts lexically
         else:
             key = d.dt.strftime("%Y-%m-%d")
+        # astype(str) turns a missing date into the text "NaT", which then
+        # showed up as the last month on charts and in "2023-01 → NaT".
+        key = key.where(d.notna())
         return key, (lambda k: k), date
     return None
 
@@ -140,6 +152,31 @@ def _series_by_period(df, roles, measure):
             "values": [_num(v) for v in g.values], "agg": agg}
 
 
+def _typical(df: pd.DataFrame, measure: str):
+    """
+    (df with extreme values of `measure` blanked, how many, the largest).
+    Three typo rows of 9,999 units turned a monthly trend of ~300 into three
+    10K spikes and made one region look 9x the others. Charts use typical
+    values and say what they left out; headline totals keep every row so
+    they agree with what a SQL question returns.
+    """
+    from tools.data_clean import outlier_mask
+    mask = outlier_mask(df[measure])
+    if not mask.any():
+        return df, 0, None
+    vals = pd.to_numeric(df[measure], errors="coerce")
+    out = df.copy()
+    out[measure] = vals.where(~mask)
+    return out, int(mask.sum()), _num(vals[mask].abs().max())
+
+
+def _excluded_note(n: int, biggest) -> Optional[str]:
+    if not n:
+        return None
+    size = f"{biggest:,.0f}" if biggest is not None and float(biggest).is_integer() else f"{biggest:,.2f}"
+    return f"Excludes {n} extreme value{'s' if n > 1 else ''} ({size})"
+
+
 def _kpis(df, roles, measures) -> List[Dict[str, Any]]:
     out = []
     for m in measures[:3]:
@@ -148,7 +185,8 @@ def _kpis(df, roles, measures) -> List[Dict[str, Any]]:
         value = col.mean() if agg == "mean" else col.sum()
         kpi = {"column": m, "label": humanize(m), "agg": "Average" if agg == "mean" else "Total",
                "value": _num(value)}
-        trend = _series_by_period(df, roles, m)
+        typical, n_ext, biggest = _typical(df, m)
+        trend = _series_by_period(typical, roles, m)
         if trend and trend["values"][0] not in (None, 0) and trend["values"][-1] is not None:
             first, last = trend["values"][0], trend["values"][-1]
             kpi.update({
@@ -157,6 +195,8 @@ def _kpis(df, roles, measures) -> List[Dict[str, Any]]:
                 "from_label": trend["labels"][0], "to_label": trend["labels"][-1],
                 "last": last,
             })
+            if n_ext:
+                kpi["trend_note"] = _excluded_note(n_ext, biggest)
         out.append(kpi)
     return out
 
@@ -166,11 +206,15 @@ def _charts(df, roles, measures) -> List[Dict[str, Any]]:
     if not measures:
         return charts
     m = measures[0]
+    full = df
+    df, n_ext, biggest = _typical(df, m)
+    note = _excluded_note(n_ext, biggest)
     trend = _series_by_period(df, roles, m)
     if trend:
         label = f"{'Average' if trend['agg'] == 'mean' else 'Total'} {humanize(m).lower()}"
         charts.append({
             "kind": "trend",
+            "note": note,
             "question": f"Show {humanize(m).lower()} over time",
             "plot": {"type": "line" if len(trend["labels"]) > 8 else "bar",
                      "x": trend["labels"], "y": trend["values"],
@@ -178,15 +222,16 @@ def _charts(df, roles, measures) -> List[Dict[str, Any]]:
                      "x_label": humanize(trend["axis"]), "y_label": label,
                      "title": f"{humanize(m)} by {humanize(trend['axis']).lower()}"},
         })
-    cats = [c for c, r in roles.items() if r == "categorical" and 2 <= df[c].nunique() <= 25]
+    cats = [c for c, r in roles.items() if r == "categorical" and 2 <= full[c].nunique() <= 25]
     if cats:
-        c = min(cats, key=lambda x: abs(df[x].nunique() - 6))   # prefer a readable 4–8 groups
+        c = min(cats, key=lambda x: abs(full[x].nunique() - 6))   # prefer a readable 4–8 groups
         agg = _agg_name(m)
         g = (df.assign(_v=pd.to_numeric(df[m], errors="coerce"))
                .groupby(c)["_v"].agg(agg).sort_values(ascending=False).head(10))
         label = f"{'Average' if agg == 'mean' else 'Total'} {humanize(m).lower()}"
         charts.append({
             "kind": "breakdown",
+            "note": note,
             "question": f"What is the {label.lower()} by {humanize(c).lower()}?",
             "plot": {"type": "bar", "x": [str(k) for k in g.index], "y": [_num(v) for v in g.values],
                      "datasets": [{"label": label, "data": [_num(v) for v in g.values]}],
@@ -232,9 +277,27 @@ def _column_stats(df, roles) -> List[Dict[str, Any]]:
     return cols
 
 
+def _why_question(df, roles, measures) -> Optional[str]:
+    """'Why is customer rating lower in West?' for the weakest group on an average-type measure."""
+    rated = [m for m in measures if _agg_name(m) == "mean" and not re.search(r"price|cost|age|discount", m, re.I)]
+    rated.sort(key=lambda m: not re.search(r"rating|score|satisf|nps|csat|margin|conversion", m, re.I))
+    cats = [c for c, r in roles.items() if r == "categorical" and 3 <= df[c].nunique() <= 12]
+    if not rated or not cats:
+        return None
+    m, c = rated[0], min(cats, key=lambda x: abs(df[x].nunique() - 5))
+    means = pd.to_numeric(df[m], errors="coerce").groupby(df[c]).mean().dropna()
+    if len(means) < 3:
+        return None
+    return f"Why is {humanize(m).lower()} lower in {means.idxmin()}?"
+
+
 def profile_table(df: pd.DataFrame, table: str, source: Optional[str] = None) -> Dict[str, Any]:
     roles = classify(df)
     measures = _measures(df, roles)
+    questions = _questions(roles, measures)
+    why = _why_question(df, roles, measures)
+    if why:
+        questions = (questions[:1] + [why] + questions[1:])[:5]
     return {
         "table": table,
         "source": source,
@@ -242,12 +305,13 @@ def profile_table(df: pd.DataFrame, table: str, source: Optional[str] = None) ->
         "columns": _column_stats(df, roles),
         "kpis": _kpis(df, roles, measures),
         "charts": _charts(df, roles, measures),
-        "questions": _questions(roles, measures),
+        "questions": questions,
         "sample": json.loads(df.head(25).to_json(orient="records", date_format="iso")),
     }
 
 
-def build_profile(db_manager, tables: List[str], files: List[str]) -> Dict[str, Any]:
+def build_profile(db_manager, tables: List[str], files: List[str], quality: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    quality = quality or {}
     datasets = []
     for t in tables:
         try:
@@ -258,7 +322,9 @@ def build_profile(db_manager, tables: List[str], files: List[str]) -> Dict[str, 
         # Match the table back to its uploaded file name for display
         stem = re.sub(r"[^a-z0-9_]", "_", t.split("_", 2)[-1].lower())
         source = next((f for f in files if re.sub(r"[^a-z0-9_]", "_", f.rsplit(".", 1)[0].lower()) == stem), None)
-        datasets.append(profile_table(df, t, source))
+        prof = profile_table(df, t, source)
+        prof["quality"] = quality.get(t)
+        datasets.append(prof)
     structured = {d.get("source") for d in datasets}
     documents = [f for f in files if f not in structured and not f.lower().endswith((".csv", ".xlsx", ".xls"))]
     return {"datasets": datasets, "documents": documents, "files": files}

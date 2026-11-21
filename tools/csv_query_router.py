@@ -8,6 +8,7 @@ import re
 from typing import Literal
 from langchain_groq import ChatGroq
 from config import settings
+from utils.llm import make_llm
 from utils.logger import logger
 
 
@@ -40,16 +41,7 @@ class CSVQueryRouter:
         # before the answer — a tiny max_tokens (was 10) is used up entirely by
         # reasoning and returns an empty string, which silently routed EVERY
         # ambiguous question to SQL. Give it headroom and keep reasoning short.
-        extra = {}
-        if "gpt-oss" in settings.LLM_MODEL.lower():
-            extra["model_kwargs"] = {"reasoning_effort": "low"}
-        self._llm = ChatGroq(
-            api_key=settings.GROQ_API_KEY,
-            model=settings.LLM_MODEL,
-            temperature=0,          # deterministic routing
-            max_tokens=256,
-            **extra,
-        )
+        self._llm = make_llm(temperature=0, max_tokens=256, reasoning_low=True)
         logger.info("🧭 CSV Query Router initialized")
 
     def route(self, question: str, has_csv_data: bool = False) -> QueryRoute:

@@ -1,5 +1,7 @@
 
+import os
 import re
+import time
 import pandas as pd
 from typing import Dict, List, Any, Optional
 from pathlib import Path
@@ -16,15 +18,61 @@ _READ_ONLY_STATEMENT_RE = re.compile(r"^\s*(SELECT|WITH|EXPLAIN|PRAGMA\s+table_i
 # guards against smuggled mutations via CTEs, subqueries, or stacked
 # statements (e.g. "SELECT 1; DROP TABLE x").
 _FORBIDDEN_KEYWORDS_RE = re.compile(
-    r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|REPLACE|ATTACH|DETACH|"
-    r"GRANT|REVOKE|VACUUM|REINDEX|PRAGMA(?!\s+table_info))\b",
+    r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|ATTACH|DETACH|"
+    r"GRANT|REVOKE|VACUUM|REINDEX|PRAGMA(?!\s+table_info))\b"
+    # REPLACE is only a mutation as a statement (REPLACE INTO …); replace()
+    # is an everyday string function used to clean "$1,234" style values.
+    r"|\bREPLACE\b(?!\s*\()",
     re.IGNORECASE,
 )
+
+# Quoted text can't be a keyword: a literal like '%update%' or an
+# identifier like "Created" must not trip the checks below.
+_QUOTED_RE = re.compile(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|`[^`]*`|\[[^\]]*\]")
+
+
+SQL_TIMEOUT_S = float(os.getenv("SQL_TIMEOUT_S", "20"))
+
+
+class QueryTimeoutError(RuntimeError):
+    """The query ran past SQL_TIMEOUT_S and SQLite interrupted it."""
+
+
+class ForbiddenTableError(PermissionError):
+    """The query read a table outside the allowed set."""
+
+
+def _table_authorizer(allowed_tables: List[str]):
+    """
+    sqlite3 authorizer: allow reads only from allowed_tables (case-insensitive).
+    CTEs and subqueries are resolved by SQLite before this runs, so a CTE
+    named like a foreign table is fine and `main.t`, `'t'`, `[t]` are not.
+    """
+    import sqlite3
+    allowed = {t.lower() for t in allowed_tables}
+    pragma_ok = {"table_info", "table_xinfo"}
+
+    def auth(action, arg1, arg2, dbname, source):
+        if action == sqlite3.SQLITE_READ:
+            if dbname is None:                       # a CTE or subquery, not a stored table
+                return sqlite3.SQLITE_OK
+            name = (arg1 or "").lower()
+            if name in allowed or name in ("pragma_table_info", "pragma_table_xinfo"):
+                return sqlite3.SQLITE_OK             # pragma functions are checked below
+            return sqlite3.SQLITE_DENY
+        if action == sqlite3.SQLITE_PRAGMA:
+            ok = (arg1 or "").lower() in pragma_ok and (arg2 or "").strip("'\"").lower() in allowed
+            return sqlite3.SQLITE_OK if ok else sqlite3.SQLITE_DENY
+        if action in (sqlite3.SQLITE_ATTACH, sqlite3.SQLITE_DETACH):
+            return sqlite3.SQLITE_DENY
+        return sqlite3.SQLITE_OK
+
+    return auth
 
 
 def _assert_read_only_sql(query: str) -> None:
     """Raise ValueError if `query` is anything other than a single read-only statement."""
-    stripped = query.strip().rstrip(";")
+    stripped = _QUOTED_RE.sub("''", query.strip().rstrip(";"))
     if ";" in stripped:
         raise ValueError("Multiple/stacked SQL statements are not allowed")
     if not _READ_ONLY_STATEMENT_RE.match(stripped):
@@ -235,11 +283,12 @@ class DatabaseManager:
         
         return schema_text
     
-    def execute_query(self, query: str) -> pd.DataFrame:
+    def execute_query(self, query: str, allowed_tables: Optional[List[str]] = None,
+                      timeout_s: Optional[float] = None) -> pd.DataFrame:
         """
         Execute a read-only SQL query (the path LLM-generated SQL runs through).
 
-        Two independent guards, since the SQL text here originates from an LLM
+        Independent guards, since the SQL text here originates from an LLM
         and must never be trusted to only contain SELECT statements on its own:
           1. Statement allow-list — reject anything that isn't a single
              read-only SELECT/WITH/EXPLAIN/PRAGMA-table-info statement before
@@ -247,14 +296,27 @@ class DatabaseManager:
           2. A connection opened read-only at the OS/driver level (SQLite URI
              mode=ro; Postgres/MySQL default-transaction READ ONLY) as
              defense-in-depth, so even a guard bypass can't mutate data.
+          3. allowed_tables (SQLite): the engine itself refuses to read any
+             other table. Regex checks on SQL text can be dodged with
+             main.t, 't', /**/ comments or subqueries; the authorizer sees
+             the tables SQLite actually resolved.
+          4. A time limit (SQLite): a recursive CTE without a LIMIT or a
+             3-way self-join would otherwise pin a worker thread forever.
         """
         _assert_read_only_sql(query)
         logger.info(f"🔍 Executing query: {query[:100]}...")
 
+        conn, limit = None, 0.0
         try:
             if self.db_type == "sqlite":
                 import sqlite3
                 conn = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
+                if allowed_tables is not None:
+                    conn.set_authorizer(_table_authorizer(allowed_tables))
+                limit = timeout_s if timeout_s is not None else SQL_TIMEOUT_S
+                if limit and limit > 0:
+                    deadline = time.monotonic() + limit
+                    conn.set_progress_handler(lambda: 1 if time.monotonic() > deadline else 0, 10_000)
             else:
                 from sqlalchemy import create_engine
                 engine = create_engine(
@@ -265,8 +327,18 @@ class DatabaseManager:
                 if self.db_type == "mysql":
                     conn.execute("SET SESSION TRANSACTION READ ONLY")
 
-            df = pd.read_sql_query(query, conn)
-            conn.close()
+            try:
+                df = pd.read_sql_query(query, conn)
+            except Exception as e:
+                text = str(e)
+                if "interrupted" in text.lower():
+                    raise QueryTimeoutError(
+                        f"The query took longer than {limit:g}s and was stopped. "
+                        "Try a narrower question.") from e
+                if "not authorized" in text.lower() or "prohibited" in text.lower():
+                    raise ForbiddenTableError(
+                        "The query tried to read data outside this conversation's files.") from e
+                raise
 
             logger.info(f"✅ Query returned {len(df)} rows")
             return df
@@ -274,6 +346,9 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"❌ Query error: {e}")
             raise
+        finally:
+            if conn is not None:
+                conn.close()
     
     def get_table_sample(self, table: str, limit: int = 5) -> pd.DataFrame:
         """Get sample rows"""

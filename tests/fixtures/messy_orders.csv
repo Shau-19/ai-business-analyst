@@ -1,0 +1,1043 @@
+Order ID,Order Date,Region,Product Category,Sales Rep,Units,Unit Price ($),Discount,Customer Rating,Notes
+ORD-00355,"Aug 17, 2024",south,Office Supplies,Mei Lin,,31.99,15 %,5.0,Upsold an extended warranty.
+ORD-00857,23/05/2024,East,Electronics,Asha Verma,13,$842.79,,4,"Delivered on time, customer happy."
+ORD-00292,25/04/2024,North,Electronics ,Asha Verma,5,$488.47,10 %,3,"Smooth order, no issues."
+ORD-00920,2024-01-07,West,Office Supplies,Tom O'Brien,,38.78,0.05,2,"Customer says the chair wobbles, wants a refund."
+ORD-00759,2023-11-27,South,office supplies,Chloé Martin,24,N/A,0,2,"Box was crushed in transit, screen cracked 😞"
+ORD-00691,2024-04-02,North,Office Supplies ,Priya Nair,8,44.58,20 %,4,"Smooth order, no issues."
+ORD-00597,14/10/2023,West,Electronics,Sara Khan,19,"1,690.97",0.15,1,"Customer says the chair wobbles, wants a refund. Paid via UPI ₹ transfer."
+ORD-00252,2023/04/22,Central,Office Supplies,Asha Verma,25,6.80,0.15,5,"Smooth order, no issues."
+ORD-00783,2024-05-09,WEST,Office Supplies,Chloé Martin,13,$20.15,none,4.0,"Smooth order, no issues."
+ORD-00631,05/06/2024,Central,Electronics ,Diego Ramírez,1,806.69,none,5/5,"Delivered on time, customer happy."
+ORD-00155,2023-10-18, North ,OFFICE SUPPLIES,Chloé Martin,15,13.66,,4,"Customer praised the packaging. Called twice to confirm address, café delivery."
+ORD-00049,2024-01-12,North,ELECTRONICS,Mei Lin,19,406.71,20%,4,Customer praised the packaging.
+ORD-00289,2024/07/28,West,Office Supplies,Sara Khan,4,$51.93,none,4,Repeat buyer — asked about bulk pricing.
+ORD-00116,"Dec 24, 2023",East,Furniture,Tom O'Brien,10.0,$400.40,0.05,4/5,Upsold an extended warranty.
+ORD-00409,10-May-2024, East ,OFFICE SUPPLIES,Rahul Mehta,3,44.78,0.05,4,"Delivered on time, customer happy."
+ORD-00877,2024-03-08,North,Electronics,Chloé Martin,13,1429.51,10%,3.0,"Smooth order, no issues."
+ORD-00487,30/04/2024,NORTH,Electronics ,Priya Nair,15,371.57,15%,3,"Late delivery (5 days), customer complained to support."
+ORD-00587,2023-06-18,west,electronics,Priya Nair,20,1430.52,0.10,2/5,Item arrived damaged; customer requested a replacement.
+ORD-00983,18/03/2024,Central,Furniture,Diego Ramírez,16,308.17,0%,-,Customer praised the packaging.
+ORD-00460,2024/03/14, East ,OFFICE SUPPLIES,Diego Ramírez,20,$27.79,5%,4,
+ORD-00407,2023/12/13,South,electronics,Tom O'Brien,21,891.29,10%,5,Customer praised the packaging.
+ORD-00567,2024-09-26,East,Electronics ,Priya Nair,8,$655.47,0.20,5,Upsold an extended warranty.
+ORD-00936,2024-04-04,West,Furniture,Priya Nair,19,160.73,0%,3,Upsold an extended warranty.
+ORD-00855,2024-06-11,West,Office Supplies,Priya Nair,6,28.49,0.10,3,Repeat buyer — asked about bulk pricing.
+ORD-00303,"Oct 31, 2023",Central,Office Supplies,Asha Verma,17,$41.88,0%,5,
+ORD-00455,06/06/2023,Sout,office supplies,Tom O'Brien,21,51.90,0,4,"Delivered on time, customer happy."
+ORD-00916,"Aug 15, 2024",West,OFFICE SUPPLIES,Sara Khan,3,$58.57,,2.0,Item arrived damaged; customer requested a replacement.
+ORD-00092,2024-04-01,West,OFFICE SUPPLIES,Rahul Mehta,2,$18.98,10 %,4,"Smooth order, no issues. Invoice re-issued with GST number."
+ORD-00342,2024-07-21,South,office supplies,Tom O'Brien,13,$58.08,5%,4,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00422,12/11/2023, West ,Office Supplies,Rahul Mehta,-2,$52.04,15 %,4,"Delivered on time, customer happy."
+ORD-00639,2023-09-07,East,Electronics ,Mei Lin,15,997.09,0%,2,"Customer says the chair wobbles, wants a refund."
+ORD-00984,13-May-2024,Central,Electronics,,16,$737.81,0.15,4,Repeat buyer — asked about bulk pricing.
+ORD-00709,2023-12-16,South,Furniture,Rahul Mehta,16,717.45,0.10,3,"Customer praised the packaging. Called twice to confirm address, café delivery."
+ORD-00512,"May 23, 2024",East,Furniture ,Asha Verma,3,$567.16,10%,5,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00032,09/10/2023,West,Office Supplies,Asha Verma,19,58.24,5 %,2/5,Item arrived damaged; customer requested a replacement.
+ORD-00543,2024/08/03,South,ELECTRONICS,Diego Ramírez,23,$247.39,0,4,Upsold an extended warranty.
+ORD-00803,03/05/2024,South,Electronics,Sara Khan,13,$425.32,0%,4,
+ORD-00020,2024-09-06,South,Electronics ,Rahul Mehta,15,"$1,202.14",20%,5,"Smooth order, no issues."
+ORD-00185,"Feb 29, 2024",west,Office Supplies,Chloé Martin,3,$39.30,10%,3,"Smooth order, no issues.
+Paid via UPI ₹ transfer."
+ORD-00874,2023-12-10,Central,Electronics,Chloé Martin,11,1224.09,0.15,3.0,Customer praised the packaging.
+ORD-00860,2024-08-27,south,Office Supplies,Priya Nair,16,$12.83,15%,4,Repeat buyer — asked about bulk pricing.
+ORD-00992,2023/10/28,South,Furniture,Mei Lin,16,$173.78,10%,3.0,"Smooth order, no issues."
+ORD-00334,"Mar 12, 2024",East,Electronics,Asha Verma,9,725.15,15%,5,
+ORD-00181,27/09/2024,East,Furniture,Sara Khan,3,$355.68,,3.0,"Smooth order, no issues."
+ORD-00645,"Aug 27, 2024",WEST,electronics,Asha Verma,11,1790.42,0%,3,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00904,"Oct 25, 2024",East,Office Supplies,Chloé Martin,13,4.61,20%,4,"Delivered on time, customer happy. Paid via UPI ₹ transfer."
+ORD-00809,2024-10-25,South,electronics,Rahul Mehta,22,653.40,0.20,5,Customer praised the packaging.
+ORD-00444,2024/07/26,West,Electronics ,Priya Nair,13,"$1,371.87",none,4,Customer praised the packaging. Invoice re-issued with GST number.
+ORD-00408,11/09/2023,North,Office Supplies,Asha Verma,22,$38.56,15 %,5,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00516,2024-09-19,East,FURNITURE,Rahul Mehta,23,$521.38,20%,4,Upsold an extended warranty.
+ORD-00526,"Jun 01, 2024",West,Office Supplies,Tom O'Brien,12,30.31,none,5.0,"Smooth order, no issues."
+ORD-00582,2023/01/16,Sout,Office Supplies,Tom O'Brien,3,44.45,20 %,3,"Late delivery (5 days), customer complained to support."
+ORD-00956,06/02/2024,North,Electronics,Rahul Mehta,19,$712.21,5%,5,"Smooth order, no issues."
+ORD-00929,2024-02-17, North ,FURNITURE,Sara Khan,15,$771.40,20%,5,"Delivered on time, customer happy."
+ORD-00393,2024-09-04,West,Office Supplies,Chloé Martin,4,$30.58,10%,4,
+ORD-00500,"Mar 27, 2023",West,ELECTRONICS,Rahul Mehta,24,1436.9,0.10,-,Upsold an extended warranty.
+ORD-00263,"Jan 24, 2024",South,ELECTRONICS,,12 units,$552.98,0%,3,"Delivered on time, customer happy."
+ORD-00580,2023/09/27,North,office supplies,Asha Verma,4,$18.37,0,3,Customer praised the packaging.
+ORD-00055,"Jan 27, 2024",East,Electronics,Rahul Mehta,21,"$1,131.82",none,5,"Smooth order, no issues."
+ORD-00044,2023-11-16,East,Office Supplies ,Asha Verma,25,$3.16,20%,4,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-01000,2024-06-27,East,Office Supplies,Sara Khan,23 units,$29.44,0.10,5,"Delivered on time, customer happy. Called twice to confirm address, café delivery."
+ORD-00493,"Apr 02, 2024",NORTH,furniture,Rahul Mehta,17,86.31,0.20,4/5,"Smooth order, no issues."
+ORD-00294,2024/05/19,North,Office Supplies,Diego Ramírez,23,$33.40,10%,5,Upsold an extended warranty.
+ORD-00064,07/09/2023,West,Office Supplies ,Chloé Martin,20,10.2,0,5,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00010,16/10/2023,West,Furniture,Rahul Mehta,7,551.71,0.15,1,"Box was crushed in transit, screen cracked 😞"
+ORD-00160,2024-08-13,north,Office Supplies ,Rahul Mehta,18,$19.99,0.20,5,
+ORD-00566,27/08/2024,Central,Electronics,Tom O'Brien,20,"$1,715.02",10%,3,Upsold an extended warranty.
+ORD-00169,2024-04-04,EAST,Electronics ,Mei Lin,5,$151.98,20%,5,"Smooth order, no issues."
+ORD-00558,29/10/2023,South,Furniture,Rahul Mehta,14.0,632.64,10 %,3,"Customer says the chair wobbles, wants a refund."
+ORD-00437,06/09/2023,CENTRAL,Office Supplies,Sara Khan,7 units,12.62,10 %,3,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00389,2024-06-26,Central,Office Supplies,Mei Lin,1,3.89,none,3.0,Upsold an extended warranty.
+ORD-00206,25/12/2023, South ,Electronics,Chloé Martin,2 units,$914.91,15%,3,Upsold an extended warranty.
+ORD-00571,"May 14, 2024",North,ELECTRONICS,,20,$952.32,none,5,Customer praised the packaging.
+ORD-00148,2024-11-07,East,ELECTRONICS,Asha Verma,2,774.75,0.20,5.0,Upsold an extended warranty.
+ORD-00457,2023-09-30,East,Electronics,Priya Nair,1,$284.10,15%,5.0,Repeat buyer — asked about bulk pricing.
+ORD-00621,11/08/2024,EAST,Electronics,Chloé Martin,10,"$1,025.09",,4,Upsold an extended warranty.
+ORD-00120,2024-10-14, South ,office supplies,Sara Khan,3,$49.33,0,4,Customer praised the packaging.
+ORD-00470,08/05/2024,East,Furniture,Sara Khan,11,466.61,5%,5,Repeat buyer — asked about bulk pricing.
+ORD-00378,21-May-2023,North,FURNITURE,Mei Lin,16,$900.85,0%,5,Upsold an extended warranty. 
+ORD-00952,2023/06/11,South,Electronics,Rahul Mehta,11,"$1,297.34",0.10,4.0,Upsold an extended warranty. 
+ORD-00462,2023/11/18,south,Electronics,Mei Lin,7,$404.33,10 %,n/a,Repeat buyer — asked about bulk pricing.
+ORD-00212,30-Nov-2023,east,Office Supplies ,Sara Khan,3,$21.46,0%,2/5,"Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 Box was crushed in transit, screen cracked 😞 "
+ORD-00534,06/05/2024,Central,Office Supplies,Chloé Martin,16 units,$28.64,15%,2/5,Item arrived damaged; customer requested a replacement. Invoice re-issued with GST number.
+ORD-00657,"Oct 05, 2023", Central ,Office Supplies,Diego Ramírez,15,47.87,0.15,3,Repeat buyer — asked about bulk pricing.
+ORD-00583,2023-09-18,East,Electronics,Mei Lin,22,"$1,276.29",20%,4,"Delivered on time, customer happy."
+ORD-00423,,North,electronics,Diego Ramírez,25,"$1,087.28",20%,2,Item arrived damaged; customer requested a replacement. 
+ORD-00547,2023/04/13,North,Office Supplies ,,21,$5.42,0,4,Repeat buyer — asked about bulk pricing.
+ORD-00128,2024-01-16,South,Electronics,Sara Khan,7,N/A,10%,5,"Delivered on time, customer happy. "
+ORD-00274,2024/07/12,West,Electronics,Mei Lin,7,589.23,15%,4,Repeat buyer — asked about bulk pricing.
+ORD-00405,"Jan 21, 2023",,Furniture,Sara Khan,8,$95.13,15%,4/5,Repeat buyer — asked about bulk pricing.
+ORD-00966,2024-07-31,EAST,ELECTRONICS,Priya Nair,8,$707.60,10 %,4,"Delivered on time, customer happy."
+ORD-00614,"Dec 04, 2023",East,Electronics,Rahul Mehta,18,N/A,20%,4,Repeat buyer — asked about bulk pricing.
+ORD-00780,2024-08-26,EAST,Electronics,Sara Khan,12,$150.90,10 %,4,"Delivered on time, customer happy."
+ORD-00859,2023/10/21, South ,Office Supplies,Asha Verma,6,25.14,0,5,"Delivered on time, customer happy."
+ORD-00791,22/06/2024,North,Furniture,Tom O'Brien,10,336.48,,3,"Smooth order, no issues."
+ORD-00999,"Jun 23, 2024",South,Furniture ,,-4,760.62,,5,Repeat buyer — asked about bulk pricing. 
+ORD-00207,2024-07-20,West,Electronics ,Chloé Martin,3,$748.86,0.10,3.0,Repeat buyer — asked about bulk pricing.
+ORD-00951,2024-09-23,North,Electronics,Asha Verma,6,"1,023.90",20 %,5,Customer praised the packaging.
+ORD-00079,05-Oct-2023,East,Office Supplies ,Priya Nair,21,$32.37,,4,Repeat buyer — asked about bulk pricing.
+ORD-00324,"Nov 05, 2023",West,office supplies,,16,9.91,none,1,
+ORD-00986,2024/08/19,east,Electronics,Tom O'Brien,25,"1,000.47",,5.0,Customer praised the packaging.
+ORD-00347,2024-04-07,North,ELECTRONICS,Diego Ramírez,23,1379.58,20%,4,Customer praised the packaging. 
+ORD-00438,14-Jul-2023,West,Furniture,Tom O'Brien,5.0,181.32,,4,"Smooth order, no issues. Called twice to confirm address, café delivery."
+ORD-00119,2024/08/27,West,Electronics,Rahul Mehta,11,"1,747.86",5%,5,Repeat buyer — asked about bulk pricing. 
+ORD-00688,14-Aug-2024,West,Furniture,,13,$240.36,5%,2,"Customer says the chair wobbles, wants a refund."
+ORD-00084,2024-10-13, West ,OFFICE SUPPLIES,Priya Nair,1,36.85,0.05,4,"Delivered on time, customer happy."
+ORD-00530,2024-08-29,North,electronics,Mei Lin,12,"$1,642.45",0.05,4,"Delivered on time, customer happy."
+ORD-00167,25-Aug-2023,South,ELECTRONICS,Priya Nair,,214.66,10%,4/5,Repeat buyer — asked about bulk pricing.
+ORD-00818,31/01/2024,East,Office Supplies,Rahul Mehta,7,56.04,,,"Delivered on time, customer happy. Paid via UPI ₹ transfer."
+ORD-00090,"Apr 06, 2024",East,Furniture,Diego Ramírez,1,$94.55,15%,-,Customer praised the packaging.
+ORD-00529,2024-08-14,EAST,Furniture,Asha Verma,5,$835.19,,5,Upsold an extended warranty.
+ORD-00603,2023-12-14,South,Office Supplies,Mei Lin,4,$43.88,0.20,5,Repeat buyer — asked about bulk pricing.
+ORD-00069,17/08/2024,South,Electronics,Tom O'Brien,13,$248.86,5%,5,"Upsold an extended warranty. Called twice to confirm address, café delivery."
+ORD-00661,28/04/2024,South,Electronics,Rahul Mehta,2.0,"1,454.05",0.20,,"Smooth order, no issues. "
+ORD-00003,2023/09/24,east,Office Supplies,Tom O'Brien,12,56.39,15%,2,"Late delivery (5 days), customer complained to support. "
+ORD-00128,2024-01-16,South,Electronics,Sara Khan,7,N/A,10%,5,"Delivered on time, customer happy. "
+ORD-00397,2024-11-29,West,FURNITURE,Mei Lin,14,603.24,10%,n/a,"Delivered on time, customer happy."
+ORD-00016,2023-05-10,East,Office Supplies ,Diego Ramírez,20 units,20.88,0.10,4,"Upsold an extended warranty.
+Paid via UPI ₹ transfer."
+ORD-00771,17/03/2024,North,Office Supplies ,Mei Lin,25,58.68,0,3,
+ORD-00795,2024-03-26,West,Office Supplies,Sara Khan,-3,$41.38,0%,4,Repeat buyer — asked about bulk pricing.
+ORD-00690,"Nov 18, 2024",North,Furniture,Chloé Martin,16,191.23,20%,2,Item arrived damaged; customer requested a replacement.
+ORD-00540,2023-12-31,Nrth,Furniture,Chloé Martin,18,$607.94,5%,4,"Delivered on time, customer happy."
+ORD-00134,"Aug 07, 2024",West,furniture,Rahul Mehta,17,$247.70,20 %,1,"Customer says the chair wobbles, wants a refund. Called twice to confirm address, café delivery."
+ORD-00938,2024-04-23,East,Furniture ,Rahul Mehta,14,$475.10,0,3,"Delivered on time, customer happy. "
+ORD-00283,2024-07-09,North,Furniture,Asha Verma,11,663.13,10%,5,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00070,02/06/2024,Sout,Furniture,Mei Lin,8,$787.73,10%,4,Customer praised the packaging.
+ORD-00011,2024-06-20,North,Electronics,Rahul Mehta,19,$487.03,15%,5,
+ORD-00726,25/05/2024,North,OFFICE SUPPLIES,Rahul Mehta,15,54.48,none,4,"Delivered on time, customer happy."
+ORD-00704,"Jul 25, 2024",South,ELECTRONICS,Chloé Martin,16,"$1,443.70",,3,"Delivered on time, customer happy."
+ORD-00356,2023-05-17,Central,OFFICE SUPPLIES,Rahul Mehta,15 units,53.27,10%,4,Repeat buyer — asked about bulk pricing.
+ORD-00013,30/05/2023,SOUTH,OFFICE SUPPLIES,Chloé Martin,21,$3.20,20%,5,Customer praised the packaging.
+ORD-00295,2023-11-03,South,Electronics ,Chloé Martin,3,1120.6,0.10,5,Customer praised the packaging.
+ORD-00789,14/01/2024,south,electronics,Mei Lin,22,523.6,0.20,3,Upsold an extended warranty.
+ORD-00343,"Jan 09, 2024",West,Office Supplies,Sara Khan,12,10.20,0.15,4,"Delivered on time, customer happy."
+ORD-00387,"Oct 05, 2023",West,electronics,Rahul Mehta,14,418.38,0.05,5,Upsold an extended warranty.
+ORD-00498,2023-09-24, North ,Office Supplies,Tom O'Brien,-4,22.60,0.15,3,Repeat buyer — asked about bulk pricing.
+ORD-00085,"Jun 21, 2024",South,Electronics,Tom O'Brien,8,"1,068.58",10%,4/5,Customer praised the packaging.
+ORD-00099,2023-12-03,Sout,Electronics,Rahul Mehta,17,"$1,284.65",none,5,Upsold an extended warranty.
+ORD-00886,2023-09-27,WEST,Office Supplies,Rahul Mehta,18,23.05,0%,4,"Delivered on time, customer happy."
+ORD-00410,23/10/2023,East,office supplies,Tom O'Brien,5.0,20.38,0,5.0,Customer praised the packaging.
+ORD-00301,2024/05/06,South,ELECTRONICS,Diego Ramírez,,535.67,0%,3.0,Repeat buyer — asked about bulk pricing.
+ORD-00702,25/04/2024, East ,Office Supplies,Rahul Mehta,18,$54.17,10%,3,Item arrived damaged; customer requested a replacement.
+ORD-00038,2023/09/08,North,office supplies,Sara Khan,15 units,$41.01,20%,5,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00750,"May 24, 2024",North,Office Supplies,Tom O'Brien,-3,$12.21,,4.0,Repeat buyer — asked about bulk pricing.
+ORD-00939,2024-04-13,North,Electronics,Asha Verma,11,702.98,15%,2.0,
+ORD-00594,2024/07/26,NORTH,Electronics,Chloé Martin,9.0,$574.20,,4.0,"Smooth order, no issues. Called twice to confirm address, café delivery."
+ORD-00554,"Jun 20, 2024",East,electronics,Sara Khan,12,$679.17,15%,4.0,"Smooth order, no issues."
+ORD-00318,"Sep 30, 2024",West,Office Supplies,Diego Ramírez,1,22.76,0.05,3,"Delivered on time, customer happy."
+ORD-00311,"Jan 23, 2024",,ELECTRONICS,Sara Khan,12,"1,235.17",,1,"Late delivery (5 days), customer complained to support."
+ORD-00724,25/08/2023,north,Electronics ,Tom O'Brien,8,$247.61,0,5,Repeat buyer — asked about bulk pricing.
+ORD-00593,24/10/2024,South,Furniture ,Chloé Martin,25,$602.21,none,3.0,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00696,21/06/2024,East,furniture,Sara Khan,18,574.07,0.05,3,Repeat buyer — asked about bulk pricing.
+ORD-00495,2024-02-09,North,Furniture,Chloé Martin,9,N/A,0,4.0,Repeat buyer — asked about bulk pricing.
+ORD-00008,2024-06-24,north,Electronics,Rahul Mehta,7,"$1,605.93",10%,5,Repeat buyer — asked about bulk pricing. 
+ORD-00701,18/07/2023,South,ELECTRONICS,Mei Lin,9999,1043.73,0%,3,Upsold an extended warranty.
+ORD-00386,"Nov 15, 2024",North,electronics,Rahul Mehta,14,"$1,141.56",0%,4,Upsold an extended warranty.
+ORD-00792,"Aug 24, 2023", East ,office supplies,Diego Ramírez,17 units,5.93,,3,"Box was crushed in transit, screen cracked 😞"
+ORD-00729,31/08/2023,North,ELECTRONICS,Asha Verma,4.0,571.95,0.20,4.0,"Smooth order, no issues."
+ORD-00853,"Nov 23, 2024",West,Furniture ,Tom O'Brien,14,N/A,,3,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00752,2024-06-20,East,Office Supplies,Priya Nair,,36.82,10%,3,Repeat buyer — asked about bulk pricing.
+ORD-00600,2024-01-05,South,Office Supplies ,Diego Ramírez,14 units,45.24,0,1,"Customer says the chair wobbles, wants a refund. Called twice to confirm address, café delivery."
+ORD-00425,17/07/2024,EAST,electronics,Mei Lin,-2,"$1,222.35",5%,4,
+ORD-00183,2024/11/11,South,Furniture,Diego Ramírez,18,$197.55,15%,3,Upsold an extended warranty.
+ORD-00152,30/08/2024,West,Furniture,Chloé Martin,18,893.90,0.15,2,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00761,2023-12-06,central,Electronics,Tom O'Brien,13,1035.76,0.05,5,"Smooth order, no issues."
+ORD-00961,"Sep 27, 2024",West,FURNITURE,Asha Verma,21,$436.69,5%,2,"Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. Late delivery (5 days), customer complained to support. Invoice re-issued with GST number. "
+ORD-00564,2024/06/07,North,furniture,Diego Ramírez,3,$523.59,20%,5,"Delivered on time, customer happy."
+ORD-00647,03/05/2024,North,Office Supplies ,Chloé Martin,19,12.37,,5,"Smooth order, no issues."
+ORD-00482,2023-12-29,East,Furniture,Chloé Martin,1.0,$177.03,5 %,4,Upsold an extended warranty.
+ORD-00100,15-Jul-2024,South,electronics,Mei Lin,15,"$1,486.81",0%,2,"Late delivery (5 days), customer complained to support."
+ORD-00731,03/07/2024,central,electronics,Priya Nair,3,"1,549.76",0.10,4,"Smooth order, no issues."
+ORD-00598,"Mar 07, 2024",North,Furniture,Priya Nair,,$341.18,0,5/5,"Smooth order, no issues."
+ORD-00228,"Oct 26, 2024",South,Furniture,Diego Ramírez,4,911.88,5 %,5,"Smooth order, no issues."
+ORD-00770,2023-08-26,North,FURNITURE,Rahul Mehta,10 units,202.59,5 %,4/5,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00637,2024-01-06,Central,office supplies,Asha Verma,23,55.20,0.05,1,"Late delivery (5 days), customer complained to support."
+ORD-00298,2024-02-20,South,ELECTRONICS,Rahul Mehta,18,881.11,none,4,Upsold an extended warranty.
+ORD-00108,09/12/2024,Central,Furniture,Diego Ramírez,5,840.75,none,2,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00137,"Dec 14, 2023",East,Electronics,Chloé Martin,11,"$1,323.30",15%,4,Repeat buyer — asked about bulk pricing.
+ORD-00102,03/10/2024,West,Office Supplies,Chloé Martin,19,9.72,0,2/5,"Box was crushed in transit, screen cracked 😞"
+ORD-00953,2023/12/31,West,office supplies,Rahul Mehta,15,58.33,10%,4,"Delivered on time, customer happy. "
+ORD-00197,2024-03-11,South,Furniture,Rahul Mehta,23,$566.59,0.05,3,Upsold an extended warranty.
+ORD-00798,17/05/2023,South,Office Supplies,Chloé Martin,5,29.88,0%,4,Customer praised the packaging.
+ORD-00501,2023-05-27,South,Electronics,Rahul Mehta,13,"$1,753.81",5 %,4.0,"Smooth order, no issues. Called twice to confirm address, café delivery."
+ORD-00552,2023-10-04,West,office supplies,Asha Verma,4,N/A,0.10,5,Upsold an extended warranty.
+ORD-00555,2024/04/30,East,furniture,Diego Ramírez,22 units,N/A,0.20,4,Upsold an extended warranty.
+ORD-00322,11-Jul-2024, North ,furniture,Tom O'Brien,16,$349.97,0,5,"Delivered on time, customer happy."
+ORD-00449,25/03/2024,East,Electronics,Rahul Mehta,11,1556.45,0,-,Customer praised the packaging. 
+ORD-00172,"Sep 10, 2023",North,Electronics,Chloé Martin,20 units,515.92,,5,Customer praised the packaging.
+ORD-00383,2024-07-08,Central,Furniture,Sara Khan,16.0,554.22,5%,4,"Delivered on time, customer happy."
+ORD-00328,20/06/2024,,Electronics ,Rahul Mehta,9,261.1,none,3,"Delivered on time, customer happy."
+ORD-00210,"Jul 29, 2024",West,Office Supplies ,Sara Khan,18,9.96,20%,3,"Late delivery (5 days), customer complained to support."
+ORD-00698,20/04/2024,East,Office Supplies,Sara Khan,17,34.75,0%,,"Delivered on time, customer happy.
+Invoice re-issued with GST number."
+ORD-00366,"Oct 17, 2024",South,OFFICE SUPPLIES,Priya Nair,9,N/A,0.15,4,"Delivered on time, customer happy."
+ORD-00107,2024-01-31,East,office supplies,Asha Verma,3,58.18,20%,5,"Smooth order, no issues."
+ORD-00518,2024-05-16,South,FURNITURE,,18,639.58,,5,"Smooth order, no issues."
+ORD-00958,2024-11-26,East,office supplies,Chloé Martin,25,$11.02,5%,4.0,"Delivered on time, customer happy. Invoice re-issued with GST number."
+ORD-00413,2024/04/21,North,office supplies,Sara Khan,8,$50.47,5%,4,Customer praised the packaging.
+ORD-00175,2024-09-07,west,Office Supplies,Rahul Mehta,16,39.12,0%,4,Customer praised the packaging.
+ORD-00591,18/02/2024,Wst,Electronics,Mei Lin,17,"1,160.17",5 %,4/5,
+ORD-00454,2024-12-09,East,Furniture ,Asha Verma,23,924.89,20 %,3,"Customer says the chair wobbles, wants a refund."
+ORD-00584,26/09/2024,WEST,Electronics,Asha Verma,4,N/A,5%,5,Repeat buyer — asked about bulk pricing. 
+ORD-00816,2024-05-15, South ,Electronics,Priya Nair,10 units,"$1,199.27",20%,4,
+ORD-00670,2023/06/13,North,Electronics ,Diego Ramírez,3,$897.39,0%,2,Item arrived damaged; customer requested a replacement.
+ORD-00109,"Mar 01, 2023",East,Furniture,Chloé Martin,11,$447.41,none,4,"Delivered on time, customer happy. Called twice to confirm address, café delivery."
+ORD-00700,,East,office supplies,Mei Lin,-1,$45.84,0%,2/5,"Box was crushed in transit, screen cracked 😞"
+ORD-00046,"May 26, 2024",West,Furniture,Tom O'Brien,10,166.29,15%,2,"Late delivery (5 days), customer complained to support."
+ORD-00663,2023-09-14,north,electronics,Asha Verma,5,"$1,580.11",0.15,5,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00417,02-Oct-2024,North,Office Supplies ,Asha Verma,8,$44.51,0.05,5,"Delivered on time, customer happy."
+ORD-00756,12/07/2024,South,OFFICE SUPPLIES,Chloé Martin,14.0,$48.66,0.05,3,"Delivered on time, customer happy."
+ORD-00391,2024-02-13, Central ,Electronics ,Asha Verma,24,N/A,20 %,4,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00078,2024-09-11,north,Office Supplies ,Rahul Mehta,10,$35.37,,5,Upsold an extended warranty.
+ORD-00962,"Jul 14, 2024",West,Office Supplies,Priya Nair,9,49.86,5%,4,"Smooth order, no issues."
+ORD-00336,2023-10-30,West,Electronics,Chloé Martin,24,"1,778.59",20%,4,Customer praised the packaging.
+ORD-00617,2024/01/24,south,electronics,Priya Nair,11,603.88,0,3,"Customer praised the packaging. Called twice to confirm address, café delivery."
+ORD-00640,12/09/2024, South ,Office Supplies,Mei Lin,18,32.37,10%,5.0,"Smooth order, no issues.
+"
+ORD-00325,2024-10-02,north,Electronics,Priya Nair,11,911.24,,4,
+ORD-00762,"Oct 14, 2023", North ,Electronics,Asha Verma,19,$457.41,0%,1,"Customer says the chair wobbles, wants a refund."
+ORD-00168,2024/08/22,East,Office Supplies,Mei Lin,6,12.56,15%,5,"Delivered on time, customer happy.
+"
+ORD-00940,2023/10/28,South,Office Supplies,Asha Verma,24,$51.61,none,2,"Box was crushed in transit, screen cracked 😞 Invoice re-issued with GST number."
+ORD-00056,"Dec 28, 2024",West,Electronics,Chloé Martin,5,$316.88,20%,-,"Smooth order, no issues."
+ORD-00385,22/10/2023,East,office supplies,Priya Nair,24.0,21.45,0.20,-,Customer praised the packaging.
+ORD-00279,2023-09-17,Central,Office Supplies ,Chloé Martin,3,30.35,0.15,3,"Smooth order, no issues."
+ORD-00794,27/08/2024,East,Office Supplies,Mei Lin,3,35.86,20%,2,"Customer says the chair wobbles, wants a refund."
+ORD-00737,2024-10-11,West,Office Supplies,Diego Ramírez,-3,32.59,0,2,"Late delivery (5 days), customer complained to support."
+ORD-00882,04/06/2024,Central,Furniture,Asha Verma,5.0,$929.79,20%,4,"Smooth order, no issues."
+ORD-00074,2023-10-16,East,OFFICE SUPPLIES,Mei Lin,15,$42.36,0.05,3,"Delivered on time, customer happy."
+ORD-00596,2024/12/01, West ,electronics,Diego Ramírez,25,1558.29,20%,4,Customer praised the packaging. Invoice re-issued with GST number.
+ORD-00528,"Feb 19, 2024",South,Electronics ,Asha Verma,16,N/A,0.20,3,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00135,2024/09/21,Sout,Electronics ,Asha Verma,24,195.29,none,3,Repeat buyer — asked about bulk pricing.
+ORD-00800,10/06/2024,East,ELECTRONICS,Asha Verma,22,"$1,395.71",0%,4,Upsold an extended warranty.
+ORD-00217,04/08/2023,East,Office Supplies ,Sara Khan,2,43.17,0.10,5,"Smooth order, no issues."
+ORD-00741,12-Mar-2024, West ,OFFICE SUPPLIES,Chloé Martin,23,$17.72,0.05,5,"Smooth order, no issues. Invoice re-issued with GST number."
+ORD-00879,,East,Office Supplies,Diego Ramírez,,$17.08,10%,3/5,"Smooth order, no issues."
+ORD-00306,2023/12/03,North,electronics,Asha Verma,19,1352.68,0%,4,
+ORD-00635,04/06/2023,North,Office Supplies,Sara Khan,14,$32.74,20%,5,
+ORD-00535,2023-09-19,west,Office Supplies,Rahul Mehta,21,38.97,0%,4,"Delivered on time, customer happy."
+ORD-00787,2024-04-25,North,Furniture,,24,$804.94,20%,5,Upsold an extended warranty.
+ORD-00094,12/07/2024,East,office supplies,Mei Lin,3,$47.68,0,5,"Delivered on time, customer happy. Called twice to confirm address, café delivery."
+ORD-00270,07-Apr-2023,West,Office Supplies,Asha Verma,-1,47.96,none,3,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00774,2024-05-06,East,Electronics ,Diego Ramírez,25,463.29,0.15,4,Repeat buyer — asked about bulk pricing.
+ORD-00421,2023-11-18,West,Office Supplies,Chloé Martin,3,$37.77,20%,4,"Delivered on time, customer happy."
+ORD-00917,2024-04-18,North,Electronics,Priya Nair,14,"$1,283.11",15 %,4,Repeat buyer — asked about bulk pricing.
+ORD-00608,2023-11-15,North,OFFICE SUPPLIES,Mei Lin,2 units,59.77,0,3,"Late delivery (5 days), customer complained to support."
+ORD-00867,05/12/2023,Nrth,FURNITURE,Asha Verma,18,147.64,0.20,-,Customer praised the packaging. Paid via UPI ₹ transfer.
+ORD-00237,2023-08-15,North,Electronics,Sara Khan,17,"$1,573.51",10%,5,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00799,05/07/2024,West,Office Supplies,Chloé Martin,11,$33.52,20%,5.0,"Smooth order, no issues. Called twice to confirm address, café delivery."
+ORD-00869,2023-07-15,West,OFFICE SUPPLIES,Chloé Martin,25,$42.16,15%,4,
+ORD-00196,2024-06-10,West,Office Supplies,Mei Lin,21,5.35,0.10,5,Repeat buyer — asked about bulk pricing. 
+ORD-00922,2024/05/24,south,Electronics,Mei Lin,22,"$1,192.13",0.15,5,Upsold an extended warranty.
+ORD-00541,"Mar 09, 2024", East ,office supplies,Tom O'Brien,4,22.44,,4,Customer praised the packaging. 
+ORD-00035,2024-12-19,south,Furniture ,Mei Lin,16 units,$501.38,none,3,"Smooth order, no issues."
+ORD-00490,16/05/2024,south,ELECTRONICS,Diego Ramírez,15,1503.34,0.05,5,"Delivered on time, customer happy."
+ORD-00577,2023/01/16,North,furniture,Mei Lin,15,736.20,10%,5,Customer praised the packaging.
+ORD-00433,2024/09/28,Central,Electronics,Chloé Martin,22,579.46,0%,4,Customer praised the packaging.
+ORD-00451,2024-09-03, South ,Furniture,Asha Verma,20,838.06,15%,4,Repeat buyer — asked about bulk pricing.
+ORD-00669,16/08/2023,NORTH,Electronics ,Asha Verma,17,"$1,480.06",0.15,3/5,Customer praised the packaging.
+ORD-00560,"Mar 26, 2024",Sout,Furniture,Rahul Mehta,23,546.03,15%,1,"Customer says the chair wobbles, wants a refund. "
+ORD-00579,2024/03/26,East,Office Supplies,Tom O'Brien,14.0,11.30,15%,5,"Smooth order, no issues."
+ORD-00960,07-Jul-2024,south,Electronics,Priya Nair,22,"$1,767.90",10%,3,Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. 
+ORD-00499,31-Jul-2024,,Office Supplies,Rahul Mehta,9,39.61,10 %,4,"Delivered on time, customer happy. Called twice to confirm address, café delivery."
+ORD-00626,20/07/2023,South,Furniture ,Asha Verma,2,335.74,10%,4,"Delivered on time, customer happy."
+ORD-00060,2023/12/23,East,office supplies,,,$26.74,15%,3,"Delivered on time, customer happy."
+ORD-00510,"Nov 23, 2023",,Electronics,Priya Nair,1,$874.27,10 %,3,Repeat buyer — asked about bulk pricing.
+ORD-00851,09-Jul-2024,South,Electronics,Sara Khan,3,697.58,none,5,
+ORD-00592,2024-01-07,East,Electronics,Diego Ramírez,19,"$1,621.00",0.20,2,"Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery. "
+ORD-00994,,North,office supplies,Diego Ramírez,1,34.89,0%,4,"Delivered on time, customer happy."
+ORD-00256,2023/12/30,central,ELECTRONICS,Chloé Martin,1,1668.16,0,4/5,"Smooth order, no issues. Invoice re-issued with GST number."
+ORD-00446,2024-06-08,South,Electronics,Sara Khan,3,"$1,576.97",0.05,4,Upsold an extended warranty.
+ORD-00720,"Sep 30, 2024", South ,Office Supplies,Mei Lin,11 units,$34.72,10%,3,"Delivered on time, customer happy. "
+ORD-00728,"Jul 11, 2023",West,Office Supplies,Diego Ramírez,17,6.45,10%,2,Item arrived damaged; customer requested a replacement.
+ORD-00302,"Aug 19, 2024",East,Electronics,Chloé Martin,20,150.90,0.05,5,Customer praised the packaging.
+ORD-00112,2023-06-21, West ,Electronics,Priya Nair,9,"$1,715.32",0.05,3/5,Customer praised the packaging.
+ORD-00817,2024-09-15,North,ELECTRONICS,Mei Lin,-2 units,1039.47,,4/5,Repeat buyer — asked about bulk pricing.
+ORD-00754,21-Jul-2024,West,electronics,Sara Khan,,$486.67,0.20,5,Upsold an extended warranty.
+ORD-00203,2024-10-12,South,furniture,Asha Verma,21,757.82,0%,4,Upsold an extended warranty.
+ORD-00495,2024-02-09,North,Furniture,Chloé Martin,9,N/A,0,4.0,Repeat buyer — asked about bulk pricing.
+ORD-00242,2024/03/26,East,Office Supplies,Diego Ramírez,5,$48.02,,4/5,"Delivered on time, customer happy."
+ORD-00923,"Feb 16, 2024",East,office supplies,Mei Lin,25 units,$52.77,,4,Repeat buyer — asked about bulk pricing.
+ORD-00297,2023/01/31,North,Office Supplies,Sara Khan,18 units,$26.80,0.10,5,Customer praised the packaging.
+ORD-00133,"Apr 08, 2024",south,Electronics,Mei Lin,23,526.13,none,5,"Smooth order, no issues. "
+ORD-00779,2024-02-13,West,electronics,Asha Verma,25,$628.53,0,4,Upsold an extended warranty.
+ORD-00842,20-Mar-2023,Central,Office Supplies,Mei Lin,9 units,31.24,0,1,"Customer says the chair wobbles, wants a refund."
+ORD-00941,"Feb 03, 2024",North,Office Supplies,Priya Nair,17,48.41,0%,3,Customer praised the packaging.
+ORD-00286,"Jul 16, 2024",South,Furniture,Sara Khan,22,281.76,0%,5,Upsold an extended warranty. 
+ORD-00057,2023-11-20,West,Electronics,Priya Nair,16,"$1,269.21",0.10,5/5,Customer praised the packaging.
+ORD-00309,2023-06-04,north,OFFICE SUPPLIES,,20,$41.62,10 %,3,"Box was crushed in transit, screen cracked 😞"
+ORD-00634,2024-10-29,North,ELECTRONICS,Asha Verma,9999,1140.65,5%,1,"Customer says the chair wobbles, wants a refund."
+ORD-00895,2024-10-02,West,FURNITURE,Tom O'Brien,16,304.28,0%,3,"Delivered on time, customer happy."
+ORD-00497,"Nov 27, 2023",south,Office Supplies ,Asha Verma,9,$21.73,5%,3,"Smooth order, no issues."
+ORD-00727,30-Aug-2024,West,electronics,Tom O'Brien,24,"1,173.15",5 %,1,
+ORD-00632,10/05/2024,East,Office Supplies ,Tom O'Brien,1,50.20,0%,4,Upsold an extended warranty.
+ORD-00676,2024/05/25,West,FURNITURE,,25 units,860.78,,4,Upsold an extended warranty.
+ORD-00054,2023-05-11,north,Office Supplies ,Mei Lin,23.0,32.80,none,5,"Smooth order, no issues."
+ORD-00807,13/08/2024,East,Electronics,Mei Lin,7,"$1,391.85",,4,"Delivered on time, customer happy. "
+ORD-00273,2024-09-13,South,Electronics,Tom O'Brien,19,"$1,673.14",15 %,4,Customer praised the packaging. Invoice re-issued with GST number.
+ORD-00602,21-Dec-2023,East,Office Supplies ,Rahul Mehta,8,N/A,0,-,"Delivered on time, customer happy."
+ORD-00187,2023-10-29,North,Office Supplies,Rahul Mehta,13,$21.41,15%,3,
+ORD-00574,2024-04-02,South,Office Supplies,Asha Verma,6,$32.48,10 %,4,"Smooth order, no issues. Invoice re-issued with GST number."
+ORD-00138,"Oct 16, 2023",West,Furniture,Priya Nair,24.0,635.33,0.05,5,Repeat buyer — asked about bulk pricing.
+ORD-00124,16/08/2024,South,Office Supplies,Mei Lin,11,$51.12,0%,2,"Late delivery (5 days), customer complained to support."
+ORD-00630,2024-08-08,EAST,Electronics,Diego Ramírez,19,$559.53,0%,-,Upsold an extended warranty.
+ORD-00464,2023-12-20,West,FURNITURE,Asha Verma,13,307.09,5%,3.0,Item arrived damaged; customer requested a replacement.
+ORD-00578,2024-08-30,North,Office Supplies,Priya Nair,4 units,$24.43,0%,3,Item arrived damaged; customer requested a replacement. Invoice re-issued with GST number.
+ORD-00656,2024-08-09,North,Furniture,Sara Khan,12,$729.74,none,5,Customer praised the packaging. Paid via UPI ₹ transfer.
+ORD-00243,2024/06/04,north,Furniture,Diego Ramírez,12,$693.24,0.10,4,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00885,"Apr 09, 2024",,Office Supplies ,Sara Khan,1,26.71,,5,"Delivered on time, customer happy."
+ORD-00970,"Jun 07, 2024",North,Furniture,Diego Ramírez,15 units,145.66,0%,5,Repeat buyer — asked about bulk pricing.
+ORD-00132,"Dec 20, 2023",East,electronics,Tom O'Brien,18 units,585.83,15%,3/5,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00443,22/10/2023,east,Furniture,Rahul Mehta,6,$704.50,none,5,Repeat buyer — asked about bulk pricing.
+ORD-00705,03/08/2023, South ,Office Supplies,,18,$30.71,20 %,3/5,"Late delivery (5 days), customer complained to support. Invoice re-issued with GST number."
+ORD-00182,28/09/2023,West,ELECTRONICS,Priya Nair,4,$930.76,,3/5,Item arrived damaged; customer requested a replacement. Invoice re-issued with GST number.
+ORD-00012,2024-05-02,South,Furniture,Priya Nair,10,648.96,,3,"Delivered on time, customer happy."
+ORD-00022,2023-08-25,Nrth,furniture,Mei Lin,20,$594.95,15%,3,"Customer says the chair wobbles, wants a refund. Called twice to confirm address, café delivery."
+ORD-00896,2024-09-17,South,Electronics,Mei Lin,10,$820.14,20%,5,Customer praised the packaging.
+ORD-00878,2024-02-14,east,Electronics ,Diego Ramírez,13,N/A,0.10,4,Customer praised the packaging.
+ORD-00595,19-Aug-2023,North,Furniture,Asha Verma,,$524.38,5%,5,"Smooth order, no issues."
+ORD-00220,2024-07-01,South,Furniture,Priya Nair,20,510.04,15%,2,"Box was crushed in transit, screen cracked 😞"
+ORD-00559,"Jul 14, 2023",Central,Office Supplies ,Diego Ramírez,9,44.28,0.15,4.0,"Smooth order, no issues. "
+ORD-00157,2024-10-28,East,Office Supplies,Asha Verma,22,48.38,none,3.0,"Delivered on time, customer happy."
+ORD-00480,2024/06/23,North,Electronics ,Priya Nair,13 units,$987.24,0%,3,Upsold an extended warranty.
+ORD-00778,2024-05-25,EAST,FURNITURE,Sara Khan,10.0,$566.46,15%,3,"Smooth order, no issues. Invoice re-issued with GST number."
+ORD-00699,2023-12-26,north,ELECTRONICS,Sara Khan,12,$251.82,15%,3/5,"Smooth order, no issues."
+ORD-00007,25/04/2024,Central,Electronics ,Diego Ramírez,20,"$1,039.84",15 %,5/5,"Smooth order, no issues."
+ORD-00716,2024-06-07,North,Furniture,Asha Verma,4,373.03,10 %,4,"Smooth order, no issues."
+ORD-00195,23-Feb-2024,West,electronics,Asha Verma,7,"1,458.29",none,3,"Delivered on time, customer happy."
+ORD-00687,2024/02/28,Est,Furniture,Priya Nair,11,92.49,20%,5,
+ORD-00246,"Aug 30, 2024",East,OFFICE SUPPLIES,Chloé Martin,15,N/A,none,5,"Smooth order, no issues."
+ORD-00988,2024-07-20,North,Electronics,Sara Khan,21,151.81,0.10,3,"Late delivery (5 days), customer complained to support. Invoice re-issued with GST number."
+ORD-00459,28/04/2023,South,Furniture ,Chloé Martin,4 units,$493.43,5%,5,Upsold an extended warranty.
+ORD-00764,2024-06-29,NORTH,electronics,Asha Verma,22,1215.98,20%,4,"Delivered on time, customer happy."
+ORD-00473,"Jul 27, 2023",West,Office Supplies ,,19,$26.39,15%,2,"Box was crushed in transit, screen cracked 😞"
+ORD-00430,26-Jun-2023,West,OFFICE SUPPLIES,Chloé Martin,14,$21.61,0.20,5,"Smooth order, no issues."
+ORD-00213,2024/08/08,East,electronics,Priya Nair,14,"1,009.77",0.10,5,"Delivered on time, customer happy. Called twice to confirm address, café delivery."
+ORD-00823,11/11/2024,Sout,Electronics,Mei Lin,4,"1,083.28",0%,4/5,"Smooth order, no issues."
+ORD-00211,2023/08/27,,furniture,Diego Ramírez,19,$513.03,0.20,3,"Smooth order, no issues.
+Smooth order, no issues.
+Smooth order, no issues.
+Smooth order, no issues.
+Smooth order, no issues.
+Smooth order, no issues.
+Smooth order, no issues.
+Smooth order, no issues.
+Smooth order, no issues.
+Smooth order, no issues.
+Smooth order, no issues.
+Smooth order, no issues.
+"
+ORD-00888,2023-09-22,East,Furniture ,Chloé Martin,24,N/A,20%,5,"Smooth order, no issues."
+ORD-00063,"May 03, 2024",east,Office Supplies,Priya Nair,11,19.85,5%,5/5,Customer praised the packaging.
+ORD-00905,2024-06-27,West,Electronics,Mei Lin,14,985.46,5 %,4/5,"Delivered on time, customer happy."
+ORD-00533,"Dec 08, 2024",South,ELECTRONICS,Priya Nair,22 units,"1,059.60",0%,,Upsold an extended warranty. 
+ORD-00606,15-Jun-2023,South,Furniture ,Chloé Martin,4,$784.45,20%,3,Upsold an extended warranty.
+ORD-00782,2023-05-31,Sout,Furniture,Priya Nair,25,96.97,0%,4,"Delivered on time, customer happy. Invoice re-issued with GST number."
+ORD-00372,,West,office supplies,Tom O'Brien,1,47.33,0%,3,"Customer says the chair wobbles, wants a refund."
+ORD-00517,2024/03/21, East ,Electronics ,Sara Khan,22,889.09,0,4,"Smooth order, no issues. "
+ORD-00368,2023-09-12,West,Furniture,Diego Ramírez,16,240.97,20%,3,"Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. Late delivery (5 days), customer complained to support. "
+ORD-00392,2023-09-07,Central,electronics,Mei Lin,9,$965.50,0,4/5,Customer praised the packaging.
+ORD-00930,2024/04/18,North,electronics,Priya Nair,4,"$1,215.13",none,4,"Smooth order, no issues."
+ORD-00525,2024/02/07,North,OFFICE SUPPLIES,,5,$3.34,0%,5,"Delivered on time, customer happy."
+ORD-00281,11/05/2024,West,Furniture,Sara Khan,14,$400.37,0%,5,Upsold an extended warranty.
+ORD-00337,2023-12-03,north,Office Supplies,Asha Verma,14,9.22,15%,5,"Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. Delivered on time, customer happy. Called twice to confirm address, café delivery. "
+ORD-00653,2024-09-02,South,Electronics,,2,$764.63,none,4,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00121,"Sep 28, 2024",SOUTH,Furniture,Diego Ramírez,,110.15,10%,5,Upsold an extended warranty.
+ORD-00890,2024-07-07,WEST,Electronics,Asha Verma,3,"$1,293.05",0%,4,Repeat buyer — asked about bulk pricing.
+ORD-00002,2023-07-21,Central,Electronics,Rahul Mehta,,586.46,0,3,"Customer praised the packaging. Called twice to confirm address, café delivery."
+ORD-00077,12-Oct-2024,Central,Furniture,,16.0,$918.61,0%,4,"Delivered on time, customer happy."
+ORD-00082,2023-11-30, South ,electronics,Mei Lin,1 units,224.73,0%,3,"Delivered on time, customer happy."
+ORD-00416,2024/02/10,Central,Office Supplies,Asha Verma,16,43.38,0.10,3,"Smooth order, no issues."
+ORD-00280,01-Dec-2023,East,Electronics,Priya Nair,8,297.16,0.20,5,"Smooth order, no issues."
+ORD-00364,2024-09-13,Est,Electronics,Chloé Martin,18,890.00,0.15,3,"Customer says the chair wobbles, wants a refund."
+ORD-00858,03-Oct-2023,East,Electronics,Rahul Mehta,9,$852.26,,4/5,Repeat buyer — asked about bulk pricing.
+ORD-00694,01/05/2023,south,office supplies,Rahul Mehta,20,21.52,0.10,4,
+ORD-00623,2023/11/04,east,ELECTRONICS,Mei Lin,13 units,$214.70,5%,4/5,Upsold an extended warranty.
+ORD-00126,"Nov 19, 2024",Wst,electronics,Sara Khan,6,"$1,505.74",0.15,5,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00991,"May 21, 2024",SOUTH,Office Supplies,Diego Ramírez,3,45.48,none,3,"Late delivery (5 days), customer complained to support."
+ORD-00052,2024/08/20,West,Office Supplies,Tom O'Brien,8,12.89,,4,Customer praised the packaging.
+ORD-00523,"Aug 26, 2024",North,Electronics,Diego Ramírez,6.0,$261.21,5 %,5.0,Customer praised the packaging.
+ORD-00400,2024-05-17,North,Furniture,Rahul Mehta,22,$752.20,0.05,5,"Delivered on time, customer happy."
+ORD-00943,2023/12/09,South,Office Supplies,Mei Lin,25,$24.07,,3.0,Customer praised the packaging.
+ORD-00622,20/11/2023,north,Office Supplies,Sara Khan,7,23.24,20%,3,"Delivered on time, customer happy."
+ORD-00666,2023-11-13,,Office Supplies,Chloé Martin,15,$27.16,none,3,"Smooth order, no issues."
+ORD-00675,2024-11-26, North ,FURNITURE,Priya Nair,22.0,124.35,5%,3,"Delivered on time, customer happy. Paid via UPI ₹ transfer."
+ORD-00341,2023-07-17,West,Office Supplies,Sara Khan,14.0,55.95,0,5,"Smooth order, no issues."
+ORD-00513,"Jan 01, 2024",South,Office Supplies ,Rahul Mehta,8,$56.94,none,3/5,"Delivered on time, customer happy."
+ORD-00424,"Jul 21, 2024",East,Furniture,Mei Lin,12,465.88,none,3,Repeat buyer — asked about bulk pricing.
+ORD-00474,"May 06, 2024",West,Office Supplies,Diego Ramírez,7,N/A,0.20,3,"Late delivery (5 days), customer complained to support."
+ORD-00023,"Jun 17, 2024",Centrl,Electronics ,Chloé Martin,25,201.20,,4,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00050,2023/12/30,East,Electronics,Mei Lin,7,$627.59,,3,"Customer says the chair wobbles, wants a refund."
+ORD-00259,2024-04-23,west,FURNITURE,Sara Khan,22,428.54,0.10,4.0,Repeat buyer — asked about bulk pricing.
+ORD-00278,26-Oct-2023,North,Electronics ,Rahul Mehta,,$989.42,,3,"Delivered on time, customer happy."
+ORD-00218,09/11/2023,East,Electronics ,Chloé Martin,20,$452.53,0.15,5,"Delivered on time, customer happy. Paid via UPI ₹ transfer."
+ORD-00123,12/10/2024,Central,Furniture,Sara Khan,6,$781.40,15%,,"Smooth order, no issues."
+ORD-00075,31/05/2024,East,office supplies,Rahul Mehta,7,20.01,none,4,Customer praised the packaging.
+ORD-00075,31/05/2024,East,office supplies,Rahul Mehta,7,20.01,none,4,Customer praised the packaging.
+ORD-00776,"Apr 27, 2024",East,Furniture,Chloé Martin,8,$654.84,,4,Repeat buyer — asked about bulk pricing.
+ORD-00833,2023-06-30,SOUTH,OFFICE SUPPLIES,Diego Ramírez,1 units,$11.40,0,5,"Smooth order, no issues."
+ORD-00036,23-May-2024,North,furniture,Mei Lin,4 units,$537.58,5%,2,"Late delivery (5 days), customer complained to support. Called twice to confirm address, café delivery."
+ORD-00718,"Jan 18, 2024",West,OFFICE SUPPLIES,Asha Verma,1,$50.22,none,5,Repeat buyer — asked about bulk pricing.
+ORD-00677,20/10/2024,North,Electronics,Tom O'Brien,12,$534.68,5%,5,"Delivered on time, customer happy."
+ORD-00179,2024-07-22,North,Office Supplies ,Asha Verma,16,31.48,20%,3,Customer praised the packaging.
+ORD-00757,18/09/2024,West,furniture,Priya Nair,3,112.66,none,4,Upsold an extended warranty.
+ORD-00468,2024-07-15, North ,Office Supplies,Sara Khan,24,27.71,,3,"Smooth order, no issues."
+ORD-00769,2023/12/05,Est,Furniture ,Tom O'Brien,18,345.87,0%,-,Customer praised the packaging. 
+ORD-00494,"Oct 06, 2023",NORTH,Office Supplies,Chloé Martin,1,42.62,0.20,2,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00209,03-Sep-2024,west,Electronics,Chloé Martin,22.0,$696.33,,3,"Late delivery (5 days), customer complained to support."
+ORD-00509,2024-01-29,North,Electronics ,Priya Nair,,"$1,727.52",20%,5,"Delivered on time, customer happy."
+ORD-00106,24/08/2024,North,OFFICE SUPPLIES,Tom O'Brien,25,11.10,0.15,5,"Delivered on time, customer happy."
+ORD-00369,2023/03/13,North,Office Supplies,Tom O'Brien,4,50.11,20%,4,"Delivered on time, customer happy.
+Paid via UPI ₹ transfer."
+ORD-00310,2023-10-18,East,Electronics ,Chloé Martin,-1,"$1,537.29",10 %,3,Customer praised the packaging.
+ORD-00717,2024-10-17,North,Furniture,Priya Nair,18 units,$703.90,5%,4,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00907,2024-08-19,West,OFFICE SUPPLIES,Rahul Mehta,1,48.62,0,3,"Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number."
+ORD-00404,09/07/2024,North,Office Supplies,Sara Khan,10 units,$31.68,0.15,5,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00697,,North,office supplies,Rahul Mehta,20,43.5,none,4.0,Repeat buyer — asked about bulk pricing.
+ORD-00333,2024-01-01,North,FURNITURE,Tom O'Brien,10,142.59,0,4,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00947,2023-10-29,south,Electronics,Chloé Martin,5,$807.08,none,5,Customer praised the packaging.
+ORD-00338,, West ,Furniture,Asha Verma,25,738.51,10%,5/5,"Smooth order, no issues."
+ORD-00477,"Nov 24, 2023",West,Furniture ,Tom O'Brien,9,367.68,5%,3,"Delivered on time, customer happy."
+ORD-00713,2023/10/06, South ,Office Supplies,Tom O'Brien,-5 units,$16.33,20%,5,"Delivered on time, customer happy."
+ORD-00456,18/07/2024,West,Furniture,Rahul Mehta,3 units,$609.42,15%,4,"Delivered on time, customer happy."
+ORD-00629,2024/05/29,East,office supplies,Mei Lin,2 units,36.11,0%,5,"Delivered on time, customer happy."
+ORD-00924,2024-06-02,East,Furniture ,Diego Ramírez,17,946.99,,,Customer praised the packaging.
+ORD-00162,2024/01/01,East,Office Supplies,Tom O'Brien,19,49.04,5%,5,Repeat buyer — asked about bulk pricing.
+ORD-00448,10/04/2024,North,Office Supplies,Tom O'Brien,21,$45.69,0.10,4,Customer praised the packaging.
+ORD-00532,11/08/2024, North ,Office Supplies,Asha Verma,22,19.66,20%,4.0,Customer praised the packaging. 
+ORD-00964,2024/09/23,East,Electronics,Sara Khan,2,183.82,none,5,Repeat buyer — asked about bulk pricing.
+ORD-00450,"Mar 20, 2023",West,Electronics,Rahul Mehta,7,"$1,582.35",0.10,5,Customer praised the packaging.
+ORD-00772,2024/04/30,Central,Office Supplies ,Mei Lin,7,8.49,0,5,"Smooth order, no issues.
+Invoice re-issued with GST number."
+ORD-00159,2024-06-09, South ,furniture,Rahul Mehta,14,182.93,0%,3,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00610,2023-09-26,West,Furniture,Sara Khan,24,98.58,,2,Item arrived damaged; customer requested a replacement.
+ORD-00745,2024-02-10,west,Furniture,Sara Khan,7,$512.09,20%,3,
+ORD-00963,27-May-2023,Central,Furniture,Sara Khan,10,$608.73,10 %,5,"Delivered on time, customer happy."
+ORD-00314,2024/10/16,West,OFFICE SUPPLIES,Asha Verma,20,$6.73,none,4,Repeat buyer — asked about bulk pricing.
+ORD-00285,,NORTH,Furniture ,Mei Lin,5,501.99,,3,
+ORD-00628,25/09/2024,South,Furniture ,Chloé Martin,20,309.49,15%,4,Upsold an extended warranty. 
+ORD-00287,"Jan 21, 2024",North,Office Supplies,Rahul Mehta,20,29.70,0%,5.0,"Smooth order, no issues."
+ORD-00125,2023-10-04,Central,OFFICE SUPPLIES,Asha Verma,18,47.86,0%,4,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00267,2023-12-21,West,Electronics,,6,$819.68,none,1,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00414,2024-07-07,North,Furniture ,Mei Lin,7,660.76,10%,5/5,"Delivered on time, customer happy."
+ORD-00491,2024-09-09,South,Office Supplies,Diego Ramírez,5,20.58,,1,"Box was crushed in transit, screen cracked 😞"
+ORD-00926,2024-09-02,,Office Supplies ,Chloé Martin,7,$9.49,15%,3,"Delivered on time, customer happy."
+ORD-00331,2024-09-11,West,Electronics ,Diego Ramírez,17,$159.97,20%,4,Repeat buyer — asked about bulk pricing.
+ORD-00398,2024-07-28,West,Electronics ,Chloé Martin,13,$964.80,0,5,"Delivered on time, customer happy."
+ORD-00847,"Feb 09, 2024",North,Electronics,Priya Nair,21,"$1,756.15",none,4,"Smooth order, no issues."
+ORD-00004,14/07/2024,Central,Furniture,Chloé Martin,7 units,$875.66,5%,4,Upsold an extended warranty.
+ORD-00091,29/12/2023,NORTH,Office Supplies,Tom O'Brien,3 units,46.3,none,5,"Delivered on time, customer happy."
+ORD-00589,"Feb 18, 2024",Wst,FURNITURE,Mei Lin,12 units,$822.17,none,5.0,Customer praised the packaging.
+ORD-00006,2024-05-31,South,Office Supplies,Rahul Mehta,,57.35,10%,3,"Delivered on time, customer happy. Called twice to confirm address, café delivery."
+ORD-00027,,SOUTH,Furniture,Priya Nair,24,$474.76,0,4,"Smooth order, no issues. Invoice re-issued with GST number."
+ORD-00866,2024/08/17,West,Office Supplies,Tom O'Brien,2,35.64,none,2,"Box was crushed in transit, screen cracked 😞"
+ORD-00141,29/07/2024,Central,OFFICE SUPPLIES,Priya Nair,17,38.72,none,5,"Delivered on time, customer happy."
+ORD-00131,2024-06-07,South,OFFICE SUPPLIES,Mei Lin,20,55.11,0,3.0,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00029,"Nov 26, 2023",Central,Electronics,Diego Ramírez,18,"$1,454.72",0,5,Customer praised the packaging. 
+ORD-00101,19/03/2024,West,OFFICE SUPPLIES,Tom O'Brien,14,$14.73,20%,4,"Upsold an extended warranty. Called twice to confirm address, café delivery."
+ORD-00192,2024/04/26,North,Office Supplies ,Rahul Mehta,24,56.84,10 %,2,"Late delivery (5 days), customer complained to support. Invoice re-issued with GST number."
+ORD-00979,2024/06/25,north,OFFICE SUPPLIES,Mei Lin,17,N/A,none,n/a,"Delivered on time, customer happy."
+ORD-00804,2024-05-12,west,ELECTRONICS,Sara Khan,6,546.33,10 %,4/5,Upsold an extended warranty.
+ORD-00431,2024/10/15,West,Office Supplies,Rahul Mehta,13,44.40,0.05,4,Repeat buyer — asked about bulk pricing.
+ORD-00484,2024/10/08,East,Office Supplies,Mei Lin,7,11.91,20%,4,Upsold an extended warranty.
+ORD-00765,2024-09-06, North ,Electronics ,Diego Ramírez,20,"$1,279.19",none,5,Customer praised the packaging.
+ORD-00633,2024-10-06,South,OFFICE SUPPLIES,Priya Nair,-4,$8.60,0.20,4,Upsold an extended warranty.
+ORD-00933,2024-06-02,NORTH,Office Supplies,Priya Nair,11,$49.41,0%,4,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00711,08/01/2024,East,Office Supplies,Tom O'Brien,8,$54.74,20%,4,"Smooth order, no issues."
+ORD-00150,2023/09/05,North,Electronics ,Rahul Mehta,23,569.58,0%,5,Repeat buyer — asked about bulk pricing.
+ORD-00330,2023/05/09,North,Electronics,,24,"$1,369.77",none,5/5,"Delivered on time, customer happy."
+ORD-00471,2023-09-19,East,Furniture,Rahul Mehta,19,$455.43,20%,2,"Customer says the chair wobbles, wants a refund."
+ORD-00001,13/12/2023,EAST,Electronics,Sara Khan,8,"$1,372.10",10%,,Item arrived damaged; customer requested a replacement. Paid via UPI ₹ transfer.
+ORD-00784,2024-08-11,East,Electronics,Diego Ramírez,9.0,$791.52,0.10,5,Repeat buyer — asked about bulk pricing.
+ORD-00503,2024/03/21,North,Office Supplies,Sara Khan,3,44.04,,4,"Smooth order, no issues. "
+ORD-00350,"Sep 29, 2024",East,ELECTRONICS,Chloé Martin,12,"$1,285.09",15 %,,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00914,2024-07-25,East,Office Supplies,Priya Nair,7,$36.28,0.05,3,Customer praised the packaging.
+ORD-00290,2024-08-03,North,office supplies,Diego Ramírez,1 units,22.46,0.10,5,Customer praised the packaging.
+ORD-00071,2023/12/20,West,OFFICE SUPPLIES,Priya Nair,1,N/A,15%,5,Customer praised the packaging. Invoice re-issued with GST number.
+ORD-00184,2023/12/21,West,Electronics,Mei Lin,-4,$937.16,,5,"Delivered on time, customer happy."
+ORD-00913,2024-01-09,East,Electronics ,Chloé Martin,16,896.85,none,4,"Smooth order, no issues."
+ORD-00396,06/01/2024,South,Electronics ,Rahul Mehta,1,$692.63,5%,5,"Upsold an extended warranty. Called twice to confirm address, café delivery."
+ORD-00562,16/12/2023,,Furniture,Diego Ramírez,18,155.90,15 %,5,Repeat buyer — asked about bulk pricing.
+ORD-00734,2023-12-20,south,Office Supplies,Mei Lin,22,36.26,0,4,"Delivered on time, customer happy."
+ORD-00399,2024-09-25,Central,FURNITURE,Chloé Martin,1 units,305.93,20%,1,Item arrived damaged; customer requested a replacement. 
+ORD-00223,20-Sep-2024,West,Office Supplies,Mei Lin,,13.25,0.10,5,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00236,22/02/2023,north,FURNITURE,Asha Verma,6.0,596.55,,5,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00348,2024/07/08,South,Office Supplies ,Rahul Mehta,10 units,$6.62,0.20,4,"Delivered on time, customer happy."
+ORD-00112,2023-06-21, West ,Electronics,Priya Nair,9,"$1,715.32",0.05,3/5,Customer praised the packaging.
+ORD-00227,2024-05-17,West,electronics,Sara Khan,12,1502.23,0%,3,"Customer says the chair wobbles, wants a refund."
+ORD-00165,02/02/2024, North ,Office Supplies,Tom O'Brien,16,$5.27,15 %,3,"Smooth order, no issues."
+ORD-00403,2023-12-14,North,Electronics ,Mei Lin,20,1273.91,15%,4,"Delivered on time, customer happy."
+ORD-00039,"Apr 08, 2023",South,Office Supplies ,Diego Ramírez,22,52.31,0.20,4,Customer praised the packaging.
+ORD-00461,2023/09/27,East,Electronics,Chloé Martin,10,1705.70,none,3/5,Repeat buyer — asked about bulk pricing.
+ORD-00291,03/08/2024, Central ,Furniture ,Priya Nair,23,$153.76,,4/5,Customer praised the packaging.
+ORD-00831,"Dec 04, 2024", South ,Electronics,Tom O'Brien,20,$731.48,5%,n/a,Customer praised the packaging.
+ORD-00957,2024/06/22,West,Furniture,Sara Khan,3,881.25,0%,4,Customer praised the packaging.
+ORD-00684,2024-03-01,South,FURNITURE,Sara Khan,4,621.62,5%,5,Upsold an extended warranty.
+ORD-00883,2024-07-20,West,office supplies,Mei Lin,25,20.65,20%,5.0,Repeat buyer — asked about bulk pricing.
+ORD-00863,2024-02-10,East,Furniture ,Rahul Mehta,18,$917.83,0,5.0,Customer praised the packaging. 
+ORD-00820,,North,Electronics,Chloé Martin,18 units,"$1,363.46",0.05,4,"Smooth order, no issues."
+ORD-00080,02/01/2024,North,electronics,Tom O'Brien,13,"1,614.87",0.20,4,"Smooth order, no issues."
+ORD-00317,2024-02-13,WEST,Electronics ,Priya Nair,6,$275.22,none,1.0,"Late delivery (5 days), customer complained to support. Paid via UPI ₹ transfer."
+ORD-00420,30/06/2023,West,Office Supplies,,19,37.84,,4.0,"Delivered on time, customer happy."
+ORD-00514,18/07/2024,North,office supplies,Priya Nair,11,$35.72,0.15,5,"Customer praised the packaging. Called twice to confirm address, café delivery."
+ORD-00251,28-Jul-2024,EAST,office supplies,Priya Nair,5,19.50,5%,2,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00786,2024-08-29,West,Electronics,Rahul Mehta,5,820.03,0.10,2,"Customer says the chair wobbles, wants a refund. Called twice to confirm address, café delivery."
+ORD-00375,2023-09-11,East,Electronics ,Asha Verma,5,"1,089.15",0.20,4,Repeat buyer — asked about bulk pricing.
+ORD-00028,2023/06/04,North,Electronics,Rahul Mehta,10,1582.96,5%,1/5,"Customer says the chair wobbles, wants a refund."
+ORD-00381,2024-03-30,West,ELECTRONICS,Tom O'Brien,9,"1,674.87",0,-,"Smooth order, no issues."
+ORD-00914,2024-07-25,East,Office Supplies,Priya Nair,7,$36.28,0.05,3,Customer praised the packaging.
+ORD-00315,2024-09-02,West,Office Supplies ,Chloé Martin,19,7.64,5%,3,Upsold an extended warranty.
+ORD-00934,2024-05-20,South,Electronics,Rahul Mehta,25 units,779.3,10 %,5,Repeat buyer — asked about bulk pricing.
+ORD-00073,2024-02-06,South,OFFICE SUPPLIES,Sara Khan,22,$20.54,0.15,4,"Smooth order, no issues."
+ORD-00219,2024-03-01,East,Furniture,Sara Khan,20,499.67,none,3,Customer praised the packaging.
+ORD-00730,04-Jan-2024,North,Electronics,Chloé Martin,23,"$1,276.45",,3.0,Repeat buyer — asked about bulk pricing.
+ORD-00993,2024/08/20,Central,Office Supplies ,,14,$32.55,0%,5,Upsold an extended warranty.
+ORD-00850,2024-03-06,West,Electronics ,Asha Verma,9,1557.53,15%,5/5,Repeat buyer — asked about bulk pricing.
+ORD-00740,27-May-2023,East,ELECTRONICS,Diego Ramírez,15,"$1,151.77",20%,3/5,Repeat buyer — asked about bulk pricing.
+ORD-00995,2024-08-18,West,Office Supplies,Asha Verma,3,5.15,0,3,"Delivered on time, customer happy."
+ORD-00906,2024/07/18,West,Office Supplies,Priya Nair,10,36.92,0.15,4,Repeat buyer — asked about bulk pricing.
+ORD-00232,"Oct 25, 2024",East,Electronics,Priya Nair,25.0,1692.82,,5,"Delivered on time, customer happy."
+ORD-00466,2023-12-18,East,ELECTRONICS,Sara Khan,4,232.62,0.10,5,"Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. "
+ORD-00638,24/01/2024,East,Furniture,Rahul Mehta,4,$855.52,10%,5,Repeat buyer — asked about bulk pricing.
+ORD-00415,15/09/2024,SOUTH,Electronics,Tom O'Brien,15,740.28,20%,4,Upsold an extended warranty.
+ORD-00174,"Nov 01, 2024",Wst,ELECTRONICS,Priya Nair,15,$580.83,5%,3,"Smooth order, no issues."
+ORD-00492,2023-08-21,West,OFFICE SUPPLIES,Diego Ramírez,-2,N/A,5%,3,Item arrived damaged; customer requested a replacement. Invoice re-issued with GST number.
+ORD-00927,2023/04/15,East,office supplies,Diego Ramírez,25,27.13,20%,5/5,"Delivered on time, customer happy."
+ORD-00893,2024-02-17,South,ELECTRONICS,Mei Lin,13,$235.53,none,3,Item arrived damaged; customer requested a replacement.
+ORD-00200,2024-09-16,North,Electronics,,13,1761.41,0,5,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00130,28-Apr-2024,West,Furniture,Chloé Martin,16,$340.00,5%,4.0,Upsold an extended warranty.
+ORD-00748,12/12/2023,South,OFFICE SUPPLIES,Sara Khan,10,$55.53,5 %,,"Customer says the chair wobbles, wants a refund."
+ORD-00118,07/01/2024,North,Electronics,Diego Ramírez,13,674.80,,4/5,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00151,2024-03-11,Wst,Furniture,Diego Ramírez,19,$881.41,0%,4,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00868,2024-10-10,Central,Office Supplies,Priya Nair,16,43.04,0.20,4,Customer praised the packaging.
+ORD-00918,2024-05-04,,FURNITURE,Rahul Mehta,23 units,479.54,20%,3,Customer praised the packaging. Paid via UPI ₹ transfer.
+ORD-00329,2024-01-08,east,Office Supplies,Rahul Mehta,22,$37.69,10%,3,
+ORD-00551,2024-02-13, Central ,Electronics,Chloé Martin,19,757.28,15 %,5,
+ORD-00607,15/07/2024,North,Office Supplies,Tom O'Brien,14,$36.41,0.15,3,"Smooth order, no issues. "
+ORD-00522,12-Aug-2023,West,electronics,Diego Ramírez,6,452.54,0,2,"Customer says the chair wobbles, wants a refund. Called twice to confirm address, café delivery."
+ORD-00496,2024-09-23,East,Furniture,Diego Ramírez,15,$634.06,0,5,Upsold an extended warranty.
+ORD-00161,2024-08-27,North,Electronics,Tom O'Brien,7,"$1,086.03",none,3,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00569,2024/10/12,,Furniture,Tom O'Brien,18,$573.68,,5,Customer praised the packaging.
+ORD-00087,27/10/2024,West,Electronics,Sara Khan,1,"1,373.43",15%,5/5,Upsold an extended warranty.
+ORD-00231,14/06/2024,West,electronics,Mei Lin,15,$270.32,0.10,,Customer praised the packaging. Paid via UPI ₹ transfer.
+ORD-00852,16/09/2023,West,Office Supplies ,Sara Khan,3,49.66,15 %,5/5,Upsold an extended warranty.
+ORD-00686,2024-07-11,South,furniture,Priya Nair,,365.06,10%,-,Item arrived damaged; customer requested a replacement.
+ORD-00255,2024-09-19,south,office supplies,Rahul Mehta,20,$12.82,0,1,"Late delivery (5 days), customer complained to support."
+ORD-00813,2023-09-29,North,Office Supplies ,Mei Lin,,42.12,0.15,4,
+ORD-00208,23-Sep-2024,South,Electronics ,,-3,971.09,5%,4,Customer praised the packaging. 
+ORD-00088,10/01/2024,West,Office Supplies ,Diego Ramírez,7,35.06,0%,4.0,Upsold an extended warranty.
+ORD-00199,"Apr 23, 2024",East,electronics,Sara Khan,9,1787.30,15 %,4,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00265,14/07/2024,East,OFFICE SUPPLIES,Diego Ramírez,19,6.83,20%,5,"Delivered on time, customer happy."
+ORD-00293,2024-04-22,north,Furniture,Tom O'Brien,25,854.58,10%,4,
+ORD-00775,07/07/2024,Central,office supplies,Chloé Martin,13,24.98,0.15,2,"Late delivery (5 days), customer complained to support. Paid via UPI ₹ transfer."
+ORD-00948,20/05/2024,East,office supplies,Priya Nair,19,15.27,20%,3/5,"Delivered on time, customer happy."
+ORD-00340,2024-04-01,Central,Office Supplies,Sara Khan,22,44.85,none,4,Upsold an extended warranty.
+ORD-00725,15/12/2023,East,Office Supplies,Chloé Martin,23,$10.48,15%,5.0,Repeat buyer — asked about bulk pricing.
+ORD-00949,2024-05-27,,Electronics,Diego Ramírez,2,430.18,0.20,4,Repeat buyer — asked about bulk pricing.
+ORD-00871,25/09/2024,East,office supplies,Chloé Martin,2 units,$17.40,0.20,4,
+ORD-00478,05/07/2024, South ,Office Supplies,Mei Lin,5,17.67,,2,"Late delivery (5 days), customer complained to support."
+ORD-00388,2024-08-16,East,Furniture,Mei Lin,22,$273.91,0.05,4,Customer praised the packaging.
+ORD-00743,"Jun 16, 2024",West,electronics,,18,1458.42,,,"Wrong colour shipped, ""very disappointed"" per the customer. Called twice to confirm address, café delivery."
+ORD-00380,2023-10-30,West,Furniture,Tom O'Brien,20,$573.20,5%,1,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00945,"Oct 23, 2024",East,OFFICE SUPPLIES,Mei Lin,24,21.47,0,5,
+ORD-00912,26-Apr-2024,West,Furniture,Sara Khan,5,$142.02,0.05,5,Repeat buyer — asked about bulk pricing.
+ORD-00980,2024-10-20,,furniture,Chloé Martin,17,550.02,5%,4/5,"Customer praised the packaging. Called twice to confirm address, café delivery."
+ORD-00864,2024-07-05,North,Furniture ,Asha Verma,19,$529.81,0%,3,"Box was crushed in transit, screen cracked 😞"
+ORD-00253,2024-06-11,North,Furniture,Priya Nair,12,635.88,none,4,Upsold an extended warranty.
+ORD-00110,15/09/2023,West,OFFICE SUPPLIES,Diego Ramírez,14,15.38,0,1/5,"Customer says the chair wobbles, wants a refund."
+ORD-00244,2024-04-06,North,Electronics,Sara Khan,17,1027.64,20%,5,"Smooth order, no issues."
+ORD-00834,2024-09-14,south,office supplies,Rahul Mehta,9 units,$46.82,0,3,"Delivered on time, customer happy."
+ORD-00822,2024/03/03,North,furniture,Priya Nair,13,761.36,0,5,Upsold an extended warranty.
+ORD-00048,2024-08-31,east,Office Supplies,Mei Lin,25,39.63,0%,n/a,
+ORD-00376,2024-09-13,West,Office Supplies ,Asha Verma,,35.61,0,5/5,"Smooth order, no issues."
+ORD-00305,2023-07-18,Central,Furniture ,Sara Khan,20,272.40,0.05,4,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00682,2023-10-27,Nrth,Office Supplies,Chloé Martin,14,$44.02,0,-,"Smooth order, no issues."
+ORD-00249,2023-12-15,North,Office Supplies,Mei Lin,1,$41.59,0%,5/5,"Smooth order, no issues."
+ORD-00379,23/09/2023,West,Electronics,Tom O'Brien,22,303.93,15%,2/5,"Late delivery (5 days), customer complained to support."
+ORD-00149,2024-05-10,East,Office Supplies ,Diego Ramírez,21.0,$23.71,,5,Upsold an extended warranty.
+ORD-00059,"Sep 04, 2023",West,Office Supplies,Mei Lin,23,54.63,0,2,"Box was crushed in transit, screen cracked 😞"
+ORD-00156,,EAST,Furniture ,Sara Khan,11,532.93,20%,5/5,Customer praised the packaging. Invoice re-issued with GST number.
+ORD-00299,20/06/2024,East,ELECTRONICS,,18,"$1,448.15",0,3.0,Upsold an extended warranty.
+ORD-00093,27/11/2024,West,electronics,Sara Khan,24,720.67,0%,4,
+ORD-00643,11/03/2024,North,office supplies,Tom O'Brien,24.0,31.92,0,5,"Smooth order, no issues."
+ORD-00515,2023-12-02,East,Electronics,Chloé Martin,20,N/A,0,,"Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. "
+ORD-00997,"Aug 03, 2024",West,Office Supplies,,1,15.56,20%,-,"Smooth order, no issues."
+ORD-00723,,East,Office Supplies ,Rahul Mehta,7,$37.69,0,3,Repeat buyer — asked about bulk pricing.
+ORD-00572,2024/03/15,North,Office Supplies,Mei Lin,24,$45.79,0%,5,
+ORD-00570,06/03/2024,north,Office Supplies,,2,3.56,none,5,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00544,18/12/2023,north,Office Supplies,Chloé Martin,13.0,3.62,none,n/a,Customer praised the packaging. 
+ORD-00826,2023-04-24,West,Electronics,Chloé Martin,23,1377.56,0.10,4,
+ORD-00755,2024/05/06,North,office supplies,Asha Verma,7,$25.11,none,,"Late delivery (5 days), customer complained to support. Invoice re-issued with GST number."
+ORD-00221,13/10/2024,,Office Supplies,,23 units,8.09,none,3,Repeat buyer — asked about bulk pricing.
+ORD-00613,2024-08-13,North,FURNITURE,Chloé Martin,5,$689.23,0.20,3,"Box was crushed in transit, screen cracked 😞"
+ORD-00692,2023-05-24,West,Office Supplies ,Sara Khan,22,40.21,0,5,Repeat buyer — asked about bulk pricing.
+ORD-00234,2024/07/23,West,furniture,Rahul Mehta,8,203.18,15%,1,"Late delivery (5 days), customer complained to support. Paid via UPI ₹ transfer."
+ORD-00947,2023-10-29,south,Electronics,Chloé Martin,5,$807.08,none,5,Customer praised the packaging.
+ORD-00839,"Aug 04, 2024",East,office supplies,Asha Verma,16,$7.78,,5,"Smooth order, no issues."
+ORD-00129,2024-09-21,West,FURNITURE,Rahul Mehta,9,240.85,5%,n/a,Customer praised the packaging.
+ORD-00147,2023-03-15, North ,OFFICE SUPPLIES,Asha Verma,22,44.26,none,5,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00553,2023/12/17,north,Office Supplies ,Sara Khan,10,$18.24,0.15,4,Customer praised the packaging.
+ORD-00338,, West ,Furniture,Asha Verma,25,738.51,10%,5/5,"Smooth order, no issues."
+ORD-00034,2024/08/26,EAST,Electronics,Priya Nair,16.0,1313.93,0.05,5,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00900,2023-12-07,,electronics,Chloé Martin,1,$456.25,none,5,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00319,2024-01-06,East,Office Supplies ,Tom O'Brien,7,26.81,0.05,-,
+ORD-00601,2024-07-10,North,Electronics,Mei Lin,6,"$1,276.04",none,4,"Smooth order, no issues."
+ORD-00942,2024/07/18,South,Office Supplies ,Mei Lin,19,$45.77,15 %,4,Upsold an extended warranty.
+ORD-00447,2023-10-30,west,Electronics,Rahul Mehta,18,$666.48,15%,3/5,"Box was crushed in transit, screen cracked 😞"
+ORD-00076,2024-01-25,South,office supplies,Asha Verma,15,15.20,20%,3,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00345,2023/04/08,central,electronics,Asha Verma,13,1784.02,20%,4,"Smooth order, no issues. Invoice re-issued with GST number."
+ORD-00241,"May 13, 2023",North,office supplies,Diego Ramírez,16,$27.26,5%,4,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00915,2024-03-26,,Office Supplies,Asha Verma,12,42.40,,4,Customer praised the packaging.
+ORD-00810,2023/08/31,North,office supplies,Chloé Martin,,33.78,0%,4,Upsold an extended warranty.
+ORD-00910,2024-05-27,East,OFFICE SUPPLIES,Diego Ramírez,9,21.50,5%,3,Customer praised the packaging. Invoice re-issued with GST number.
+ORD-00086,2024-08-16,South,Office Supplies,Priya Nair,2 units,$34.77,none,5,"Delivered on time, customer happy."
+ORD-00240,2024-06-01,West,Office Supplies,Diego Ramírez,6 units,16.09,5%,5,Repeat buyer — asked about bulk pricing.
+ORD-00585,2024-12-15,South,Furniture,Asha Verma,13.0,819.02,none,4.0,Upsold an extended warranty.
+ORD-00875,2024-02-04,north,Electronics ,Tom O'Brien,1,"$1,090.30",5%,4,Customer praised the packaging.
+ORD-00061,2024-06-08,South,Office Supplies,Sara Khan,25 units,$10.60,,4,Customer praised the packaging.
+ORD-00015,"Jul 07, 2024",North,ELECTRONICS,Tom O'Brien,13,$517.02,20 %,5,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00819,2024-02-22, South ,OFFICE SUPPLIES,Chloé Martin,2,15.49,0%,4,
+ORD-00814,"Aug 02, 2024",North,furniture,Sara Khan,19,183.63,20%,1,"Late delivery (5 days), customer complained to support."
+ORD-00627,2024-04-22,North,OFFICE SUPPLIES,Tom O'Brien,7,37.62,20%,4/5,Customer praised the packaging. Invoice re-issued with GST number.
+ORD-00524,14/06/2024,South,Electronics,Chloé Martin,13,$984.23,0,4,Customer praised the packaging. 
+ORD-00921,31/10/2023,North,Furniture,Priya Nair,17,358.75,10 %,2,"Box was crushed in transit, screen cracked 😞"
+ORD-00996,2023-10-08,West,Office Supplies ,Rahul Mehta,22,$5.81,,5,"Delivered on time, customer happy. "
+ORD-00615,2024/06/23,north,ELECTRONICS,Asha Verma,1,$288.00,,3,Repeat buyer — asked about bulk pricing.
+ORD-00837,"Jan 17, 2024",North,Furniture,Mei Lin,25 units,430.46,,4,"Smooth order, no issues."
+ORD-00685,21/06/2024,south,Electronics,Rahul Mehta,4,1138.53,0%,3,"Late delivery (5 days), customer complained to support."
+ORD-00435,27-Aug-2024,South,Furniture,Priya Nair,10,$718.10,0.15,3,"Delivered on time, customer happy."
+ORD-00178,,East,Electronics,Chloé Martin,9,594.52,0.10,4/5,Repeat buyer — asked about bulk pricing.
+ORD-00104,2024/11/30,South,Furniture ,Rahul Mehta,18,$705.51,0.10,5,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00264,2024/02/18,Central,Furniture,Rahul Mehta,19,$681.05,0%,3/5,"Smooth order, no issues. Called twice to confirm address, café delivery."
+ORD-00436,20/12/2023,East,Office Supplies,Priya Nair,13,11.16,20 %,4,"Smooth order, no issues."
+ORD-00998,2024-01-03, East ,Electronics ,Sara Khan,22,"1,797.85",15%,4.0,"Delivered on time, customer happy."
+ORD-00954,20-Nov-2023,South,Office Supplies,Rahul Mehta,-4,58.33,15 %,4,
+ORD-00384,25/02/2024,North,Electronics,Mei Lin,10.0,$842.54,0%,5/5,"Delivered on time, customer happy. "
+ORD-00488,2024/09/03,West,ELECTRONICS,Asha Verma,25,453.83,5 %,2.0,"Wrong colour shipped, ""very disappointed"" per the customer. Paid via UPI ₹ transfer."
+ORD-00326,2023-05-03,South,Electronics,Diego Ramírez,22,$228.80,15%,4/5,"Smooth order, no issues."
+ORD-00089,2023-09-29,East,Furniture,Diego Ramírez,12,$504.84,0.10,4,"Delivered on time, customer happy."
+ORD-00144,29/09/2024,,Furniture,Diego Ramírez,23,$82.38,15%,1,"Customer says the chair wobbles, wants a refund. Paid via UPI ₹ transfer."
+ORD-00098,"Apr 02, 2024",North,Office Supplies ,Chloé Martin,13,$52.57,0.05,5.0,Upsold an extended warranty.
+ORD-00902,2024-08-13,East,Electronics,Rahul Mehta,17,"$1,736.52",5 %,3,Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. 
+ORD-00257,,West,FURNITURE,Tom O'Brien,10,$83.77,15 %,2,"Customer says the chair wobbles, wants a refund."
+ORD-00453,2024-09-04, North ,Office Supplies,Priya Nair,25,$15.19,10%,4,Repeat buyer — asked about bulk pricing.
+ORD-00254,05/04/2024, East ,Furniture,Rahul Mehta,11,269.55,10%,4,Upsold an extended warranty.
+ORD-00205,2024-05-15,south,Office Supplies,,18,$47.85,10 %,3,Item arrived damaged; customer requested a replacement.
+ORD-00467,2023-08-23,,Furniture,Rahul Mehta,5,318.99,5%,4,
+ORD-00426,2023/04/28,East,Office Supplies ,Asha Verma,25.0,$37.70,0%,5,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00111,2024-04-20,WEST,electronics,Chloé Martin,17,1216.18,0.20,4.0,"Delivered on time, customer happy. Paid via UPI ₹ transfer."
+ORD-00557,2023-08-06,West,Furniture,Rahul Mehta,5,$346.70,20%,4,"Delivered on time, customer happy."
+ORD-00191,27/07/2023,North,Furniture,Rahul Mehta,19,506.22,10%,-,Repeat buyer — asked about bulk pricing.
+ORD-00486,"May 09, 2024", West ,electronics,Mei Lin,7,N/A,0%,2,"Customer says the chair wobbles, wants a refund."
+ORD-00139,2024/03/04,North,Office Supplies,Asha Verma,11,N/A,0%,3,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00428,2023/03/28,West,Furniture ,Priya Nair,1,497.78,0.20,5,"Delivered on time, customer happy. Called twice to confirm address, café delivery."
+ORD-00768,2023/11/10,East,OFFICE SUPPLIES,Chloé Martin,6,$13.08,0,2,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00465,2023-12-31,South,Office Supplies ,Rahul Mehta,9,$49.01,0.05,5,Upsold an extended warranty.
+ORD-00226,23/07/2024,SOUTH,electronics,Chloé Martin,20,$399.37,5%,4,Repeat buyer — asked about bulk pricing.
+ORD-00811,,East,Office Supplies,Rahul Mehta,17,29.43,none,3,"Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. "
+ORD-00681,12/11/2023,south,Office Supplies ,Rahul Mehta,2,17.74,5 %,3,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00844,2023-08-07,WEST,Furniture ,Mei Lin,20,$190.68,15%,3,Item arrived damaged; customer requested a replacement. Paid via UPI ₹ transfer.
+ORD-00854,2024-02-25,West,Furniture,Mei Lin,-5 units,$499.56,15%,4,Repeat buyer — asked about bulk pricing.
+ORD-00489,2024/04/30,West,Electronics,Rahul Mehta,10,"1,361.82",10 %,1,"Box was crushed in transit, screen cracked 😞"
+ORD-00722,2024-07-01,Central,Office Supplies ,Rahul Mehta,19,N/A,5%,5,"Upsold an extended warranty. Called twice to confirm address, café delivery."
+ORD-00710,27/12/2023,North,Furniture ,Diego Ramírez,,744.63,20 %,4,
+ORD-00332,2024/05/17,East,Electronics,Asha Verma,21,943.93,none,4,Customer praised the packaging.
+ORD-00238,2024-03-21,East,Office Supplies,Tom O'Brien,4,13.03,20 %,1,"Late delivery (5 days), customer complained to support."
+ORD-00599,2024/09/02,Central,OFFICE SUPPLIES,Rahul Mehta,12 units,46.78,,4,Upsold an extended warranty.
+ORD-00876,,South,Office Supplies,Sara Khan,15,18.87,0%,5,"Smooth order, no issues."
+ORD-00944,24/06/2024,South,Office Supplies,Mei Lin,11,42.30,5%,3,"Smooth order, no issues."
+ORD-00619,14/07/2024,North,Electronics,Priya Nair,7 units,591.87,none,4,Upsold an extended warranty.
+ORD-00042,26/03/2024,east,office supplies,Mei Lin,23,10.97,0%,5.0,Repeat buyer — asked about bulk pricing.
+ORD-00442,2024-06-11,east,Electronics,,2 units,"1,094.63",0,4,Upsold an extended warranty.
+ORD-00648,2023-08-04,West,Office Supplies ,Priya Nair,23,57.24,5 %,5/5,Upsold an extended warranty.
+ORD-00897,05/03/2024,West,electronics,Mei Lin,-2,1790.60,0,4,Repeat buyer — asked about bulk pricing.
+ORD-00031,,South,Furniture,Asha Verma,13,509.60,none,5,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00351,2024-10-16,Centrl,Office Supplies,Mei Lin,5,$44.76,15%,4,Upsold an extended warranty.
+ORD-00300,2023-10-10,East,ELECTRONICS,Rahul Mehta,25,822.01,0%,2.0,Item arrived damaged; customer requested a replacement. Paid via UPI ₹ transfer.
+ORD-00357,2024-06-09, South ,Electronics,Rahul Mehta,13,"$1,689.63",15%,4,Upsold an extended warranty.
+ORD-00359,2023-09-22,Wst,Office Supplies,Mei Lin,7,$59.03,0,3,Repeat buyer — asked about bulk pricing.
+ORD-00568,2024-09-13,Nrth,OFFICE SUPPLIES,Rahul Mehta,,$39.11,none,5/5,Customer praised the packaging.
+ORD-00198,2024-06-03,South,Office Supplies,Priya Nair,15,55.68,,5,"Delivered on time, customer happy. Paid via UPI ₹ transfer."
+ORD-00542,2024-08-07,Central,OFFICE SUPPLIES,Tom O'Brien,19 units,36.79,,4,Customer praised the packaging.
+ORD-00229,"Jun 22, 2023",North,ELECTRONICS,Rahul Mehta,14,885.80,none,5/5,"Delivered on time, customer happy."
+ORD-00865,2024/04/04,North,ELECTRONICS,Priya Nair,15,817.51,15%,4,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00892,"Nov 23, 2023",East,ELECTRONICS,Chloé Martin,9,"$1,476.45",5%,5,"Smooth order, no issues."
+ORD-00537,2023-12-27,south,Office Supplies ,Mei Lin,14,N/A,0.20,4,"Smooth order, no issues. Invoice re-issued with GST number."
+ORD-00758,2024/06/06,North,Office Supplies,Mei Lin,-1,$25.87,0%,4,Repeat buyer — asked about bulk pricing. 
+ORD-00114,2023-12-06,SOUTH,Furniture,Asha Verma,19,$524.38,none,3,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00932,"Jan 26, 2023",,OFFICE SUPPLIES,Diego Ramírez,11,$18.84,20%,4,
+ORD-00188,2024-08-08,North,ELECTRONICS,Rahul Mehta,16,"1,421.82",0%,4,
+ORD-00845,2023/12/31,WEST,Furniture,Tom O'Brien,7,731.56,0.10,5.0,Upsold an extended warranty.
+ORD-00815,04/09/2024,West,Electronics,Rahul Mehta,18,791.04,,2,"Late delivery (5 days), customer complained to support."
+ORD-00565,"Mar 19, 2024",west,Furniture ,Rahul Mehta,8,$614.96,20%,5,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00931,2024-02-25, West ,electronics,Chloé Martin,22,482.12,0%,5.0,"Smooth order, no issues."
+ORD-00271,2024/03/14,West,ELECTRONICS,Rahul Mehta,11,$820.38,,1,"Customer says the chair wobbles, wants a refund."
+ORD-00830,2023-08-04,west,Furniture,Priya Nair,1 units,92.98,15%,5/5,Customer praised the packaging.
+ORD-00712,2024-05-01,,Furniture,Mei Lin,11,116.98,0.15,4,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00367,2023-12-16,South,OFFICE SUPPLIES,Sara Khan,9,58.79,20%,3,Customer praised the packaging.
+ORD-00763,2023-11-11,North,Office Supplies,Priya Nair,5,$38.31,,4,"Delivered on time, customer happy."
+ORD-00171,2024/04/04,SOUTH,OFFICE SUPPLIES,Mei Lin,12,59.34,10%,5.0,"Delivered on time, customer happy."
+ORD-00941,"Feb 03, 2024",North,Office Supplies,Priya Nair,17,48.41,0%,3,Customer praised the packaging.
+ORD-00732,2024-06-11,West,Office Supplies,Chloé Martin,7,24.13,5%,5,Upsold an extended warranty.
+ORD-00590,2024-11-26,south,FURNITURE,Asha Verma,5,$526.12,0.05,4/5,Customer praised the packaging. Paid via UPI ₹ transfer.
+ORD-00824,25/09/2023,East,Office Supplies,Rahul Mehta,9 units,$58.28,15%,5,"Delivered on time, customer happy."
+ORD-00788,2023-11-20,WEST,office supplies,Diego Ramírez,21,13.39,,3,Repeat buyer — asked about bulk pricing.
+ORD-00891,26-Jun-2024, Central ,Office Supplies,Chloé Martin,6,$37.24,5%,5,"Smooth order, no issues."
+ORD-00744,2024-06-20,east,Office Supplies ,Rahul Mehta,13,$48.07,0,5,Repeat buyer — asked about bulk pricing.
+ORD-00115,15-Aug-2024,Central,electronics,Asha Verma,23 units,680.97,5%,5,
+ORD-00103,2023-10-20,Central,Furniture ,Priya Nair,13,510.62,0.15,5,
+ORD-00081,2024/08/09,West,FURNITURE,Sara Khan,17,147.95,0.10,2,"Late delivery (5 days), customer complained to support. "
+ORD-00597,14/10/2023,West,Electronics,Sara Khan,19,"1,690.97",0.15,1,"Customer says the chair wobbles, wants a refund. Paid via UPI ₹ transfer."
+ORD-00849,03/04/2024,East,electronics,Rahul Mehta,10,$258.18,0%,3,"Smooth order, no issues."
+ORD-00636,25-May-2024,West,Office Supplies,,-1,$31.05,15%,5,Repeat buyer — asked about bulk pricing.
+ORD-00976,28/10/2024,East,Electronics,Chloé Martin,19,689.54,0.10,4,"Delivered on time, customer happy."
+ORD-00230,2024-03-27,West,Electronics,Priya Nair,3,$606.03,5%,5,"Delivered on time, customer happy. Paid via UPI ₹ transfer."
+ORD-00965,2023-12-30,CENTRAL,ELECTRONICS,Asha Verma,1,$899.71,,5,Customer praised the packaging.
+ORD-00689,02/04/2024,East,office supplies,Priya Nair,,$46.54,10 %,1,"Late delivery (5 days), customer complained to support. Paid via UPI ₹ transfer."
+ORD-00272,2024/06/13,North,Electronics,Sara Khan,21,155.08,,5,"Delivered on time, customer happy. Invoice re-issued with GST number."
+ORD-00767,"Mar 12, 2024",West,Furniture,,15,$641.80,0,5,Repeat buyer — asked about bulk pricing. 
+ORD-00476,2024-07-17,West,office supplies,Tom O'Brien,2,$32.16,0.15,4,"Smooth order, no issues."
+ORD-00898,2023-10-30, North ,Electronics,Sara Khan,19,587.82,0.15,5,"Smooth order, no issues. Called twice to confirm address, café delivery."
+ORD-00067,2024-03-27,Sout,Electronics,Diego Ramírez,17,"$1,437.43",0.15,4,"Delivered on time, customer happy."
+ORD-00746,2024-06-04,West,Office Supplies ,Chloé Martin,15,26.14,10%,5,Repeat buyer — asked about bulk pricing.
+ORD-00452,21/11/2023,South,Office Supplies,Mei Lin,13,30.05,0%,5,Upsold an extended warranty.
+ORD-00215,2024-08-05, West ,Furniture,Rahul Mehta,5,934.58,10%,4,
+ORD-00320,2024-10-05,Nrth,Office Supplies ,Rahul Mehta,5 units,$35.39,20%,3,Customer praised the packaging.
+ORD-00097,"Feb 04, 2024",South,Office Supplies,Mei Lin,19,13.26,0.20,5,Repeat buyer — asked about bulk pricing.
+ORD-00733,2024/10/15,West,Office Supplies,,17,46.34,10 %,2,"Customer says the chair wobbles, wants a refund."
+ORD-00190,2023-10-12,East,Furniture,Tom O'Brien,1,619.57,none,3/5,Repeat buyer — asked about bulk pricing.
+ORD-00674,28/09/2024, West ,ELECTRONICS,Priya Nair,4,"$1,721.70",0.05,5/5,Repeat buyer — asked about bulk pricing.
+ORD-00937,"Aug 16, 2024",Nrth,Office Supplies,Chloé Martin,17,42.71,0.05,4,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00352,03/02/2024,NORTH,Office Supplies,Priya Nair,11,48.49,,3,"Late delivery (5 days), customer complained to support."
+ORD-00785,"Sep 23, 2024",North,Office Supplies ,Diego Ramírez,-2,40.53,none,4,Customer praised the packaging. Invoice re-issued with GST number.
+ORD-00735,10/04/2024, East ,office supplies,Chloé Martin,17,11.10,0%,3,"Box was crushed in transit, screen cracked 😞 Invoice re-issued with GST number."
+ORD-00652,03/09/2023,South,OFFICE SUPPLIES,Chloé Martin,23 units,45.23,0.15,5,Customer praised the packaging.
+ORD-00955,19/08/2024, North ,Furniture,Priya Nair,11,739.16,0.05,-,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00706,"Mar 24, 2024",south,Office Supplies,Chloé Martin,7,N/A,0,3,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00136,,Nrth,Electronics,,10,604.37,5%,5,Customer praised the packaging.
+ORD-00693,"Oct 28, 2023",Central,Furniture,Asha Verma,22,$725.77,5%,4,Upsold an extended warranty.
+ORD-00040,2023-05-12,NORTH,office supplies,Chloé Martin,-3.0,$8.14,,5/5,Repeat buyer — asked about bulk pricing.
+ORD-00838,2024-04-01,East,Office Supplies,Diego Ramírez,23,$15.42,10%,3,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00113,2024-07-06,West,Electronics,Priya Nair,24,$553.39,5 %,1,"Late delivery (5 days), customer complained to support. Invoice re-issued with GST number."
+ORD-00958,2024-11-26,East,office supplies,Chloé Martin,25,$11.02,5%,4.0,"Delivered on time, customer happy. Invoice re-issued with GST number."
+ORD-00573,2024-01-29,South,electronics,Mei Lin,9 units,$530.98,10%,4,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00344,"Nov 29, 2024",East,Electronics,Diego Ramírez,4 units,1097.05,15%,5/5,"Customer praised the packaging. Called twice to confirm address, café delivery."
+ORD-00142,"Oct 15, 2023",Central,Furniture,Asha Verma,-2,$194.15,15%,2,Item arrived damaged; customer requested a replacement.
+ORD-00432,"Sep 29, 2024",North,furniture,Tom O'Brien,11,$394.91,0.05,4.0,Customer praised the packaging.
+ORD-00065,"May 10, 2024",east,FURNITURE,Tom O'Brien,9,266.68,10 %,5,Repeat buyer — asked about bulk pricing.
+ORD-00030,2024/03/29,South,Office Supplies,Priya Nair,2,43.07,0.05,2.0,"Box was crushed in transit, screen cracked 😞"
+ORD-00828,"Apr 16, 2024",West,Electronics,Chloé Martin,4,1764.00,0.05,5,"Delivered on time, customer happy."
+ORD-00248,"Nov 06, 2024",South,Office Supplies,Mei Lin,25,$11.38,0.10,5,"Delivered on time, customer happy."
+ORD-00880,2024-11-15,South,Electronics,Rahul Mehta,23,1536.13,15%,4/5,"Smooth order, no issues."
+ORD-00703,26-Nov-2024,south,Office Supplies,Chloé Martin,15,$35.91,20 %,n/a,"Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. "
+ORD-00644,07/10/2023,South,furniture,Sara Khan,18,250.51,0.20,n/a,Upsold an extended warranty.
+ORD-00835,11/04/2024,East,Office Supplies,Priya Nair,4,$24.45,15%,3,"Customer says the chair wobbles, wants a refund. Called twice to confirm address, café delivery."
+ORD-00354,"Jul 10, 2024",North,Office Supplies,Rahul Mehta,6.0,$29.71,0,5,Repeat buyer — asked about bulk pricing.
+ORD-00887,"Oct 05, 2024",north,OFFICE SUPPLIES,Diego Ramírez,2,$3.15,0,2,Item arrived damaged; customer requested a replacement.
+ORD-00982,2023-06-13,South,Office Supplies,Sara Khan,2,26.12,10%,4,Repeat buyer — asked about bulk pricing.
+ORD-00323,"Jul 07, 2024",West,Furniture,Mei Lin,23,796.38,20%,2/5,"Box was crushed in transit, screen cracked 😞"
+ORD-00970,"Jun 07, 2024",North,Furniture,Diego Ramírez,15 units,145.66,0%,5,Repeat buyer — asked about bulk pricing.
+ORD-00146,"Aug 11, 2023",EAST,Office Supplies,,23,51.13,0%,3,Upsold an extended warranty.
+ORD-00502,22/09/2023,Central,Furniture ,Rahul Mehta,14,$805.87,0%,5,Customer praised the packaging. Invoice re-issued with GST number.
+ORD-00928,2023-11-16,West,Office Supplies ,Chloé Martin,17,45.35,0.15,1,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00975,2024-01-07,East,OFFICE SUPPLIES,Mei Lin,12,$17.19,20%,5,Customer praised the packaging.
+ORD-00479,16/06/2024, South ,Office Supplies,Sara Khan,17,24.65,0.15,5,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00714,"Jul 05, 2023",WEST,office supplies,Sara Khan,4,$56.04,,3,Upsold an extended warranty.
+ORD-00047,2024-02-08,South,Office Supplies,Diego Ramírez,5,35.01,0,5,Customer praised the packaging.
+ORD-00581,2024-04-15,East,Office Supplies,,5,40.66,5%,5,
+ORD-00909,"Apr 18, 2024",,Electronics,Mei Lin,17,$362.47,0.05,3,"Delivered on time, customer happy."
+ORD-00985,14/09/2023,South,Furniture,Tom O'Brien,12,$939.03,10%,3,Repeat buyer — asked about bulk pricing.
+ORD-00903,05-Jun-2024,South,office supplies,Chloé Martin,7,$4.68,15%,5/5,Repeat buyer — asked about bulk pricing.
+ORD-00846,02-Oct-2023,East,Office Supplies,Chloé Martin,2,$54.53,20 %,5,Repeat buyer — asked about bulk pricing.
+ORD-00202,2024-05-01,NORTH,Electronics,Rahul Mehta,7,"1,313.48",10 %,5,Repeat buyer — asked about bulk pricing.
+ORD-00469,2023-10-09,North,Furniture ,Diego Ramírez,10,96.29,5%,5,Upsold an extended warranty.
+ORD-00053,2023-06-30,East,Furniture,Diego Ramírez,15.0,803.58,,4.0,Upsold an extended warranty.
+ORD-00009,,South,electronics,Asha Verma,15,311.55,0.15,4,Repeat buyer — asked about bulk pricing. 
+ORD-00751,2024-10-17,West,Office Supplies,Priya Nair,10,$17.67,0%,5,Customer praised the packaging.
+ORD-00170,2024-05-26,Central,ELECTRONICS,Priya Nair,18,"$1,320.10",0.20,1,"Customer says the chair wobbles, wants a refund."
+ORD-00968,14/11/2023,Central,ELECTRONICS,Diego Ramírez,6,"$1,437.39",20%,4,Customer praised the packaging. Paid via UPI ₹ transfer.
+ORD-00411,2024/06/02,South,Office Supplies,Sara Khan,10,24.27,10%,3,
+ORD-00276,04-Dec-2023,East,Furniture,Tom O'Brien,17,487.23,,3,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00545,2024-01-11,South,FURNITURE,,1,560.74,none,5,Customer praised the packaging.
+ORD-00180,"Jan 23, 2024",East,Office Supplies,Mei Lin,14 units,57.90,,3,"Smooth order, no issues."
+ORD-00611,02/07/2024,West,Electronics ,Chloé Martin,5,$412.46,0.05,-,"Late delivery (5 days), customer complained to support."
+ORD-00777,24/09/2023,,Office Supplies,Mei Lin,11,$27.80,0.15,3,"Late delivery (5 days), customer complained to support."
+ORD-00739,2024/08/24,South,Office Supplies,Diego Ramírez,22,$11.46,,5.0,Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. 
+ORD-00990,17/12/2023,North,Office Supplies,Asha Verma,5,$43.62,0,3,Repeat buyer — asked about bulk pricing. Paid via UPI ₹ transfer.
+ORD-00062,29/11/2023,Central,FURNITURE,Chloé Martin,25,$830.06,0%,5,"Smooth order, no issues."
+ORD-00327,2024-10-28,West,Electronics,Rahul Mehta,4,$427.01,,1,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00873,"Jul 01, 2023",East,Electronics ,,-5,"$1,336.73",5 %,4,Customer praised the packaging. Customer praised the packaging. Customer praised the packaging. Customer praised the packaging. Customer praised the packaging. Customer praised the packaging. Customer praised the packaging. Customer praised the packaging. Customer praised the packaging. Customer praised the packaging. Customer praised the packaging. Customer praised the packaging. 
+ORD-00848,2024-05-23, North ,OFFICE SUPPLIES,Mei Lin,-5,35.17,15%,4,
+ORD-00025,2024-06-11,North,office supplies,Rahul Mehta,15,44.83,15%,3,Customer praised the packaging.
+ORD-00365,2024-11-08,West,Office Supplies ,Priya Nair,6,$35.06,5%,5,"Delivered on time, customer happy.
+Invoice re-issued with GST number."
+ORD-00033,"Mar 25, 2024",North,Office Supplies,Diego Ramírez,2,$46.12,15 %,4/5,"Upsold an extended warranty. Called twice to confirm address, café delivery."
+ORD-00549,17/03/2024,West,Furniture,Tom O'Brien,21,257.99,,1,"Late delivery (5 days), customer complained to support. Called twice to confirm address, café delivery."
+ORD-00346,2024-08-16,West,Electronics,Asha Verma,7,1347.83,0.10,2,"Customer says the chair wobbles, wants a refund."
+ORD-00708,2024-05-14,West,ELECTRONICS,Priya Nair,7,"$1,485.94",0.10,n/a,"Customer says the chair wobbles, wants a refund. Paid via UPI ₹ transfer."
+ORD-00870,"Nov 15, 2023",Nrth,Office Supplies,Mei Lin,17,47.82,20%,2,Item arrived damaged; customer requested a replacement.
+ORD-00441,2024-06-21,North,office supplies,Tom O'Brien,12,$47.10,5%,5,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00747,2024-06-16,East,Office Supplies,Tom O'Brien,14,56.35,15%,5,Upsold an extended warranty. 
+ORD-00797,04/06/2024,North,Electronics,Diego Ramírez,-3,"1,759.46",20%,5,"Smooth order, no issues."
+ORD-00308,2024-10-12,North,Office Supplies,Rahul Mehta,9,57.65,0.20,2,"Late delivery (5 days), customer complained to support."
+ORD-00258,2024-07-31,North,electronics,Mei Lin,23.0,$285.71,5%,2,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00665,2024/06/23,South,Electronics ,Asha Verma,5,$362.53,0.20,4,"Smooth order, no issues."
+ORD-00673,"Jul 10, 2024",South,OFFICE SUPPLIES,Diego Ramírez,11,$37.80,10%,2,"Box was crushed in transit, screen cracked 😞"
+ORD-00224,"Sep 07, 2023", East ,OFFICE SUPPLIES,Priya Nair,24,45.78,0%,4,Upsold an extended warranty. 
+ORD-00919,, North ,Office Supplies,Asha Verma,12,26.62,10%,4,Repeat buyer — asked about bulk pricing. 
+ORD-00625,2023-07-02,south,Office Supplies,Diego Ramírez,20,32.98,20%,4,"Repeat buyer — asked about bulk pricing.
+"
+ORD-00790,2023-11-10,Central,Office Supplies,Sara Khan,13,17.65,5%,5,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00419,2024-06-04,EAST,Furniture,Tom O'Brien,18 units,$461.82,0.15,4,Repeat buyer — asked about bulk pricing.
+ORD-00901,2024-10-12,West,Office Supplies,Asha Verma,15,$40.21,0,3,"Box was crushed in transit, screen cracked 😞"
+ORD-00792,"Aug 24, 2023", East ,office supplies,Diego Ramírez,17 units,5.93,,3,"Box was crushed in transit, screen cracked 😞"
+ORD-00163,2024-08-24, North ,ELECTRONICS,,18,"1,183.92",15%,1,Item arrived damaged; customer requested a replacement.
+ORD-00250,2024-03-16,Nrth,office supplies,Tom O'Brien,14,$48.92,5 %,5,Upsold an extended warranty.
+ORD-00298,2024-02-20,South,ELECTRONICS,Rahul Mehta,18,881.11,none,4,Upsold an extended warranty.
+ORD-00624,05-Aug-2023, Central ,Electronics,Rahul Mehta,25 units,1532.03,10%,4,"Smooth order, no issues."
+ORD-00521,2024-09-15,North,Office Supplies ,Sara Khan,14,54.42,0%,5,"Delivered on time, customer happy."
+ORD-00987,2023/02/13,South,Office Supplies ,Sara Khan,18.0,$55.17,10 %,5,"Delivered on time, customer happy."
+ORD-00483,2024-01-03,South,Furniture,Chloé Martin,15,238.50,,3,Repeat buyer — asked about bulk pricing. 
+ORD-00538,06/07/2024,West,Office Supplies,Diego Ramírez,20,17.96,20%,2,"Customer says the chair wobbles, wants a refund."
+ORD-00374,"Sep 29, 2024",North,electronics,Mei Lin,12,1501.37,0,3,Customer praised the packaging. Invoice re-issued with GST number.
+ORD-00485,"Jul 24, 2024",South,Furniture ,,15,743.54,0,5,Customer praised the packaging.
+ORD-00472,2024/02/27,West,Furniture,Priya Nair,25,$322.63,0.20,4,"Smooth order, no issues."
+ORD-00840,07/09/2024,West,Furniture,Chloé Martin,8,208.03,0%,5,Repeat buyer — asked about bulk pricing.
+ORD-00031,,South,Furniture,Asha Verma,13,509.60,none,5,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00158,2024-06-07,West,Furniture,Tom O'Brien,7,832.51,0.05,4,Customer praised the packaging.
+ORD-00247,2024/05/16,Nrth,Office Supplies,Sara Khan,15,N/A,,5,Customer praised the packaging.
+ORD-00321,2024-04-07,North,Office Supplies ,Rahul Mehta,6,USD 25,none,3,"Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. Delivered on time, customer happy. "
+ORD-00531,28-Sep-2024,,Office Supplies,Tom O'Brien,4,$24.71,5%,4,"Smooth order, no issues."
+ORD-00307,2024-07-15,East,Electronics,Diego Ramírez,2,$890.62,0%,5,Upsold an extended warranty.
+ORD-00402,2023-08-05,North,Furniture,Tom O'Brien,4,$242.72,0%,3,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00445,2024-02-10,,furniture,Sara Khan,14,$568.07,5%,3,Customer praised the packaging. 
+ORD-00222,"Jul 11, 2024",East,office supplies,Rahul Mehta,13,N/A,5%,3,"Smooth order, no issues."
+ORD-00881,2023/05/01,West,furniture,Tom O'Brien,,$804.56,5 %,2,
+ORD-00427,"Dec 04, 2023",west,OFFICE SUPPLIES,Priya Nair,13,$16.58,,2/5,
+ORD-00164,23-Dec-2023,West,office supplies,Sara Khan,15,$23.74,none,3,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00646,"Dec 16, 2023",North,ELECTRONICS,Diego Ramírez,18,"1,556.59",0%,3/5,Upsold an extended warranty.
+ORD-00397,2024-11-29,West,FURNITURE,Mei Lin,14,603.24,10%,n/a,"Delivered on time, customer happy."
+ORD-00561,04/08/2024,west,office supplies,,2,52.34,0.10,4,"Delivered on time, customer happy. Invoice re-issued with GST number."
+ORD-00671,30-Jan-2024,East,Furniture,Mei Lin,14,511.67,none,4/5,Repeat buyer — asked about bulk pricing.
+ORD-00362,2024-03-03,South,Furniture ,Priya Nair,11,80.47,15%,4,"Smooth order, no issues."
+ORD-00935,2024-08-15,north,Electronics,Asha Verma,11,493.67,20%,5,"Smooth order, no issues."
+ORD-00235,22/07/2024, South ,Office Supplies,Chloé Martin,13,35.83,0%,4,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00760,"Jun 22, 2024",West,Office Supplies,Sara Khan,5,$6.33,0.20,5/5,"Smooth order, no issues."
+ORD-00576,13/10/2023,North,Furniture ,Priya Nair,1,$316.93,0.20,1,"Late delivery (5 days), customer complained to support. Invoice re-issued with GST number."
+ORD-00304,2024-06-16,East,Office Supplies,Asha Verma,3,$49.52,5%,5,Customer praised the packaging.
+ORD-00806,06/06/2023,South,Office Supplies,,5,22.11,20%,5.0,"Delivered on time, customer happy."
+ORD-00836,2023-08-20,North,Furniture,Sara Khan,13,$498.20,15%,5,"Delivered on time, customer happy. "
+ORD-00519,"May 15, 2023",West,Furniture,Mei Lin,3,863.24,10%,2,"Box was crushed in transit, screen cracked 😞 Called twice to confirm address, café delivery."
+ORD-00275,2024-03-28,East,electronics,Asha Verma,11,$500.16,5%,3.0,"Delivered on time, customer happy."
+ORD-00766,2023-10-01,EAST,electronics,Rahul Mehta,12,$282.91,5%,4,"Upsold an extended warranty. Called twice to confirm address, café delivery."
+ORD-00683,22/12/2023,Nrth,Electronics ,Asha Verma,1,"$1,544.46",0.05,5,"Delivered on time, customer happy."
+ORD-00204,"Apr 08, 2024",SOUTH,Office Supplies,Sara Khan,5,26.29,0%,5,Repeat buyer — asked about bulk pricing.
+ORD-00527,29-Oct-2023,north,OFFICE SUPPLIES,Diego Ramírez,13,44.81,5 %,5,"Smooth order, no issues."
+ORD-00363,2024-04-25,South,Office Supplies,Tom O'Brien,12,$36.31,none,4,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00429,2024-04-15,West,Electronics,Tom O'Brien,15,"$1,333.64",,5,"Delivered on time, customer happy."
+ORD-00679,2024-03-06,West,OFFICE SUPPLIES,Mei Lin,12 units,34.46,,2/5,"Box was crushed in transit, screen cracked 😞"
+ORD-00550,2024-08-25,North,Electronics,Diego Ramírez,11 units,791.14,0,5.0,Repeat buyer — asked about bulk pricing.
+ORD-00563,12-May-2023,EAST,Electronics,Tom O'Brien,7,1307.43,0%,3,"Delivered on time, customer happy."
+ORD-00440,2024-07-02,West,Electronics,Sara Khan,20,"$1,202.23",5%,4,Repeat buyer — asked about bulk pricing.
+ORD-00672,"Apr 29, 2023",West,FURNITURE,,9,350.22,,4,"Delivered on time, customer happy. "
+ORD-00861,,Central,Electronics,Asha Verma,25,774.53,0.20,3,"Smooth order, no issues."
+ORD-00288,2024/05/08,east,ELECTRONICS,Tom O'Brien,1,"$1,266.93",0,n/a,"Delivered on time, customer happy."
+ORD-00068,2024/04/28,North,Electronics ,Diego Ramírez,17,"1,108.07",,3,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00742,2024-06-25,North,furniture,Diego Ramírez,24,658.55,0.15,4,"Smooth order, no issues."
+ORD-00339,"Aug 20, 2023",Central,electronics,Tom O'Brien,17,1494.84,0,5,
+ORD-00261,08/04/2024,NORTH,Office Supplies,,9 units,$33.81,0%,4,"Delivered on time, customer happy."
+ORD-00225,2024-11-14,South,FURNITURE,Asha Verma,10,882.89,15%,3,Customer praised the packaging.
+ORD-00382,2024-07-07,north,office supplies,Rahul Mehta,-1,$12.02,5%,4,Customer praised the packaging.
+ORD-00260,2024-10-22,South,Office Supplies,Tom O'Brien,16,28.91,0%,5,
+ORD-00312,2024/03/21,South,Electronics,Chloé Martin,2,"$1,203.97",15%,3,Customer praised the packaging.
+ORD-00662,17/05/2024,,Electronics,Asha Verma,25,1386.31,15%,2.0,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00371,"Oct 27, 2024",Central,Electronics,Priya Nair,10,345.28,,3.0,Customer praised the packaging.
+ORD-00214,27/07/2024,East,office supplies,Rahul Mehta,23 units,$18.48,,4.0,
+ORD-00808,2023-08-09,West,Office Supplies ,Chloé Martin,6,$6.90,20%,2/5,"Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number."
+ORD-00505,2024/05/10,west,Office Supplies,Mei Lin,19,55.74,5 %,1,Item arrived damaged; customer requested a replacement.
+ORD-00556,2024-05-05,East,Electronics,Rahul Mehta,6,"1,449.75",5%,2,"Customer says the chair wobbles, wants a refund."
+ORD-00390,2024-02-24,South,Office Supplies,Diego Ramírez,11,8.68,20%,4,Customer praised the packaging.
+ORD-00738,"Aug 16, 2024",North,Furniture ,,23 units,870.34,,5,"Smooth order, no issues."
+ORD-00967,05/04/2024,,Electronics,Diego Ramírez,6,N/A,,3,Repeat buyer — asked about bulk pricing.
+ORD-00262,07/08/2023,West,Furniture,Asha Verma,22,549.27,5%,4/5,Customer praised the packaging. 
+ORD-00508,"Apr 05, 2024",North,Office Supplies,Mei Lin,11,46.02,0%,4/5,"Smooth order, no issues."
+ORD-00796,2024-08-24,North,furniture,Diego Ramírez,4,117.16,0%,2,"Customer says the chair wobbles, wants a refund. Paid via UPI ₹ transfer."
+ORD-00695,2023-12-16,South,Office Supplies ,Rahul Mehta,9,$17.91,0.05,2,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00925,24-Apr-2024,Sout,Office Supplies ,Priya Nair,20 units,$15.69,none,5.0,"Smooth order, no issues."
+ORD-00377,13/06/2024,east,Electronics,Diego Ramírez,13,"$1,216.97",0,4,Upsold an extended warranty.
+ORD-00612,23-May-2024,east,Office Supplies,Diego Ramírez,19,$11.97,0.10,3,Customer praised the packaging.
+ORD-00680,2024-07-15,South,Furniture,Mei Lin,20,525.18,none,1,"Wrong colour shipped, ""very disappointed"" per the customer. Invoice re-issued with GST number."
+ORD-00946,19-Oct-2024,South,ELECTRONICS,Asha Verma,3,1000.19,0,,
+ORD-00313,"Aug 01, 2024",North,Furniture,,2,$327.17,0%,4,Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. Upsold an extended warranty. Invoice re-issued with GST number. 
+ORD-00284,"Dec 30, 2023",West,Office Supplies ,Chloé Martin,20 units,42.35,5%,4,
+ORD-00781,07/02/2024,central,Furniture,Rahul Mehta,1,N/A,0.15,5/5,Upsold an extended warranty.
+ORD-00964,2024/09/23,East,Electronics,Sara Khan,2,183.82,none,5,Repeat buyer — asked about bulk pricing.
+ORD-00827,17-Aug-2024,central,Electronics,Rahul Mehta,2,1666.32,0.05,4,Customer praised the packaging.
+ORD-00095,15/03/2023,West,Office Supplies,Priya Nair,14.0,54.36,0%,4,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00707,2024-08-12,Central,Office Supplies ,Rahul Mehta,-1 units,23.03,10%,4/5,Upsold an extended warranty. Upsold an extended warranty. Upsold an extended warranty. Upsold an extended warranty. Upsold an extended warranty. Upsold an extended warranty. Upsold an extended warranty. Upsold an extended warranty. Upsold an extended warranty. Upsold an extended warranty. Upsold an extended warranty. Upsold an extended warranty. 
+ORD-00801,2024/01/27,west,Office Supplies,Rahul Mehta,23,21.73,15%,4,"Delivered on time, customer happy."
+ORD-00507,2023-09-23,east,Office Supplies ,Priya Nair,18,21.35,0.05,4,"Delivered on time, customer happy."
+ORD-00335,23/09/2023,east,Office Supplies ,Mei Lin,4 units,$55.26,0.05,4,Repeat buyer — asked about bulk pricing.
+ORD-00829,2024-03-28,North,Electronics,Mei Lin,25,334.72,0.05,1,"Box was crushed in transit, screen cracked 😞 "
+ORD-00715,2023-04-21, East ,Furniture,,8,121.89,0.05,3,"Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. Smooth order, no issues. "
+ORD-00026,29/01/2024,South,Furniture,Sara Khan,9,690.03,,3,"Delivered on time, customer happy. "
+ORD-00296,2023/04/30,West,FURNITURE,Asha Verma,6,908.08,10%,4,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00651,29/05/2024,Est,FURNITURE,Mei Lin,5,394.06,0%,3,"Smooth order, no issues."
+ORD-00753,2024-07-31,North,Office Supplies,,16,$32.56,none,5,
+ORD-00812,14/05/2024,South,ELECTRONICS,Asha Verma,24.0,"$1,418.08",,4,"Smooth order, no issues."
+ORD-00481,2023/12/15,Central,electronics,Tom O'Brien,24,$255.05,none,4,Repeat buyer — asked about bulk pricing.
+ORD-00245,2024/09/12,West,Furniture,Diego Ramírez,17,$442.39,0.15,4,Customer praised the packaging.
+ORD-00373,"Jan 17, 2024",South,Office Supplies,Diego Ramírez,21,34.31,10%,3,Repeat buyer — asked about bulk pricing.
+ORD-00463,19-Jul-2024,West,Office Supplies,Mei Lin,14,$22.77,15%,n/a,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00588,25-Mar-2024,West,Electronics ,Rahul Mehta,23,1119.68,none,3/5,"Item arrived damaged; customer requested a replacement. Called twice to confirm address, café delivery."
+ORD-00825,2024-09-12,East,Electronics,Asha Verma,17,1021.59,,5,Customer praised the packaging.
+ORD-00719,2024-07-21,West,Electronics,Rahul Mehta,2,1622.37,20%,5/5,
+ORD-00266,2024-05-17,West,Office Supplies,Diego Ramírez,7,$56.47,0,3,Customer praised the packaging.
+ORD-00800,10/06/2024,East,ELECTRONICS,Asha Verma,22,"$1,395.71",0%,4,Upsold an extended warranty.
+ORD-00434,10/03/2024,North,Electronics ,Tom O'Brien,23,999.58,10%,5,Customer praised the packaging.
+ORD-00728,"Jul 11, 2023",West,Office Supplies,Diego Ramírez,17,6.45,10%,2,Item arrived damaged; customer requested a replacement.
+ORD-00667,2023/09/27,East,Electronics ,Chloé Martin,20,1740.59,5 %,,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00395,2024-07-25,West,Furniture,Tom O'Brien,11,$453.50,10%,4,"Delivered on time, customer happy."
+ORD-00177,23/09/2024,South,ELECTRONICS,Chloé Martin,19,1774.25,10%,4,Repeat buyer — asked about bulk pricing. 
+ORD-00805,06/10/2023,East,electronics,Mei Lin,3,1459.19,none,5,
+ORD-00268,07/08/2024,NORTH,OFFICE SUPPLIES,Rahul Mehta,2,37.29,20%,3,Item arrived damaged; customer requested a replacement.
+ORD-00832,2023-02-13,WEST,FURNITURE,Chloé Martin,1,$931.93,20%,5,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00140,"Jul 08, 2023",West,electronics,Mei Lin,11,"$1,196.92",none,4,Repeat buyer — asked about bulk pricing.
+ORD-00021,26/08/2024,East,electronics,Diego Ramírez,13,"$1,297.61",0.20,3,"Delivered on time, customer happy."
+ORD-00959,24-Jan-2023,East,Electronics ,Sara Khan,-5,"$1,148.81",0,4,Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. Repeat buyer — asked about bulk pricing. 
+ORD-00969,2024-02-10,East,Furniture,Chloé Martin,6,N/A,none,4,"Smooth order, no issues."
+ORD-00511,"Jul 04, 2024",East,ELECTRONICS,Tom O'Brien,11,$557.38,10%,4/5,Upsold an extended warranty.
+ORD-00802,"Apr 23, 2024",North,Furniture,Asha Verma,3.0,$488.81,0.15,3,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00950,28/04/2024,,OFFICE SUPPLIES,Rahul Mehta,4,34.09,0.15,4,Customer praised the packaging.
+ORD-00043,2023-11-05,South,Office Supplies,Asha Verma,15,$8.66,0.15,5,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00908,2023-12-22,CENTRAL,Electronics ,Sara Khan,11,"$1,304.68",0%,5,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00173,06-Jul-2024,West,Furniture ,Rahul Mehta,20,288.15,,4,Customer praised the packaging.
+ORD-00394,2023-10-23,north,ELECTRONICS,Mei Lin,3,635.63,15 %,5,Customer praised the packaging.
+ORD-00017,2024/06/24,Central,Furniture,Mei Lin,11,$190.74,5%,5,
+ORD-00974,2024-04-11,East,office supplies,Mei Lin,11 units,22.43,,,"Delivered on time, customer happy."
+ORD-00650,2024/04/23,East,office supplies,Asha Verma,8,21.09,0,5,Repeat buyer — asked about bulk pricing.
+ORD-00122,2024-04-13,EAST,Office Supplies ,Diego Ramírez,13,N/A,none,5,Customer praised the packaging.
+ORD-00841,2024-03-06,NORTH,Furniture,Asha Verma,2,848.25,0%,2.0,"Customer says the chair wobbles, wants a refund."
+ORD-00216,10/01/2024,South,Office Supplies,Priya Nair,7,$47.05,15%,2,Item arrived damaged; customer requested a replacement. Paid via UPI ₹ transfer.
+ORD-00620,"Nov 02, 2023",West,FURNITURE,Diego Ramírez,10,$481.91,0,5,
+ORD-00418,2024-06-28,North,Furniture ,Rahul Mehta,8,788.04,0.20,4,"Delivered on time, customer happy. Invoice re-issued with GST number."
+ORD-00194,2023-12-19,North,Electronics,Chloé Martin,1,$648.04,none,4,"Delivered on time, customer happy."
+ORD-00872,30/10/2024,East,Office Supplies ,Asha Verma,3,$33.14,0.10,3,"Smooth order, no issues."
+ORD-00233,2024-02-01,West,Office Supplies ,Asha Verma,3,$13.80,0%,2.0,Item arrived damaged; customer requested a replacement.
+ORD-00166,2024/04/06,south,office supplies,Mei Lin,16,53.28,0.05,4,"Smooth order, no issues. Invoice re-issued with GST number."
+ORD-00978,2024-06-19,west,electronics,Priya Nair,-2,"1,024.00",0%,2,
+ORD-00153,2024-06-27,Central,Office Supplies,Priya Nair,18,$49.07,10 %,3,Item arrived damaged; customer requested a replacement. Invoice re-issued with GST number.
+ORD-00353,2023-10-01,East,Office Supplies,Chloé Martin,25,45.25,20 %,3,Customer praised the packaging.
+ORD-00616,2024-04-14,West,OFFICE SUPPLIES,Asha Verma,10,$7.85,0.20,3,"Box was crushed in transit, screen cracked 😞"
+ORD-00659,2024/08/05, South ,Office Supplies ,Sara Khan,20,53.92,10 %,3,Repeat buyer — asked about bulk pricing.
+ORD-00678,"Jul 11, 2023",North,Office Supplies,Sara Khan,6,$49.58,0,3,Upsold an extended warranty.
+ORD-00412,"Jan 16, 2024",south,Furniture,Priya Nair,2,524.41,15%,2,"Box was crushed in transit, screen cracked 😞"
+ORD-00024,28/06/2024,North,Electronics,Tom O'Brien,13,$275.39,0.15,4/5,"Smooth order, no issues."
+ORD-00773,25/09/2023,south,OFFICE SUPPLIES,Sara Khan,15,$51.89,0%,4,Upsold an extended warranty.
+ORD-00565,"Mar 19, 2024",west,Furniture ,Rahul Mehta,8,$614.96,20%,5,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00176,"Oct 10, 2023",North,FURNITURE,Rahul Mehta,24,514.13,0,4/5,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00282,2023/12/29,Central,Office Supplies ,Rahul Mehta,8,$5.72,none,3/5,Customer praised the packaging.
+ORD-00506,2024-08-19,Est,Office Supplies,Tom O'Brien,21,$54.76,0%,4,"Smooth order, no issues. "
+ORD-00037,25/07/2024,central,Office Supplies,Mei Lin,14,43.12,0%,5,"Delivered on time, customer happy."
+ORD-00641,2024-08-07,North,furniture,Tom O'Brien,5.0,745.15,5%,4,"Repeat buyer — asked about bulk pricing. Called twice to confirm address, café delivery."
+ORD-00973,"Mar 21, 2024",North,office supplies,Mei Lin,11,45.88,10%,4,"Delivered on time, customer happy. Called twice to confirm address, café delivery."
+ORD-00401,2024/05/23,North,Electronics,Diego Ramírez,17,1708.23,15 %,4,"Delivered on time, customer happy."
+ORD-00520,,,Electronics,Tom O'Brien,11,491.12,15%,4,Repeat buyer — asked about bulk pricing.
+ORD-00660,01/10/2024,East,FURNITURE,Sara Khan,8,667.44,,5,"Delivered on time, customer happy."
+ORD-00066,2024-08-12,central,office supplies,Priya Nair,17,48.15,0,4,Upsold an extended warranty.
+ORD-00014,2023-05-13,central,Office Supplies,Mei Lin,12,$8.86,0.20,5,Repeat buyer — asked about bulk pricing.
+ORD-00649,2024/10/01,North,Office Supplies,Tom O'Brien,20,$32.73,15 %,4/5,"Delivered on time, customer happy. Called twice to confirm address, café delivery."
+ORD-00349,2023-08-20,East,OFFICE SUPPLIES,Asha Verma,5 units,$8.01,0%,4,"Delivered on time, customer happy."
+ORD-00154,2024/05/10, West ,Office Supplies ,Sara Khan,8,$42.68,0.15,5,"Smooth order, no issues."
+ORD-00899,"Dec 29, 2023",South,Office Supplies,Tom O'Brien,,N/A,0%,4/5,Upsold an extended warranty.
+ORD-00749,03/07/2024,South,Electronics ,Sara Khan,2,$188.04,0%,4,"Delivered on time, customer happy."
+ORD-00105,28-Oct-2023,north,Electronics,Chloé Martin,,"1,028.26",10%,5/5,"Smooth order, no issues. Called twice to confirm address, café delivery."
+ORD-00127,2024-06-17,,office supplies,Rahul Mehta,22,$48.55,none,5,"Delivered on time, customer happy. Invoice re-issued with GST number."
+ORD-00019,20-Sep-2024, North ,OFFICE SUPPLIES,Tom O'Brien,25,15.47,20%,3/5,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00201,18/11/2023,South,office supplies,Diego Ramírez,,17.69,5%,4,"Smooth order, no issues. Called twice to confirm address, café delivery."
+ORD-00604,05-Sep-2024,South,Office Supplies,Rahul Mehta,22,18.61,0%,5,"Delivered on time, customer happy."
+ORD-00145,05/01/2024,Sout,Office Supplies,Rahul Mehta,24,53.75,0%,4,Customer praised the packaging.
+ORD-00989,29/07/2024,South,Furniture,Mei Lin,23,$669.73,0.10,4,Upsold an extended warranty.
+ORD-00018,30/09/2023, Central ,OFFICE SUPPLIES,Rahul Mehta,3,38.30,0%,4,Repeat buyer — asked about bulk pricing.
+ORD-00658,2024-05-05,EAST,Electronics,Sara Khan,8,$750.09,,3,Upsold an extended warranty.
+ORD-00239,2024-04-05,North,furniture,Chloé Martin,14,$475.84,5 %,5,"Smooth order, no issues."
+ORD-00642,14-Oct-2024,North,Office Supplies,Asha Verma,3 units,35.37,5 %,4,Upsold an extended warranty.
+ORD-00051,2024/03/03,East,Office Supplies ,Tom O'Brien,4,12.80,10 %,5,"Delivered on time, customer happy. "
+ORD-00475,"Oct 04, 2024",East,ELECTRONICS,Rahul Mehta,6,$265.24,0.15,3,"Customer says the chair wobbles, wants a refund."
+ORD-00655,2023-10-16,West,Office Supplies,Chloé Martin,3,$53.08,15%,2,Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. Item arrived damaged; customer requested a replacement. 
+ORD-00358,2024-02-28, East ,Office Supplies,Asha Verma,-3,$25.54,none,4,"Smooth order, no issues. "
+ORD-00504,"Jul 07, 2024",West,FURNITURE,,14,832.70,,5,Upsold an extended warranty.
+ORD-00911,2024-01-11,North,Electronics,Chloé Martin,11,$820.48,0%,3,"Smooth order, no issues."
+ORD-00856,16/03/2024,South,Office Supplies,Rahul Mehta,9999,$50.20,none,5,"Repeat buyer — asked about bulk pricing.
+Called twice to confirm address, café delivery."
+ORD-00575,2024-01-05,Central,Electronics,Rahul Mehta,17,"1,174.56",0.10,4,Customer praised the packaging.
+ORD-00458,2023-07-21,South,FURNITURE,Priya Nair,12,638.39,5%,,Upsold an extended warranty.
+ORD-00971,2023-06-09,South,Furniture ,Asha Verma,6,740.91,0%,3,
+ORD-00536,"Oct 21, 2023",east,Furniture,Diego Ramírez,16,330.62,0.15,4,Upsold an extended warranty. Invoice re-issued with GST number.
+ORD-00186,2024-02-08,,Furniture,Diego Ramírez,23,$813.89,0%,3,"Customer says the chair wobbles, wants a refund. Called twice to confirm address, café delivery."
+ORD-00654,21-Apr-2024,South,Electronics,Chloé Martin,20,"1,791.92",5%,4,Customer praised the packaging.
+ORD-00721,"Mar 26, 2024",North,Furniture ,Rahul Mehta,1,$869.38,0,2,"Late delivery (5 days), customer complained to support."
+ORD-00609,2024-08-16,North,ELECTRONICS,Rahul Mehta,20,"$1,405.50",,5.0,"Delivered on time, customer happy."
+ORD-00277,2024-07-21,South,Electronics ,Sara Khan,16,1557.51,15%,5,Repeat buyer — asked about bulk pricing. Invoice re-issued with GST number.
+ORD-00269,2024-05-20,West,Electronics ,Rahul Mehta,13,"$1,693.58",none,2,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00189,2024-07-16,North,Furniture,Chloé Martin,9,460.63,0%,5,Repeat buyer — asked about bulk pricing.
+ORD-00618,2024-02-28,north,Electronics ,Asha Verma,20,1447.76,0%,3/5,"Delivered on time, customer happy. Paid via UPI ₹ transfer."
+ORD-00736,25/09/2023,East,Office Supplies,Diego Ramírez,21,$42.42,0.05,4,Customer praised the packaging.
+ORD-00005,25-May-2024, East ,Furniture,Asha Verma,,828.88,0,4/5,Upsold an extended warranty.
+ORD-00045,2024-03-20,South,FURNITURE,Sara Khan,8,$761.41,0.20,5,"Delivered on time, customer happy. "
+ORD-00793,05/12/2023,East,office supplies,,11,$48.30,0,4,Customer praised the packaging.
+ORD-00370,06-Jun-2023,South,Electronics ,Diego Ramírez,23 units,184.99,0,2,"Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. Customer says the chair wobbles, wants a refund. Invoice re-issued with GST number. "
+ORD-00668,27-Sep-2024,North,Office Supplies,Chloé Martin,13,46.80,5%,5,"Smooth order, no issues."
+ORD-00894,2023/06/10,East,Office Supplies,Diego Ramírez,24.0,$23.80,0%,5,Repeat buyer — asked about bulk pricing.
+ORD-00058,12-Dec-2023,SOUTH,Office Supplies ,,17,$56.95,0,5,"Customer praised the packaging. Called twice to confirm address, café delivery."
+ORD-00041,2024-07-28,East,Electronics,Tom O'Brien,8,1766.9,20%,5,Customer praised the packaging. Paid via UPI ₹ transfer.
+ORD-00439,07-Jun-2024,EAST,Office Supplies ,Rahul Mehta,21,$36.42,20%,4,Repeat buyer — asked about bulk pricing.
+ORD-00539,2024-09-09,Centrl,Furniture,Chloé Martin,15,$732.98,5%,4,
+ORD-00316,2024-06-17,East,OFFICE SUPPLIES,Tom O'Brien,7,$52.20,5%,5,"Upsold an extended warranty. Called twice to confirm address, café delivery."
+ORD-00862,"Jul 19, 2023",West,electronics,Mei Lin,24,1123.44,,4,
+ORD-00117,26/04/2024,West,Electronics ,Rahul Mehta,8,"$1,754.72",0,,Repeat buyer — asked about bulk pricing.
+ORD-00664,2024-10-07,South,Electronics,Priya Nair,24,1093.61,0.05,4,Repeat buyer — asked about bulk pricing.
+ORD-00083,2023-08-30,Central,Office Supplies,Diego Ramírez,12,25.40,0,4,"Delivered on time, customer happy."
+ORD-00452,21/11/2023,South,Office Supplies,Mei Lin,13,30.05,0%,5,Upsold an extended warranty.
+ORD-00546,31/07/2023,Central,Electronics,Chloé Martin,6,"$1,395.19",,5,"Delivered on time, customer happy."
+ORD-00548,2024-05-19,East,ELECTRONICS,Mei Lin,1,"$1,604.72",10 %,4,Repeat buyer — asked about bulk pricing.
+ORD-00096,01-Jan-2024,North,Electronics ,Mei Lin,13,1476.73,none,5,"Upsold an extended warranty. Called twice to confirm address, café delivery."
+ORD-00821,2023/02/24,east,Electronics,Tom O'Brien,16,1772.01,15%,4,"Smooth order, no issues."
+ORD-00360,"Jan 22, 2024",North,office supplies,Diego Ramírez,20,19.50,0.05,3,"Late delivery (5 days), customer complained to support."
+ORD-00406,20/04/2024,South,electronics,Diego Ramírez,22,1132.98,none,3.0,"Delivered on time, customer happy. "
+ORD-00889,26/10/2023,Wst,ELECTRONICS,Asha Verma,8,480.14,none,5,"Delivered on time, customer happy."
+ORD-00361,2024-05-23,North,OFFICE SUPPLIES,Diego Ramírez,21,$25.87,0,4,Upsold an extended warranty. Paid via UPI ₹ transfer.
+ORD-00884,2023-07-14,south,Electronics,Asha Verma,19 units,$224.23,0.15,3,Upsold an extended warranty.
+ORD-00972,08-Mar-2024,East,Furniture,Diego Ramírez,11,675.04,none,3,Repeat buyer — asked about bulk pricing.
+ORD-00981,31/07/2024,North,OFFICE SUPPLIES,Asha Verma,3,24.33,0.20,4,"Smooth order, no issues. Paid via UPI ₹ transfer."
+ORD-00605,2024-01-26,east,FURNITURE,Chloé Martin,21,$831.55,20 %,5,Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. Customer praised the packaging. Invoice re-issued with GST number. 
+ORD-00143,27/10/2023,South,Office Supplies,Rahul Mehta,22,N/A,15%,3,Repeat buyer — asked about bulk pricing.
+ORD-00843,"Aug 27, 2024",north,Electronics,Asha Verma,6,"$1,102.99",20%,3,"Wrong colour shipped, ""very disappointed"" per the customer."
+ORD-00977,2023-09-04,West,electronics,Asha Verma,5,1583.32,15 %,4,Repeat buyer — asked about bulk pricing. 
+ORD-00072,2024-07-28,South,Office Supplies,Chloé Martin,7,5.29,0%,5,Upsold an extended warranty.
+ORD-00586,2023/08/30, North ,electronics,Diego Ramírez,12,1304.97,0.15,4,"Smooth order, no issues."
+ORD-00193,2024-01-20,North,Furniture ,Diego Ramírez,6,892.16,0%,5.0,Customer praised the packaging.

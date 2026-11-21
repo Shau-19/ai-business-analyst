@@ -53,21 +53,36 @@ export default function DataView({ profile, onUpload }) {
 
       <section className="tile">
         <div className="tile-head">
-          <div><h3 className="tile-title">Columns</h3><span className="tile-sub num">{ds.columns.length} columns · {ds.rows.toLocaleString('en-US')} rows · table <span className="mono">{ds.table}</span></span></div>
+          <div>
+            <h3 className="tile-title">Columns</h3>
+            <span className="tile-sub num">
+              {ds.columns.length} columns · {ds.rows.toLocaleString('en-US')} rows · table <span className="mono">{ds.table}</span>
+              {ds.quality?.duplicates_removed ? ` · ${ds.quality.duplicates_removed} duplicate rows removed on import` : ''}
+              {ds.quality?.identical_rows_kept ? ` · ${ds.quality.identical_rows_kept} identical rows kept` : ''}
+            </span>
+          </div>
         </div>
         <div className="table-wrap">
           <table className="tbl">
-            <thead><tr><th>Column</th><th>Type</th><th className="r">Distinct</th><th className="r">Empty</th><th>Summary</th></tr></thead>
+            <thead><tr><th>Column</th><th>Type</th><th className="r">Distinct</th><th className="r">Empty</th><th>Summary</th><th>Cleaning</th></tr></thead>
             <tbody>
-              {ds.columns.map((c) => (
+              {ds.columns.map((c) => {
+                const q = ds.quality?.columns?.find((x) => x.column === c.name);
+                return (
                 <tr key={c.name}>
                   <td><b>{c.label}</b>{c.label !== c.name && <> <span className="mono tbl-dim">{c.name}</span></>}</td>
                   <td><span className={`chip ${ROLE[c.role]?.cls || ''}`}>{ROLE[c.role]?.label || c.role}</span></td>
                   <td className="r num">{c.distinct.toLocaleString('en-US')}</td>
                   <td className="r num">{c.nulls ? c.nulls.toLocaleString('en-US') : '–'}</td>
                   <td className="tbl-dim num">{stat(c)}</td>
+                  <td className="tbl-clean">
+                    {q?.changes?.map((t) => <span key={t}>{t}</span>)}
+                    {q?.warnings?.map((t) => <span key={t} className="is-warn">{t}</span>)}
+                    {!q?.changes?.length && !q?.warnings?.length && <span className="tbl-dim">–</span>}
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

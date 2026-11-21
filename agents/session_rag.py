@@ -36,7 +36,9 @@ from parsers.document_parser import DocumentParser
 from parsers.hybrid_csv_processor import HybridCSVProcessor
 from database.db_manager import DatabaseManager
 from tools.language_detector import LanguageDetector
+from agents.sql_analyst import friendly_llm_error
 from config import settings, ENABLE_HYBRID_CSV
+from utils.llm import make_llm
 from utils.logger import logger, log_section
 
 
@@ -144,11 +146,7 @@ class SessionAwareRAGAgent:
             f"FAISS({self.FAISS_WEIGHT}) → rerank@{self.RERANK_TOP_K}"
         )
  
-        self.llm = ChatGroq(
-            api_key=settings.GROQ_API_KEY,
-            model=settings.LLM_MODEL,
-            temperature=0.1,
-        )
+        self.llm = make_llm(temperature=0.1)
  
         self.session_stores: Dict[str, Dict[str, Any]] = _LRUSessionCache(max_size=50)
         logger.info("🤖  RAG Agent initialized")
@@ -177,6 +175,7 @@ class SessionAwareRAGAgent:
             "total_chunks":    0,
             "total_documents": 0,
             "source_vocab":    None,   # populated by _build_source_vocabulary()
+            "quality":         {},     # table → data-cleaning report
         }
  
     def get_or_create_session(self, conversation_id: str) -> Dict[str, Any]:
@@ -271,8 +270,19 @@ class SessionAwareRAGAgent:
                     except Exception as e:
                         logger.warning(f"⚠️  Value index rebuild failed for {t}: {e}")
 
+        try:
+            import json as _json
+            qp = self._get_session_path(conversation_id) / "quality.json"
+            if qp.exists():
+                session["quality"] = _json.loads(qp.read_text(encoding="utf-8"))
+        except Exception as e:
+            logger.warning(f"⚠️  Could not load data-quality report: {e}")
+
         if docs:
             self._build_source_vocabulary(session)
+
+    def get_quality(self, conversation_id: str) -> Dict[str, Any]:
+        return self.get_or_create_session(conversation_id).get("quality", {}) or {}
 
     def _remove_file_from_session(self, session: Dict[str, Any], filename: str) -> None:
         """Drop a previously-ingested file's chunks so re-uploading it replaces, not duplicates."""
@@ -316,11 +326,9 @@ class SessionAwareRAGAgent:
 
                     # Read column names so they can be pinned in vocab later
                     try:
-                        import pandas as _pd
-                        col_names = list(
-                            _pd.read_csv(file_path, nrows=0).columns if ext == '.csv'
-                            else _pd.read_excel(file_path, nrows=0).columns
-                        )
+                        # Same reader as the import (encoding + delimiter aware)
+                        col_names = [str(c).strip() for c in
+                                     self.csv_processor._read_frame(file_path).columns]
                     except Exception:
                         col_names = []
  
@@ -333,6 +341,8 @@ class SessionAwareRAGAgent:
                     session["loaded_files"].append(filename)
                     if result['sql_table'] not in session["csv_tables"]:
                         session["csv_tables"].append(result['sql_table'])
+                    if result.get('quality'):
+                        session.setdefault("quality", {})[result['sql_table']] = result['quality']
                     loaded_files_info.append({
                         "filename":   filename,
                         "format":     ext,
@@ -421,6 +431,11 @@ class SessionAwareRAGAgent:
         session_path.mkdir(parents=True, exist_ok=True)
         session["vectorstore"].save_local(str(session_path))
         logger.info(f"💾  Saved: {total_vectors} vectors")
+        try:
+            import json as _json
+            (session_path / "quality.json").write_text(_json.dumps(session.get("quality", {}), default=str), encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"⚠️  Could not save data-quality report: {e}")
  
         # Build per-source vocabulary for orchestrator routing
         self._build_source_vocabulary(session)
@@ -716,7 +731,8 @@ class SessionAwareRAGAgent:
  
         except Exception as e:
             logger.error(f"❌  Query error: {e}")
-            return {"success": False, "error": str(e), "answer": f"Error: {e}"}
+            msg = friendly_llm_error(e)
+            return {"success": False, "error": msg, "answer": msg}
  
     # ── Answer generation ─────────────────────────────────────────────────────
  

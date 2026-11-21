@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Upload, Sparkles, Pin, MessageSquareText, ArrowRight, FileText, Sheet, ArrowUpRight, ArrowDownRight, LoaderCircle, CircleAlert } from 'lucide-react';
+import { Upload, Sparkles, Pin, MessageSquareText, ArrowRight, FileText, Sheet, ArrowUpRight, ArrowDownRight, LoaderCircle, CircleAlert, ShieldCheck, TriangleAlert } from 'lucide-react';
 import Chart from '../components/Chart';
 import Sparkline from '../components/Sparkline';
 import { formatFor, signedPct } from '../lib/format';
@@ -66,7 +66,37 @@ function Loading({ files }) {
 // For these metrics a fall is the good outcome (churn down = green).
 const LOWER_IS_BETTER = /(churn|cost|expense|spend|defect|return|complaint|attrition|error|latency|bounce|refund|delay|downtime)/i;
 
-function Kpi({ kpi }) {
+// Data-cleaning report for one dataset: what was fixed on import, what to watch.
+function DataHealth({ quality }) {
+  if (!quality) return null;
+  const fixed = (quality.columns || []).filter((c) => c.changes?.length);
+  const warnings = (quality.columns || []).flatMap((c) => (c.warnings || []).map((w) => ({ column: c.column, text: w })));
+  if (!fixed.length && !warnings.length && !quality.duplicates_removed && !quality.identical_rows_kept) return null;
+  return (
+    <div className="tile health span-6">
+      <div className="tile-head">
+        <div>
+          <h3 className="tile-title"><ShieldCheck aria-hidden="true" /> Data health</h3>
+          <span className="tile-sub num">
+            Cleaned on import: {fixed.length} column{fixed.length === 1 ? '' : 's'} fixed
+            {quality.duplicates_removed ? ` · ${quality.duplicates_removed} duplicate rows removed (${quality.rows_in.toLocaleString('en-US')} → ${quality.rows_out.toLocaleString('en-US')})` : ''}
+            {quality.identical_rows_kept ? ` · ${quality.identical_rows_kept} identical rows kept (no ID column to confirm they’re duplicates)` : ''}
+          </span>
+        </div>
+      </div>
+      <ul className="health-list">
+        {fixed.map((c) => (
+          <li key={c.column}><b>{c.column}</b><span>{c.changes.join('; ')}</span></li>
+        ))}
+        {warnings.map((w) => (
+          <li key={w.column + w.text} className="is-warn"><b><TriangleAlert aria-hidden="true" /> {w.column}</b><span>{w.text}</span></li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Kpi({ kpi, warning }) {
   const up = kpi.change_pct > 0, down = kpi.change_pct < 0;
   const good = LOWER_IS_BETTER.test(kpi.column) ? down : up;
   const bad = LOWER_IS_BETTER.test(kpi.column) ? up : down;
@@ -74,6 +104,7 @@ function Kpi({ kpi }) {
     <div className="tile kpi span-2">
       <span className="kpi-label">{kpi.agg} {kpi.label.toLowerCase()}</span>
       <span className="kpi-value display num">{formatFor(kpi.column, kpi.value)}</span>
+      {warning && <span className="chip chip-warn kpi-warn" title={warning}><TriangleAlert aria-hidden="true" /> Includes extreme values</span>}
       <div className="kpi-foot">
         {kpi.change_pct !== undefined && kpi.change_pct !== null ? (
           <span className="kpi-change num">
@@ -81,7 +112,9 @@ function Kpi({ kpi }) {
               {up ? <ArrowUpRight aria-hidden="true" /> : down ? <ArrowDownRight aria-hidden="true" /> : null}
               {signedPct(kpi.change_pct)}
             </span>
-            <span className="kpi-range">{kpi.from_label} → {kpi.to_label}</span>
+            <span className="kpi-range" title={kpi.trend_note ? `Trend ${kpi.trend_note.toLowerCase()}` : undefined}>
+              {kpi.from_label} → {kpi.to_label}{kpi.trend_note ? ' · typical values' : ''}
+            </span>
           </span>
         ) : <span className="kpi-range">Across all rows</span>}
         {kpi.spark && <Sparkline values={kpi.spark} width={110} height={34} />}
@@ -96,7 +129,7 @@ function ChartTile({ chart, span, onPin, onAsk }) {
       <div className="tile-head">
         <div>
           <h3 className="tile-title">{chart.plot.title}</h3>
-          <span className="tile-sub">{chart.plot.y_label}</span>
+          <span className="tile-sub">{chart.plot.y_label}{chart.note ? ` · ${chart.note}` : ''}</span>
         </div>
         <div className="tile-actions">
           <button className="icon-btn" onClick={() => onPin(chart.plot, chart.question)} aria-label="Pin chart to dashboard" title="Pin to dashboard"><Pin /></button>
@@ -147,7 +180,10 @@ export default function Overview({ profile, processing, onUpload, onSample, onAs
       )}
 
       <div className="ov-grid">
-        {ds?.kpis?.map((k) => <Kpi key={k.column} kpi={k} />)}
+        {ds?.kpis?.map((k) => (
+          <Kpi key={k.column} kpi={k}
+            warning={ds.quality?.columns?.find((c) => c.column === k.column)?.warnings?.[0]} />
+        ))}
         {ds && ds.kpis?.length < 3 && (
           <div className={`tile kpi ${ds.kpis.length === 2 ? 'span-2' : ds.kpis.length === 1 ? 'span-4' : 'span-6'}`}>
             <span className="kpi-label">Rows in {ds.source || 'this dataset'}</span>
@@ -203,6 +239,8 @@ export default function Overview({ profile, processing, onUpload, onSample, onAs
             )}
           </div>
         )}
+
+        {ds && <DataHealth quality={ds.quality} />}
 
         {!ds && docs.length > 0 && (
           <div className="tile ov-facts span-6">
