@@ -55,6 +55,46 @@ The eval isn't just a scorecard — writing it surfaced three real, latent bugs 
 
 ---
 
+## 🔎 Built for real exports, not demo CSVs
+
+### Answers "why", not just "what"
+`tools/driver_analysis.py` handles questions like *"Why are customer ratings lower in the West?"* or
+*"Why did revenue drop in March?"*. A single GROUP BY shows that West is lower. The analyst also
+compares West orders with all the others on every other column: product mix, sales rep, discount,
+and problem reports in free-text notes. It keeps only the differences that line up with the gap, then
+checks how much of the gap disappears when those rows are left out:
+
+> **West has the lowest average customer rating: 3.51** vs 3.91 for the other regions.
+> - **31% of West orders report a problem** in notes, vs 12% elsewhere. Those orders average 2.08, against 4.17 for the rest. Most common: wobbles, refund, late, complained.
+>
+> Leaving those orders out, West averages 4.18 vs 4.16 elsewhere, so they account for about **100% of the gap**.
+
+All the numbers come from pandas statistics, not the LLM. When there is no real gap ("Why are
+Electronics ratings low?" when they're level with the rest), the analyst says so instead of
+inventing a cause.
+
+### Cleans messy files on import
+`tools/data_clean.py` turns `"$1,299.00"`, `"12 units"`, `"4.5/5"` and `"15 %"` into numbers. It also
+unifies five date formats, merges `North / north / NORTH / Nrth` into one value, and removes
+duplicate orders. It never guesses: `Male` and `Female` stay separate, ZIP codes stay text, and
+identical rows in a file with no ID column are kept. Every change it makes is listed in the
+**Data health** panel. Outliers are flagged and kept, and charts show without them and say so.
+
+### Safe to point at untrusted questions
+The LLM writes the SQL, so the database layer treats that SQL as hostile. It allows reads only and
+opens the database read-only. A SQLite authorizer refuses any table outside the conversation, which
+blocks tricks like `main.t`, `'t'`, comments and subqueries. Every query also has a time limit. The
+test suite runs prompt-injection, cross-session and destructive questions against a live server.
+
+### Tested end to end
+```bash
+pytest                 # 274 unit tests (~2 min) + 50 API tests against a running server
+pytest -m llm          # 23 answer-quality tests: answers match hand-computed numbers on a messy 1,000-row file
+```
+See [tests/README.md](tests/README.md).
+
+---
+
 ## 🎯 Key Features
 
 ### 🔀 Intelligent Query Routing

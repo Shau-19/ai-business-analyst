@@ -18,7 +18,7 @@ function Answer({ msg, question, onPin }) {
       <div className="msg-body">
         <div className="msg-head">
           <span className="msg-who">Analyst</span>
-          {msg.routing && <span className={`chip ${msg.routing === 'hybrid' ? 'chip-coral' : 'chip-forest'}`}>{ROUTE_LABEL[msg.routing] || msg.routing}</span>}
+          {msg.routing && <span className={`chip ${(msg.routing === 'hybrid' || msg.routing === 'analysis') ? 'chip-coral' : 'chip-forest'}`}>{ROUTE_LABEL[msg.routing] || msg.routing}</span>}
           {msg.pending && !msg.content && <span className="msg-thinking"><LoaderCircle className="spin" aria-hidden="true" /> Working it out…</span>}
         </div>
         {msg.failed && !msg.content ? null : (

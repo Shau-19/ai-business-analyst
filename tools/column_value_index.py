@@ -218,6 +218,12 @@ class ColumnValueIndex:
         if table_name not in self._index:
             return query_value
 
+        # Never "correct" dates, times, numbers or LIKE / strftime patterns:
+        # '2024-12' (a month prefix) fuzzy-matched to the date '2024-12-28',
+        # so "orders in December 2024" counted a single day.
+        if "%" in query_value or re.fullmatch(r"[\d\s:/.\-T+]+", query_value.strip() or "x"):
+            return query_value
+
         value_maps = self._index[table_name]["values"]
         canonical_query = _normalize_token(query_value)
         expanded_query = _expand_abbreviations(canonical_query)
@@ -272,6 +278,10 @@ class ColumnValueIndex:
                 n=1,
                 cutoff=0.75  # require 75% similarity
             )
+            # A typo is about as long as the word it misspells ('Nrth' → 'North');
+            # a much shorter literal is a different value, not a misspelling.
+            if candidates and min(len(candidates[0]), len(canonical_query)) < 0.75 * max(len(candidates[0]), len(canonical_query)):
+                candidates = []
             if candidates:
                 # Map back from normalized candidate to actual value
                 for v in all_actual_values:
@@ -363,8 +373,11 @@ class ColumnValueIndex:
                 return f"{quote_char}{resolved}{quote_char}"
             return match.group(0)
 
-        # Match both 'value' and "value" style SQL strings
-        sql = re.sub(r"(['\"])((?:[^'\"\\]|\\.)*)\1", replace_literal, sql)
+        # Single-quoted string literals only. In SQL, double quotes delimit
+        # IDENTIFIERS — rewriting "Units" as if it were a value turned a
+        # column reference into a fuzzy-matched data value ("12 units"),
+        # which SQLite then read as a string, silently breaking the query.
+        sql = re.sub(r"(')((?:[^'\\]|\\.|'')*)'", replace_literal, sql)
 
         if sql != original_sql:
             logger.info(f"✏️ SQL rewritten by ColumnValueIndex")

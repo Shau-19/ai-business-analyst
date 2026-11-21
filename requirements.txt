@@ -51,6 +51,7 @@ kiwisolver==1.4.9
 langchain-community==0.3.7
 langchain-core==0.3.21
 langchain-groq==0.2.1
+langchain-openai==0.2.12   # newest that works with langchain-core 0.3.21
 langchain-huggingface==0.1.2
 langchain-text-splitters==0.3.2
 langchain==0.3.7
@@ -139,3 +140,6 @@ websockets==15.0.1
 wrapt==2.4.1
 yarl==1.22.0
 zstandard==0.25.0
+
+# Tests (pytest -m "not llm" by default; see pytest.ini)
+pytest>=8

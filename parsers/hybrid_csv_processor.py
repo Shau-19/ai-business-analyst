@@ -27,10 +27,35 @@ class HybridCSVProcessor:
 
     @staticmethod
     def _read_frame(file_path: str) -> pd.DataFrame:
-        """Read CSV/Excel by extension, case-insensitively ("DATA.CSV" is a CSV)."""
-        if str(file_path).lower().endswith('.csv'):
-            return pd.read_csv(file_path)
-        return pd.read_excel(file_path)
+        """
+        Read CSV/Excel by extension, case-insensitively ("DATA.CSV" is a CSV).
+
+        CSVs from the wild: Excel on Windows saves cp1252 ("Chloé" as byte
+        0xE9, which utf-8 rejects), European locales use ';' as the
+        separator, some exports are tab- or pipe-separated, and many start
+        with a BOM. All of them should import as the table the user sees.
+        """
+        if not str(file_path).lower().endswith('.csv'):
+            return pd.read_excel(file_path)
+        raw = Path(file_path).read_bytes()
+        if not raw.strip():
+            raise ValueError("The file is empty")
+        if b"\x00" in raw[:4096]:
+            raise ValueError("This doesn't look like a text CSV (binary content)")
+        for enc in ("utf-8-sig", "cp1252", "latin-1"):
+            try:
+                text = raw.decode(enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        import csv
+        import io
+        sample = "\n".join(text.splitlines()[:50])
+        try:
+            sep = csv.Sniffer().sniff(sample, delimiters=",;\t|").delimiter
+        except csv.Error:
+            sep = ","
+        return pd.read_csv(io.StringIO(text), sep=sep)
 
     def is_structured_file(self, filename: str) -> bool:
         return filename.lower().endswith(('.csv', '.xlsx', '.xls'))
@@ -44,15 +69,19 @@ class HybridCSVProcessor:
         logger.info(f"📊 Processing structured file: {filename}")
         logger.info(f"   Mode: HYBRID (SQL + RAG)")
 
-        sql_table = self._import_to_sql(file_path, conversation_id)
-        rag_docs  = self._parse_to_rag(file_path)
-        metadata  = self._extract_metadata(file_path)
+        # Clean once, then feed the SAME frame to SQL, RAG and metadata so
+        # every view of the data agrees (see tools/data_clean.py).
+        df, quality = self._load_clean(file_path)
+        sql_table = self._import_to_sql(file_path, conversation_id, df=df)
+        rag_docs  = self._parse_to_rag(file_path, df=df)
+        metadata  = self._extract_metadata(file_path, df=df)
 
         result = {
             "filename":     filename,
             "sql_table":    sql_table,
             "rag_documents": rag_docs,
             "metadata":     metadata,
+            "quality":      quality,
             "capabilities": {
                 "sql_calculations": True,
                 "semantic_search":  True,
@@ -73,12 +102,24 @@ class HybridCSVProcessor:
     # SQL IMPORT (unchanged)
     # ================================================================
 
-    def _import_to_sql(self, file_path: str, conversation_id: str) -> str:
+    def _load_clean(self, file_path: str):
+        """Read the file and clean it. Returns (df, quality report)."""
+        from tools.data_clean import clean_frame
         try:
-            df = self._read_frame(file_path)
+            raw = self._read_frame(file_path)
         except Exception as e:
             logger.error(f"❌ Failed to read file: {e}")
             raise
+        df, report = clean_frame(raw)
+        report["file"] = Path(file_path).name
+        if report.get("changed_columns") or report.get("duplicates_removed"):
+            logger.info(f"   🧹 Cleaned {Path(file_path).name}: {report['changed_columns']} columns fixed, "
+                        f"{report['duplicates_removed']} duplicate rows removed")
+        return df, report
+
+    def _import_to_sql(self, file_path: str, conversation_id: str, df: pd.DataFrame = None) -> str:
+        if df is None:
+            df, _ = self._load_clean(file_path)
 
         table_name = self._generate_table_name(file_path, conversation_id)
 
@@ -102,7 +143,7 @@ class HybridCSVProcessor:
     # NARRATIVE RAG PARSING (core fix)
     # ================================================================
 
-    def _parse_to_rag(self, file_path: str) -> List[Document]:
+    def _parse_to_rag(self, file_path: str, df: pd.DataFrame = None) -> List[Document]:
         """
         Generate three types of semantic chunks from a CSV/Excel file.
 
@@ -124,11 +165,8 @@ class HybridCSVProcessor:
         (vs -7 to -11 for raw tabular chunks), enabling RAG to answer
         semantic questions about CSV data correctly.
         """
-        try:
-            df = self._read_frame(file_path)
-        except Exception as e:
-            logger.error(f"❌ RAG parsing failed: {e}")
-            raise
+        if df is None:
+            df, _ = self._load_clean(file_path)
 
         filename    = Path(file_path).name
         col_roles   = self._detect_column_roles(df)
@@ -497,9 +535,10 @@ class HybridCSVProcessor:
             table_name = table_name[:63]
         return table_name
 
-    def _extract_metadata(self, file_path: str) -> Dict[str, Any]:
+    def _extract_metadata(self, file_path: str, df: pd.DataFrame = None) -> Dict[str, Any]:
         try:
-            df = self._read_frame(file_path)
+            if df is None:
+                df = self._read_frame(file_path)
             return {
                 "row_count":    len(df),
                 "column_count": len(df.columns),

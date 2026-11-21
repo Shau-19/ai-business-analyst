@@ -25,6 +25,7 @@ from database.db_manager import DatabaseManager
 from tools.language_detector import LanguageDetector
 from tools.sql_executor import SQLExecutor
 from config import settings
+from utils.llm import make_llm
 from utils.logger import logger, log_section
 from utils.plot_builder import PlotBuilder
  
@@ -39,6 +40,19 @@ _NOT_AVAILABLE_PATTERNS = [
 ]
  
  
+def friendly_llm_error(e: Exception) -> str:
+    """Turn provider errors into something a user can act on."""
+    msg = str(e)
+    if "429" in msg or "rate limit" in msg.lower():
+        return ("The AI provider’s rate limit was reached. Wait a minute and try again, "
+                "or ask a narrower question.")
+    if "timed out" in msg.lower() or "timeout" in msg.lower():
+        return "The AI provider took too long to respond. Please try again."
+    if "api key" in msg.lower() or "401" in msg:
+        return "The AI provider rejected the API key. Check GROQ_API_KEY / OPENAI_API_KEY in .env."
+    return msg
+
+
 class SQLAnalystAgent:
  
     MONTH_ORDER = {
@@ -84,12 +98,7 @@ class SQLAnalystAgent:
         self.plot_builder      = PlotBuilder()
         self._schema_cache: dict = {}   # cache key: "conv_id|table1,table2" → schema str
  
-        self.llm = ChatGroq(
-            api_key=settings.GROQ_API_KEY,
-            model=settings.LLM_MODEL,
-            temperature=settings.TEMPERATURE,
-            max_tokens=settings.MAX_TOKENS,
-        )
+        self.llm = make_llm(temperature=settings.TEMPERATURE, max_tokens=settings.MAX_TOKENS)
  
         sql_prompt = PromptTemplate(
             input_variables=["schema", "question", "allowed_tables"],
@@ -143,6 +152,15 @@ STRICT SYNTAX RULES:
  
 15. If the question cannot be answered from the allowed tables, return exactly:
     SELECT 'This information is not available in the uploaded data' AS message
+
+16. Fraction columns (marked "fraction" in the schema) hold 0.15 for 15%. A discount or
+    tax is applied by multiplying: units * price * (1 - COALESCE(discount, 0)).
+    NULL in a modifier column (discount, fee, tax) means none: wrap it in COALESCE(col, 0)
+    so the row still counts.
+
+17. Free-text search: match the key word stem alone, case-insensitively, never the
+    user's whole phrase. "notes that mention damaged items" →
+    WHERE LOWER("Notes") LIKE '%damage%'   (not '%damaged items%')
  
 --- FEW-SHOT EXAMPLES ---
  
@@ -413,7 +431,18 @@ Answer in {language_name}:""",
                 }
  
             logger.info("⚙️   Executing...")
-            result = self.sql_executor.execute_query(sql_query)
+            result = self.sql_executor.execute_query(sql_query, allowed_tables=allowed_tables)
+
+            if result.get('forbidden'):
+                return {
+                    'success':     True,
+                    'question':    question,
+                    'explanation': "This information is not available in the uploaded data.",
+                    'answer':      "This information is not available in the uploaded data.",
+                    'data':        [],
+                    'row_count':   0,
+                    'language':    lang_code,
+                }
  
             if not result['success']:
                 logger.error(f"❌  SQL error: {result['error']}")
@@ -493,7 +522,7 @@ Answer in {language_name}:""",
  
         except Exception as e:
             logger.error(f"❌  Analysis error: {e}")
-            return {'success': False, 'error': str(e), 'question': question}
+            return {'success': False, 'error': friendly_llm_error(e), 'question': question}
  
     # ── Schema builder ────────────────────────────────────────────────────────
  
@@ -519,26 +548,48 @@ Answer in {language_name}:""",
         if not filtered:
             return "No schema available for the specified tables."
  
-        text = "DATABASE SCHEMA (uploaded tables only):\n\n"
+        text = (
+            "DATABASE SCHEMA (uploaded tables only):\n"
+            "Data was cleaned on import: number columns are numeric (no $ or % signs; "
+            "percentages are fractions, 10% = 0.10), date columns are TEXT in ISO "
+            "format YYYY-MM-DD (use strftime('%Y-%m', col) for months), category "
+            "spellings are unified, and duplicate orders were removed.\n\n"
+        )
         for table, columns in filtered.items():
             text += f"Table: {table}\nColumns:\n"
             for col in columns:
                 nullable = "NULL" if not col["notnull"] else "NOT NULL"
                 pk       = " PRIMARY KEY" if col["primary_key"] else ""
-                text    += f'  - "{col["name"]}" ({col["type"]}) {nullable}{pk}\n'
+                text    += f'  - "{col["name"]}" ({col["type"]}) {nullable}{pk}{self._column_note(table, col)}\n'
  
-            # Inject actual distinct values for text/string columns
+            # Inject actual distinct values for SHORT categorical text columns
+            # only. Free-text columns (notes, comments) are skipped: 20 long
+            # notes per column ballooned every prompt, slowing queries to
+            # 20 s and exhausting the provider's tokens-per-minute limit.
             try:
-                text += "  ACTUAL VALUES (use EXACT spelling in WHERE clauses):\n"
+                lines = []
                 for col in columns:
-                    if col["type"].upper() in ("TEXT", "VARCHAR", "CHAR", "STRING", ""):
-                        rows = self.db.execute_query(
-                            f'SELECT DISTINCT "{col["name"]}" FROM "{table}" '
-                            f'WHERE "{col["name"]}" IS NOT NULL LIMIT 20'
-                        )
-                        if not rows.empty:
-                            vals = rows.iloc[:, 0].tolist()
-                            text += f'    {col["name"]}: {vals}\n'
+                    if col["type"].upper() not in ("TEXT", "VARCHAR", "CHAR", "STRING", ""):
+                        continue
+                    stats = self.db.execute_query(
+                        f'SELECT COUNT(DISTINCT "{col["name"]}") AS n, AVG(LENGTH("{col["name"]}")) AS len '
+                        f'FROM "{table}" WHERE "{col["name"]}" IS NOT NULL'
+                    )
+                    n, avg_len = stats.iloc[0]["n"], stats.iloc[0]["len"] or 0
+                    if avg_len > 40:
+                        lines.append(f'    {col["name"]}: free text (search it with LIKE \'%word%\')')
+                        continue
+                    if n > 40:
+                        continue                      # IDs / names: too many to list
+                    rows = self.db.execute_query(
+                        f'SELECT DISTINCT "{col["name"]}" FROM "{table}" '
+                        f'WHERE "{col["name"]}" IS NOT NULL LIMIT 25'
+                    )
+                    if not rows.empty:
+                        vals = [str(v)[:40] for v in rows.iloc[:, 0].tolist()]
+                        lines.append(f'    {col["name"]}: {vals}')
+                if lines:
+                    text += "  ACTUAL VALUES (use EXACT spelling in WHERE clauses):\n" + "\n".join(lines) + "\n"
             except Exception as e:
                 logger.warning(f"⚠️  Could not fetch distinct values: {e}")
  
@@ -548,6 +599,25 @@ Answer in {language_name}:""",
         logger.info(f"📋  Schema cached for session '{conversation_id}', tables: {allowed_tables}")
         return text
  
+    def _column_note(self, table: str, col: Dict[str, Any]) -> str:
+        """' -- fraction 0-1 (0.15 = 15%), 12 empty' for numeric columns, so the
+        model applies a discount as a percentage and doesn't drop NULL rows."""
+        if col["type"].upper() not in ("REAL", "INTEGER", "NUMERIC", "FLOAT", "DOUBLE"):
+            return ""
+        try:
+            st = self.db.execute_query(
+                f'SELECT MIN("{col["name"]}") AS lo, MAX("{col["name"]}") AS hi, '
+                f'SUM("{col["name"]}" IS NULL) AS empty FROM "{table}"').iloc[0]
+        except Exception:
+            return ""
+        notes = []
+        lo, hi = st["lo"], st["hi"]
+        if pd.notna(lo) and pd.notna(hi) and 0 <= lo and hi <= 1 and col["type"].upper() == "REAL":
+            notes.append("fraction 0-1 (0.15 = 15%)")
+        if pd.notna(st["empty"]) and st["empty"]:
+            notes.append(f'{int(st["empty"])} empty')
+        return f" -- {', '.join(notes)}" if notes else ""
+
     def invalidate_schema_cache(self, conversation_id: Optional[str] = None) -> None:
         """
         Call this after a new CSV is uploaded so the next query rebuilds the schema.

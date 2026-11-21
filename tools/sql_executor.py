@@ -8,9 +8,9 @@ Logs exactly once per step — no duplicates.
 import re
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
-from database.db_manager import DatabaseManager
+from database.db_manager import DatabaseManager, ForbiddenTableError, QueryTimeoutError
 from tools.column_value_index import ColumnValueIndex
 from utils.logger import logger
 
@@ -40,8 +40,11 @@ class SQLExecutor:
         )
         return matches[0].strip('`"[]') if matches else None
 
-    def execute_query(self, sql: str) -> Dict[str, Any]:
-        """Clean → normalize → execute. Single log per step, no duplicates."""
+    def execute_query(self, sql: str, allowed_tables: Optional[List[str]] = None) -> Dict[str, Any]:
+        """
+        Clean → normalize → execute. allowed_tables makes SQLite itself refuse
+        reads of any other table (session isolation); see DatabaseManager.
+        """
         try:
             cleaned = self.clean_sql(sql)
 
@@ -53,7 +56,7 @@ class SQLExecutor:
                     cleaned = rewritten
 
             # FIX: removed duplicate 📝/🔍 log lines — caller (sql_analyst) logs SQL
-            df = self.db.execute_query(cleaned)
+            df = self.db.execute_query(cleaned, allowed_tables=allowed_tables)
 
             # SQL NULLs become NaN in float columns (e.g. LAG() on the first
             # row) and ±inf can come from division — neither is valid JSON, and
@@ -72,6 +75,12 @@ class SQLExecutor:
                 "truncated":    len(df) > 100,
             }
 
+        except ForbiddenTableError as e:
+            logger.warning(f"🚫 Blocked read outside session tables: {e}")
+            return {"success": False, "forbidden": True, "error": str(e), "sql": sql}
+        except QueryTimeoutError as e:
+            logger.warning(f"⏱️ {e}")
+            return {"success": False, "timeout": True, "error": str(e), "sql": sql}
         except Exception as e:
             logger.error(f"❌ Query error: {e}")
             return {"success": False, "error": str(e), "sql": sql}

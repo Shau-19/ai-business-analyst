@@ -24,7 +24,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Depends, R
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Any
 from pathlib import Path
 import math, os, re, shutil, uvicorn, asyncio, json
@@ -135,6 +135,8 @@ def _cleanup_orphan_tables():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log_section("AI BUSINESS ANALYST STARTING")
+    from utils.llm import describe as _llm_describe
+    logger.info(f"🧠  LLM: {_llm_describe()}")
     _cleanup_orphan_tables()
     logger.info(
         f"🚀  {settings.HOST}:{settings.PORT} | "
@@ -168,17 +170,26 @@ if Path("static").exists():
 # ── Request / response models ─────────────────────────────────────────────────
 
 class QueryRequest(BaseModel):
-    question: str
+    # Bounded: an unbounded question goes straight into the LLM prompt, so a
+    # 1 MB body would burn the whole token budget in a single request.
+    question: str = Field(min_length=1, max_length=2000)
     conversation_id: Optional[str] = None
     value_col: Optional[str] = None  # explicit column for forecast tab
     want_chart: bool = False         # dashboard: always build a chart from the data
+
+    @field_validator("question")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("question can't be empty")
+        return v
 
 class ConversationCreate(BaseModel):
     user_id: str
     title: Optional[str] = "New Chat"
 
 class ConversationRename(BaseModel):
-    title: str
+    title: str = Field(max_length=500)
 
 class MCPCallRequest(BaseModel):
     name: str
@@ -417,6 +428,9 @@ async def delete_conversation(cid: str):
             _drop_tables(to_drop)
     except Exception as e:
         logger.warning(f"⚠️  Table cleanup on delete failed: {e}")
+    # The user's original files too: "delete" must not leave their data on
+    # disk (cid is validated above, so this path can't escape ./uploads).
+    shutil.rmtree(Path("./uploads") / cid, ignore_errors=True)
     return {"success": True}
 
 
@@ -572,7 +586,8 @@ async def get_profile(cid: str):
     try:
         status = orchestrator.rag_agent.get_session_status(cid)
         result = await asyncio.to_thread(
-            build_profile, db_manager, orchestrator.rag_agent.get_csv_tables(cid), status["loaded_files"])
+            build_profile, db_manager, orchestrator.rag_agent.get_csv_tables(cid), status["loaded_files"],
+            orchestrator.rag_agent.get_quality(cid))
         return JSONResponse(_json_safe({"success": True, "conversation_id": cid, **result}))
     except Exception as e:
         logger.error(f"❌ Profile error: {e}")

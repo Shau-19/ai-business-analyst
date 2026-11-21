@@ -131,6 +131,22 @@
 .ov-status > svg { width: 22px; height: 22px; color: var(--accent); flex: none; }
 .ov-status p { font-size: var(--t-sm); color: var(--muted); }
 
+/* data health */
+.health .tile-title { display: inline-flex; align-items: center; gap: 8px; }
+.health .tile-title svg { width: 17px; height: 17px; color: var(--good); }
+.health-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; }
+.health-list li { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; font-size: var(--t-sm); padding: 8px 0; border-top: 1px solid var(--border); }
+.health-list b { font-weight: 600; overflow-wrap: anywhere; display: inline-flex; gap: 6px; align-items: flex-start; }
+.health-list span { color: var(--ink-2); }
+.health-list .is-warn b, .health-list .is-warn span { color: var(--warning); }
+.health-list svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+@media (max-width: 900px) { .health-list { grid-template-columns: minmax(0, 1fr); } .health-list li { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+.kpi-warn { align-self: flex-start; cursor: help; }
+.tbl-clean { white-space: normal !important; min-width: 260px; font-size: var(--t-xs); }
+.tbl-clean span { display: block; color: var(--ink-2); }
+.tbl-clean span + span { margin-top: 2px; }
+.tbl-clean .is-warn { color: var(--warning); }
+
 .banner { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-md); font-size: var(--t-sm); max-width: 1280px; margin: 0 auto 16px; width: 100%; }
 .banner svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
 .banner-bad { background: var(--critical-soft); color: var(--critical); }

@@ -20,6 +20,7 @@ Routing priorities:
 
 from typing import Dict, Any, Optional
 import asyncio
+import json
 import re
 from collections import Counter
 
@@ -27,11 +28,13 @@ from langchain_groq import ChatGroq
 from langchain.prompts import PromptTemplate
 
 from protocols import A2AAgent, AgentCapability, MessageType, A2AMessage, A2ARegistry
-from agents.sql_analyst import SQLAnalystAgent
+from agents.sql_analyst import SQLAnalystAgent, friendly_llm_error
 from agents.session_rag import SessionAwareRAGAgent
 from agents.forecast_agent import ForecastAgent, PROPHET_AVAILABLE
 from database.db_manager import DatabaseManager
+from tools.driver_analysis import analyze as driver_analyze, is_why_question
 from config import settings, ENABLE_HYBRID_CSV
+from utils.llm import make_llm
 from utils.logger import logger, log_section
 
 if ENABLE_HYBRID_CSV:
@@ -79,25 +82,13 @@ class OrchestratorAgent(A2AAgent):
         )
 
         # General chat LLM (warmer temperature for conversational responses)
-        self.llm = ChatGroq(
-            api_key=settings.GROQ_API_KEY,
-            model=settings.LLM_MODEL,
-            temperature=0.7,
-        )
+        self.llm = make_llm(temperature=0.7)
 
         # Deterministic routing classifier (temperature=0 for consistent routing)
-        self.routing_llm = ChatGroq(
-            api_key=settings.GROQ_API_KEY,
-            model=settings.LLM_MODEL,
-            temperature=0,
-        )
+        self.routing_llm = make_llm(temperature=0)
 
         # Synthesis LLM for HYBRID responses that need both sources merged
-        self.synthesis_llm = ChatGroq(
-            api_key=settings.GROQ_API_KEY,
-            model=settings.LLM_MODEL,
-            temperature=0.1,
-        )
+        self.synthesis_llm = make_llm(temperature=0.1)
 
         self.routing_prompt = PromptTemplate(
             input_variables=["question", "document_files"],
@@ -536,6 +527,17 @@ Question: {question}""",
             elif (want_chart and classification != "FORECAST"
                   and self.rag_agent.has_csv_data(conversation_id)):
                 classification = "SQL"
+
+            # ── WHY → driver analysis ─────────────────────────────────────────
+            # "Why is X lower in West?" needs a comparison across every other
+            # column, not one GROUP BY. Falls through to the usual routes when
+            # the question can't be tied to a metric and a segment/period.
+            if (not want_chart and classification not in ("FORECAST", "GENERAL")
+                    and is_why_question(question) and self.rag_agent.has_csv_data(conversation_id)):
+                analysis = await self._driver_analysis(question, conversation_id)
+                if analysis:
+                    return analysis
+
             # ── FORECAST ─────────────────────────────────────────────────────
             if classification == "FORECAST":
                 logger.info("📤  A2A → forecast_agent")
@@ -606,7 +608,18 @@ Question: {question}""",
                 sql_text = sql_payload.get("explanation", "") if sql_payload.get("success") else ""
                 rag_text = rag_payload.get("answer", "")      if rag_payload.get("success") else ""
 
-                sql_empty = (
+                # Judge the SQL side by its rows, not its prose: for a "why"
+                # question the one-line explanation often says "not available"
+                # even though the query returned exactly the comparison needed
+                # (avg rating per region, West lowest) — and that was discarded.
+                rows = sql_payload.get("data") or []
+                sql_has_rows = bool(
+                    sql_payload.get("success") and rows and sql_payload.get("row_count", len(rows))
+                    and "not available" not in json.dumps(rows[:3], default=str).lower()
+                )
+                if sql_has_rows and (not sql_text or "not available" in sql_text.lower()):
+                    sql_text = "Query result rows:\n" + json.dumps(rows[:25], default=str)
+                sql_empty = not sql_has_rows and (
                     not sql_text
                     or "not available" in sql_text.lower()
                     or sql_payload.get("row_count", 1) == 0
@@ -623,7 +636,8 @@ Question: {question}""",
                         "columns needed to answer this numerically.",
                     )
                 elif rag_empty:
-                    combined = sql_text.strip()
+                    combined = (await asyncio.to_thread(self._synthesize_hybrid, question, sql_text, "")
+                                if sql_text.startswith("Query result rows:") else sql_text.strip())
                 else:
                     combined = await asyncio.to_thread(self._synthesize_hybrid, question, sql_text, rag_text)
 
@@ -649,7 +663,7 @@ Question: {question}""",
         except Exception as e:
             logger.error(f"❌  Routing error: {e}")
             import traceback; traceback.print_exc()
-            return {"success": False, "error": str(e), "question": question}
+            return {"success": False, "error": friendly_llm_error(e), "question": question}
 
         finally:
             logger.info(f"✅  Routed as: {classification}")
@@ -689,6 +703,49 @@ Question: {question}""",
             "routing_reason": reason,
         }
 
+    # ── Driver analysis ("why" questions) ─────────────────────────────────────
+
+    def _driver_analysis_sync(self, question: str, conversation_id: str) -> Optional[Dict[str, Any]]:
+        for table in self.rag_agent.get_csv_tables(conversation_id):
+            try:
+                df = self.sql_agent.db.execute_query(f'SELECT * FROM "{table}"')
+                result = driver_analyze(df, question, llm=self.routing_llm)
+            except Exception as e:
+                logger.warning(f"⚠️  Driver analysis failed on {table}: {e}")
+                continue
+            if result:
+                result["table"] = table
+                return result
+        return None
+
+    async def _driver_analysis(self, question: str, conversation_id: str) -> Optional[Dict[str, Any]]:
+        status = self.rag_agent.get_session_status(conversation_id)
+        has_docs = any(not f.lower().endswith((".csv", ".xlsx", ".xls")) for f in status.get("loaded_files", []))
+        tasks = [asyncio.to_thread(self._driver_analysis_sync, question, conversation_id)]
+        if has_docs:
+            tasks.append(self._dispatch("rag_agent", {"question": question, "conversation_id": conversation_id}))
+        results = await asyncio.gather(*tasks)
+        result = results[0]
+        if not result:
+            return None
+        logger.info("🔎  Answered by driver analysis")
+        result.update({
+            "question":       question,
+            "routing":        "analysis",
+            "agent":          "analyst",
+            "routing_reason": "Why-question: segment compared with the rest on every other column",
+            "sources":        [],
+        })
+        # Context from uploaded documents, when they have something to say
+        if has_docs:
+            rag = results[1] or {}
+            if rag.get("success") and not rag.get("not_found") and (rag.get("answer") or "").strip():
+                extra = f"\n\n**From your documents:** {rag['answer'].strip()}"
+                result["answer"] += extra
+                result["explanation"] = result["answer"]
+                result["sources"] = rag.get("sources", [])
+        return result
+
     # ── Hybrid synthesis helpers ──────────────────────────────────────────────
 
     def _synthesize_partial(self, question: str, rag_text: str, sql_note: str) -> str:
@@ -724,9 +781,14 @@ Question: {question}""",
                 f"1. Use ONLY the facts below — no outside knowledge.\n"
                 f"2. Combine numbers from SQL with context from Document into ONE answer.\n"
                 f"3. If sources contradict, prefer the more specific one.\n"
-                f"4. Under 120 words.\n\n"
+                f"4. For a 'why' question, state what the data shows (the numbers) and what "
+                f"it suggests; if the cause itself isn't recorded, say so plainly.\n"
+                f"5. Write for a business user: never mention 'SQL', 'the document', 'sources' "
+                f"or how the answer was produced. Say 'your data' if you must refer to it.\n"
+                f"6. Leave out blank/None groups unless the question is about missing data.\n"
+                f"7. Under 120 words.\n\n"
                 f"SQL Data:\n{sql_text.strip()}\n\n"
-                f"Document Context:\n{rag_text.strip()}\n\n"
+                f"Document Context:\n{rag_text.strip() or '(no relevant passages)'}\n\n"
                 f"Question: {question}\n\nSynthesised Answer:"
             )
             return self.synthesis_llm.invoke(prompt).content.strip()
