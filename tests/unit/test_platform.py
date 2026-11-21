@@ -236,3 +236,48 @@ def test_month_name_column_detection():
     df = pd.DataFrame({"m": ["Jan", "Feb", "Mar"], "x": ["a", "b", "c"]})
     assert _fa()._month_name_column(df) == "m"
     assert _fa()._month_name_column(pd.DataFrame({"x": ["a", "b"]})) is None
+
+
+# ── forecast: one value per period ────────────────────────────────────────────
+
+def _series(dates, values):
+    return pd.DataFrame({"ds": pd.to_datetime(dates), "y": values})
+
+
+def test_rows_per_channel_are_totalled_per_month():
+    """4 channel rows per month used to look like daily data and forecast 6 days."""
+    months = pd.date_range("2024-01-01", periods=12, freq="MS")
+    pdf = _series(list(months.repeat(4)), [100.0] * 48)
+    out, freq, notes = _fa()._to_period_series(pdf, "Revenue")
+    assert freq == "MS" and len(out) == 12 and out["y"].tolist() == [400.0] * 12
+    assert "Totalled per month: 48 rows → 12 months." in notes[0]
+
+
+def test_rates_are_averaged_not_summed():
+    pdf = _series(["2024-01-05", "2024-01-06", "2024-02-03", "2024-02-21", "2024-03-02", "2024-03-30",
+                   "2024-04-04", "2024-04-05", "2024-05-02", "2024-05-29"], [4, 2] * 5)
+    out, _, notes = _fa()._to_period_series(pdf, "Customer Rating")
+    assert out["y"].tolist() == [3.0] * 5 and notes[0].startswith("Averaged per month")
+
+
+def test_incomplete_last_month_and_typos_left_out():
+    days = pd.date_range("2024-01-01", "2024-12-03", freq="D")
+    pdf = _series(list(days) * 2, [10.0] * (2 * len(days)))
+    pdf.loc[5, "y"] = 9999
+    out, _, notes = _fa()._to_period_series(pdf, "Units")
+    assert out["ds"].max() == pd.Timestamp("2024-11-01")
+    assert out["y"].max() < 1000
+    assert any("December 2024 is incomplete" in n for n in notes)
+    assert any("1 extreme value left out" in n for n in notes)
+
+
+def test_clean_monthly_series_is_untouched():
+    pdf = _series(pd.date_range("2024-01-01", periods=6, freq="MS"), [1, 2, 3, 4, 5, 6])
+    out, freq, notes = _fa()._to_period_series(pdf, "Revenue")
+    assert freq == "MS" and out["y"].tolist() == [1, 2, 3, 4, 5, 6] and notes == []
+
+
+def test_tickets_with_clock_times_are_aggregated():
+    times = pd.date_range("2024-01-01 09:00", periods=300, freq="7h")
+    out, freq, notes = _fa()._to_period_series(_series(times, [5.0] * 300), "Resolution Hours")
+    assert freq in ("W-MON", "MS") and len(out) < 30 and notes[0].startswith("Averaged per")

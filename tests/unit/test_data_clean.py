@@ -156,6 +156,20 @@ def test_distinct_real_categories_never_merge(common, rare):
     assert df["c"].value_counts().get(rare) == 3
 
 
+def test_one_letter_substitution_typo_merges():
+    vals = _col([("Finance", 30), ("Finanse", 1), ("Sales", 40), ("Support", 35)])
+    df, _ = clean_frame(pd.DataFrame({"Department": vals, "n": range(len(vals))}))
+    assert df["Department"].value_counts().to_dict() == {"Sales": 40, "Support": 35, "Finance": 31}
+
+
+@pytest.mark.parametrize("common, rare", [("Class A", "Class B"), ("Grade 10", "Grade 11"), ("Size M", "Size L"),
+                                          ("Plan X1", "Plan X2")])
+def test_short_or_numeric_token_differences_never_merge(common, rare):
+    vals = _col([(common, 60), (rare, 3), ("Something else", 30)])
+    df, _ = clean_frame(pd.DataFrame({"c": vals, "n": range(len(vals))}))
+    assert df["c"].value_counts().get(rare) == 3
+
+
 def test_placeholders_become_empty():
     vals = ["A", "B", "N/A", "-", "A", "B", "none", "A"]
     df, rep = clean_frame(pd.DataFrame({"Tier": vals, "n": range(len(vals))}))
@@ -262,3 +276,8 @@ def test_messy_file_matches_hand_computed_answers(messy_csv, messy_expected):
     revenue = (df["Units"] * df["Unit Price ($)"] * (1 - df["Discount"].fillna(0))).sum()
     assert round(float(revenue), 2) == pytest.approx(messy_expected["revenue_all"], abs=0.01)
     assert df["Order ID"].tolist()[0].startswith("ORD-")
+
+
+def test_html_entities_decoded():
+    df, _ = clean_frame(pd.DataFrame({"Review": ["it&#39;s great", "R&amp;D team", "fine"]}))
+    assert df["Review"].tolist() == ["it's great", "R&D team", "fine"]

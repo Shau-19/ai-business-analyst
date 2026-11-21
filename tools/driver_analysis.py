@@ -67,20 +67,6 @@ could should can may might per via about after before again all any each more mo
 own same few both here there when where which who whom what how why one two three
 """.split())
 
-# Words that mark a note as reporting a problem. Individual complaint types
-# ("damaged", "late", "wrong colour") are each rare; together they are the
-# pattern an analyst would spot first.
-PROBLEM_STEMS = (          # matched as word prefixes
-    "damag", "broke", "crack", "crush", "scratch", "leak", "defect", "faulty", "delay", "wrong",
-    "missing", "refund", "complain", "disappoint", "wobbl", "unhappy", "upset", "angry", "terribl",
-    "awful", "cancel", "replacement", "error", "problem", "fail", "expir", "spoil",
-)
-PROBLEM_WORDS = {          # matched whole: "late" not "later", "issue" not "re-issued", "dent" not "dental"
-    "late", "slow", "lost", "bad", "poor", "rude", "dirty", "torn", "dent", "dented", "stain", "stained",
-    "issue", "issues", "fault", "broken", "return", "returned",
-}
-NEGATORS = {"no", "not", "never", "without", "zero", "nothing"}
-
 MONTH_NAMES = {m: i + 1 for i, m in enumerate(MONTHS)}
 FULL_MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august",
                "september", "october", "november", "december"]
@@ -107,14 +93,20 @@ class Spec:
 
 def _stem(w: str) -> str:
     w = w.lower()
+    if not w.isascii():
+        return w                      # English suffix rules only make sense for English words
     for suf, rep in (("ies", "y"), ("ing", ""), ("ed", ""), ("es", ""), ("s", "")):
         if w.endswith(suf) and len(w) - len(suf) >= 4:
             return w[: -len(suf)] + rep
     return w
 
 
+_SPLIT_RE = re.compile(r"[\s\d.,;:!?¿¡\"“”‘’'()\[\]{}<>/\\|@#$%^&*+=~`_\-–—…·•।]+")
+
+
 def _words(text: str) -> List[str]:
-    return re.findall(r"[a-z][a-z']+", str(text).lower())
+    """Words in any script: split on spaces/punctuation, so 'café', 'entregó' and Hindi survive."""
+    return [w for w in _SPLIT_RE.split(str(text).lower()) if len(w) > 1]
 
 
 def _name_tokens(col: str) -> List[str]:
@@ -148,9 +140,38 @@ def _resolve_metric(df, roles, question) -> Optional[Tuple[str, str, List[str]]]
         parts = _find_derived_revenue(df, roles)
         if parts:
             return "__revenue", "Revenue", [p for p in parts if p]
+    flag = _resolve_flag(df, roles, q_stems)
+    if flag and (not best or flag[3] >= best_score):
+        return flag[:3]
     if best:
         return best, humanize(best), []
     return None
+
+
+POSITIVE_VALUES = {"yes", "y", "true", "t", "1", "churned", "left", "lost", "won", "converted", "returned",
+                   "cancelled", "canceled", "default", "fraud"}
+
+
+def _resolve_flag(df, roles, q_stems):
+    """
+    A yes/no column named in the question ("Why is attrition higher in Sales?")
+    becomes a rate: the share of rows that are 'Yes'. Returns
+    (metric, label, [column, positive value], name score) or None.
+    """
+    best = None
+    for c, r in roles.items():
+        vals = df[c].dropna().astype(str).str.strip()
+        uniq = vals.unique()
+        if len(uniq) != 2:
+            continue
+        score = sum(1 for t in _name_tokens(c) if t in q_stems)
+        if not score:
+            continue
+        lower = {u.lower(): u for u in uniq}
+        pos = next((lower[k] for k in lower if k in POSITIVE_VALUES), None) or vals.value_counts().idxmin()
+        if not best or score > best[3]:
+            best = ("__flag", f"{humanize(c)} rate", [c, pos], score)
+    return best
 
 
 def _resolve_segment(df, roles, question, skip: set) -> Optional[Tuple[str, str]]:
@@ -163,7 +184,7 @@ def _resolve_segment(df, roles, question, skip: set) -> Optional[Tuple[str, str]
             vs = v.strip()
             if len(vs) < 2:
                 continue
-            if re.search(rf"(?<![a-z0-9]){re.escape(vs.lower())}(?![a-z0-9])", q):
+            if re.search(rf"(?<![a-z0-9]){re.escape(vs.lower())}(?:s|es)?(?![a-z0-9])", q):
                 named = any(t in {_stem(w) for w in _words(q)} for t in _name_tokens(c))
                 hits.append((named, len(vs), c, vs))
     if not hits:
@@ -207,7 +228,7 @@ def parse_question(df: pd.DataFrame, question: str, roles: Optional[Dict[str, st
         return None
     col, label, parts = metric
     direction = "lower" if LOWER_WORDS.search(question) else "higher" if HIGHER_WORDS.search(question) else None
-    agg = "mean" if col != "__revenue" and MEAN_HINT.search(col) else "sum"
+    agg = "mean" if col == "__flag" or (col != "__revenue" and MEAN_HINT.search(col)) else "sum"
     spec = Spec(metric=col, metric_label=label, agg=agg, direction=direction, derived_from=parts)
     seg = _resolve_segment(df, roles, question, skip={col})
     if seg:
@@ -279,7 +300,7 @@ def _is_fraction(df, col) -> bool:
 def _fmt(v: float, col: str, df: pd.DataFrame, total: bool = False) -> str:
     if v is None or (isinstance(v, float) and math.isnan(v)):
         return "–"
-    if _is_fraction(df, col):
+    if col == "__flag" or _is_fraction(df, col):
         return f"{v * 100:.1f}%"
     money = bool(MONEY_RE.search(col)) or col == "__revenue"
     a = abs(v)
@@ -291,7 +312,9 @@ def _fmt(v: float, col: str, df: pd.DataFrame, total: bool = False) -> str:
         s = f"{v:,.0f}"
     else:
         s = f"{v:,.2f}"
-    return f"${s}" if money else s
+    if money:
+        return f"−${s.lstrip('-')}" if v < 0 else f"${s}"
+    return s.replace("-", "−", 1) if v < 0 else s
 
 
 def _pct(p: float) -> str:
@@ -301,6 +324,9 @@ def _pct(p: float) -> str:
 # ── features ──────────────────────────────────────────────────────────────────
 
 def _metric_series(df: pd.DataFrame, spec: Spec) -> pd.Series:
+    if spec.metric == "__flag":
+        col, pos = spec.derived_from
+        return (df[col].astype(str).str.strip() == pos).astype(float).where(df[col].notna())
     if spec.metric == "__revenue":
         q, p = (pd.to_numeric(df[c], errors="coerce") for c in spec.derived_from[:2])
         d = pd.to_numeric(df[spec.derived_from[2]], errors="coerce").fillna(0) if len(spec.derived_from) > 2 else 0
@@ -314,10 +340,34 @@ def _extreme_rows(df: pd.DataFrame, spec: Spec, y: pd.Series) -> pd.Series:
     live in its inputs (9,999 units), so check those; flagging the product
     would also drop legitimately large orders.
     """
+    if spec.metric == "__flag":
+        return pd.Series(False, index=df.index)
     if spec.derived_from:
         masks = [outlier_mask(df[c]) for c in spec.derived_from[:2]]
         return np.logical_or.reduce(masks) if masks else pd.Series(False, index=df.index)
     return outlier_mask(y)
+
+
+def _lc(label: str) -> str:
+    """Lowercase for mid-sentence use, keeping acronyms: 'CSAT' stays, 'Customer Rating' → 'customer rating'."""
+    return " ".join(w if (w.isupper() and len(w) > 1) else w.lower() for w in str(label).split())
+
+
+def _unit_noun(df: pd.DataFrame) -> str:
+    """
+    What one row is, from a column that identifies rows: 'Employee ID' /
+    'EmployeeNumber' → 'employees', 'Ticket ID' → 'tickets'. The column must be
+    unique per row: 'Clothing ID' on a reviews table names the item, not the row.
+    """
+    skip = re.compile(r"(row|record|index|line|serial|phone|mobile|contact|account|card|zip|pin|postal)", re.I)
+    for c in df.columns:
+        m = re.match(r"^\s*([A-Za-z][A-Za-z ]*?)[\s_-]*(?:id|#|number|no\.?)\s*$", str(c), re.I)
+        if not m or not m.group(1).strip() or skip.search(m.group(1)):
+            continue
+        col = df[c].dropna()
+        if len(col) and col.nunique() >= 0.98 * len(df):
+            return _plural(m.group(1).strip().split()[-1].lower())
+    return "rows"
 
 
 def _possessive(name: str) -> str:
@@ -344,19 +394,78 @@ def _sentence_like(series: pd.Series) -> bool:
     return not s.empty and s.str.len().mean() > 20 and s.str.split().str.len().mean() >= 3
 
 
-def _problem_hits(text: str) -> List[str]:
-    """Problem words in a note, skipping negated ones ("no issues", "not damaged")."""
-    words = _words(text)
-    hits = []
-    for i, w in enumerate(words):
-        is_problem = w in PROBLEM_WORDS or any(w.startswith(p) for p in PROBLEM_STEMS)
-        if is_problem and not (NEGATORS & set(words[max(0, i - 2):i])):
-            hits.append(w)
-    return hits
+_VEC_CACHE: Dict[Tuple[int, str], np.ndarray] = {}
 
 
-def _binary_features(df: pd.DataFrame, roles: Dict[str, str], spec: Spec, exclude: set):
-    """Yield (kind, column, label, mask) for category values, problem mentions and text words."""
+def _embed_cached(embed, words: List[str]) -> np.ndarray:
+    """Word vectors are reused across questions: a vocabulary barely changes between them."""
+    key = id(embed)
+    missing = [w for w in words if (key, w) not in _VEC_CACHE]
+    if missing:
+        if len(_VEC_CACHE) > 50_000:
+            _VEC_CACHE.clear()
+            missing = list(words)
+        for w, v in zip(missing, embed(missing)):
+            _VEC_CACHE[(key, w)] = np.asarray(v, dtype=float)
+    return np.vstack([_VEC_CACHE[(key, w)] for w in words])
+
+
+def _word_themes(rows: List[set], forms: Dict[str, Counter], n: int, embed=None, max_vocab: int = 600):
+    """
+    Candidate text features: single words, plus groups of related words.
+
+    Related words are found by embedding the vocabulary (not the rows, so the
+    cost doesn't grow with table size) and clustering it hierarchically: every
+    node of the tree ("damaged, broken, cracked", "late, delayed, slow", and
+    the larger nodes that join them) becomes a candidate "rows that mention
+    any of these words". No word list is built in; which theme matters is
+    decided by the statistics, in whatever language the embedder handles.
+    Yields (kind, label, member stems, mask).
+    """
+    counts = Counter(s for st in rows for s in st)
+    vocab = [s for s, k in counts.most_common(max_vocab) if max(5, 0.005 * n) <= k <= 0.6 * n]
+    if not vocab:
+        return
+    index = {s: i for i, s in enumerate(vocab)}
+    word_rows = [np.zeros(n, dtype=bool) for _ in vocab]
+    for r, st in enumerate(rows):
+        for s in st:
+            i = index.get(s)
+            if i is not None:
+                word_rows[i][r] = True
+    surface = [forms[s].most_common(1)[0][0] for s in vocab]
+    for i, s in enumerate(vocab):
+        yield "text", surface[i], [s], word_rows[i]
+    if embed is None or len(vocab) < 4:
+        return
+    try:
+        from scipy.cluster.hierarchy import linkage
+        vecs = _embed_cached(embed, surface)
+        vecs /= np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-12
+        tree = linkage(vecs, method="average", metric="cosine")
+    except Exception as e:
+        logger.info(f"🔎 Word themes unavailable ({e}); using single words")
+        return
+    members: List[List[int]] = [[i] for i in range(len(vocab))]
+    masks: List[np.ndarray] = list(word_rows)
+    seen = set()
+    for a, b, _dist, _size in tree:
+        m = members[int(a)] + members[int(b)]
+        mask = masks[int(a)] | masks[int(b)]
+        members.append(m)
+        masks.append(mask)
+        share = mask.mean()
+        if len(m) > 40 or not (0.03 <= share <= 0.7):
+            continue
+        key = mask.tobytes()
+        if key in seen:
+            continue
+        seen.add(key)
+        yield "theme", ", ".join(surface[i] for i in m[:4]), [vocab[i] for i in m], mask
+
+
+def _binary_features(df: pd.DataFrame, roles: Dict[str, str], spec: Spec, exclude: set, embed=None):
+    """Yield (kind, column, label, mask, stems) for category values, words and word themes."""
     n = len(df)
     for c, r in roles.items():
         if c in exclude:
@@ -368,19 +477,11 @@ def _binary_features(df: pd.DataFrame, roles: Dict[str, str], spec: Spec, exclud
             for v in df[c].dropna().astype(str).unique():
                 mask = (col == v).to_numpy()
                 if 5 <= mask.sum() <= 0.9 * n:
-                    yield "category", c, v, mask
+                    yield "category", c, v, mask, None
         elif r == "text":
-            hits = [_problem_hits(t) for t in df[c].fillna("").astype(str)]
-            mask = np.array([bool(h) for h in hits])
-            if 5 <= mask.sum() <= 0.9 * n:
-                yield "problem", c, "a problem", mask
             rows, forms = _text_terms(df[c])
-            counts = Counter(s for st in rows for s in st)
-            for stem, k in counts.items():
-                if k < max(8, 0.01 * n) or k > 0.6 * n:
-                    continue
-                mask = np.array([stem in st for st in rows])
-                yield "text", c, forms[stem].most_common(1)[0][0], mask
+            for kind, label, stems, mask in _word_themes(rows, forms, n, embed):
+                yield kind, c, label, mask, stems
 
 
 @dataclass
@@ -397,19 +498,28 @@ class Driver:
     mean_rest: float = float("nan")
     mask: Any = None
     example: Optional[str] = None
+    stems: Optional[List[str]] = None
 
 
-def _find_drivers(df, roles, spec, y, seg, rest, gap, exclude) -> List[Driver]:
+def _find_drivers(df, roles, spec, y, seg, rest, gap, exclude, embed=None) -> List[Driver]:
     ns, nr = seg.sum(), rest.sum()
     both = seg | rest
     found: List[Driver] = []
-    for kind, col, label, mask in _binary_features(df, roles, spec, exclude):
+    for kind, col, label, mask, stems in _binary_features(df, roles, spec, exclude, embed):
         ps, pr = mask[seg].mean(), mask[rest].mean()
+        # Never/always present in the segment is structure, not a cause:
+        # "0% of Fiber customers have No internet service", "100% of Trend
+        # items are class Trend", "0% of Sales are Manufacturing Directors".
+        if ps == 0 or ps >= 0.995 or pr >= 0.995:
+            continue
         if mask[seg].sum() < max(5, 0.03 * ns) and mask[rest].sum() < max(5, 0.03 * nr):
             continue
         p = mask[both].mean()
         se = math.sqrt(max(p * (1 - p), 1e-9) * (1 / ns + 1 / nr))
-        if abs(ps - pr) < 0.03 or abs(ps - pr) / se < 2:
+        # Text yields hundreds of candidates (words and word groups), so it
+        # needs stronger evidence than a handful of category values.
+        z_min = 3.0 if kind in ("text", "theme") else 2.0
+        if abs(ps - pr) < 0.03 or abs(ps - pr) / se < z_min:
             continue
         with_f, without_f = y[both & mask], y[both & ~mask]
         if len(with_f) < 8 or len(without_f) < 8:
@@ -417,13 +527,18 @@ def _find_drivers(df, roles, spec, y, seg, rest, gap, exclude) -> List[Driver]:
         d = with_f.mean() - without_f.mean()
         effect = (ps - pr) * d
         if gap and np.sign(effect) == np.sign(gap) and abs(effect) >= 0.1 * abs(gap):
-            found.append(Driver(kind, col, label, effect, ps, pr, with_f.mean(), without_f.mean(), mask=mask))
+            found.append(Driver(kind, col, label, effect, ps, pr, with_f.mean(), without_f.mean(),
+                                mask=mask, stems=stems))
     for c, r in roles.items():
         if r != "numeric" or c in exclude:
             continue
         x = pd.to_numeric(df[c], errors="coerce").to_numpy(dtype=float)
         ok = both & ~np.isnan(x) & ~np.isnan(y)
         if ok.sum() < 20 or np.nanstd(x[ok]) == 0:
+            continue
+        # A column that moves almost in lockstep with the metric ("Recommended"
+        # next to "Rating") is the same outcome measured twice, not a cause.
+        if abs(np.corrcoef(x[ok], y[ok])[0, 1]) >= 0.7:
             continue
         slope = np.cov(x[ok], y[ok])[0, 1] / np.var(x[ok], ddof=1)
         xs, xr = np.nanmean(x[seg & ok]), np.nanmean(x[rest & ok])
@@ -449,27 +564,39 @@ def _find_drivers(df, roles, spec, y, seg, rest, gap, exclude) -> List[Driver]:
     return picked
 
 
-def _example(df, dr: Driver, seg) -> Optional[str]:
+def _theme_words(df, dr: Driver, seg) -> str:
+    """The theme's words most used in the segment, as written: 'damaged, late, refund'."""
+    rows, forms = _text_terms(df.loc[seg & dr.mask, dr.column])
+    members = set(dr.stems or [])
+    counts = Counter(s for st in rows for s in st if s in members)
+    return ", ".join(forms[s].most_common(1)[0][0] for s, _ in counts.most_common(4)) or dr.label
+
+
+def _example(df, dr: Driver, seg, y=None, gap: float = 0.0) -> Optional[str]:
     """
-    For a word: the most common note containing it. For the problem theme:
-    the problem words used most often in the segment ("damaged, late, wrong").
+    A short note that shows the theme: from the segment's rows that have it,
+    on the side of the gap (a low-rated review for "why lower"), shortest first.
     """
-    if dr.kind == "problem":
-        words = Counter(w for t in df.loc[seg & dr.mask, dr.column].fillna("").astype(str)
-                        for w in dict.fromkeys(_problem_hits(t)))
-        return ", ".join(w for w, _ in words.most_common(4)) or None
-    if dr.kind != "text":
+    if dr.kind not in ("text", "theme"):
         return None
-    rows = df.loc[seg & dr.mask, dr.column].dropna().astype(str)
+    pick = seg & dr.mask
+    if y is not None and gap:
+        side = pick & ((y < np.nanmean(y[~seg])) if gap < 0 else (y > np.nanmean(y[~seg])))
+        if side.any():
+            pick = side
+    rows = df.loc[pick, dr.column].dropna().astype(str).str.strip()
+    rows = rows[rows.str.len() >= 20] if (rows.str.len() >= 20).any() else rows
     if rows.empty:
         return None
-    text = Counter(rows).most_common(1)[0][0]
-    return text if len(text) <= 120 else text[:117] + "…"
+    counts = rows.value_counts()
+    top = counts[counts == counts.max()].index
+    text = min(top, key=len)
+    return text if len(text) <= 140 else text[:137] + "…"
 
 
 # ── analyses ──────────────────────────────────────────────────────────────────
 
-def _segment_gap(df: pd.DataFrame, roles, spec: Spec) -> Dict[str, Any]:
+def _segment_gap(df: pd.DataFrame, roles, spec: Spec, embed=None) -> Dict[str, Any]:
     y_all = _metric_series(df, spec)
     extreme = _extreme_rows(df, spec, y_all)
     keep = (~extreme & y_all.notna() & df[spec.segment_col].notna()).to_numpy()
@@ -495,12 +622,12 @@ def _segment_gap(df: pd.DataFrame, roles, spec: Spec) -> Dict[str, Any]:
     count_gap_real = spec.agg == "sum" and abs(seg.sum() / max(peers["count"].mean(), 1) - 1) >= 0.1
 
     exclude = {spec.segment_col, spec.metric, *spec.derived_from}
-    drivers = _find_drivers(data, roles, spec, y, seg, rest, gap_row, exclude)
+    drivers = _find_drivers(data, roles, spec, y, seg, rest, gap_row, exclude, embed)
     low = gap_row < 0
 
     # Counterfactual on the yes/no drivers: drop their rows from both sides
     cf = None
-    masks = [d.mask for d in drivers if d.mask is not None][:2]
+    masks = [d.mask for d in drivers if d.mask is not None][:3]
     if masks and gap_row:
         m = np.logical_or.reduce(masks)
         if (seg & ~m).sum() >= 5 and (rest & ~m).sum() >= 5:
@@ -508,7 +635,9 @@ def _segment_gap(df: pd.DataFrame, roles, spec: Spec) -> Dict[str, Any]:
             cf = {"seg": y[seg & ~m].mean(), "rest": y[rest & ~m].mean(),
                   "explained": max(0.0, min(1.0, 1 - remaining / gap_row))}
     for d in drivers:
-        d.example = _example(data, d, seg)
+        d.example = _example(data, d, seg, y, gap_row)
+        if d.kind == "theme":
+            d.label = _theme_words(data, d, seg)
 
     return {"kind": "segment", "data": data, "y": y, "seg": seg, "rest": rest, "per_group": per_group,
             "headline": (headline_seg, headline_rest), "means": (mean_seg, mean_rest), "rank": rank,
@@ -524,7 +653,7 @@ def _period_key(df, spec: Spec, roles) -> pd.Series:
     return d.dt.to_period("M").astype(str).where(d.notna())
 
 
-def _period_change(df: pd.DataFrame, roles, spec: Spec) -> Dict[str, Any]:
+def _period_change(df: pd.DataFrame, roles, spec: Spec, embed=None) -> Dict[str, Any]:
     y_all = _metric_series(df, spec)
     extreme = _extreme_rows(df, spec, y_all)
     key = _period_key(df, spec, roles)
@@ -570,7 +699,7 @@ def _period_change(df: pd.DataFrame, roles, spec: Spec) -> Dict[str, Any]:
     drivers: List[Driver] = []
     if agg == "mean" and cur_m.sum() >= 10 and prev_m.sum() >= 10:
         drivers = _find_drivers(data, roles, spec, y, cur_m, prev_m, v_cur - v_prev,
-                                {spec.period_col, spec.metric, *spec.derived_from})
+                                {spec.period_col, spec.metric, *spec.derived_from}, embed)
 
     return {"kind": "period", "data": data, "series": series, "cur": spec.period, "prev": prev,
             "values": (v_cur, v_prev), "counts": (int(cur_m.sum()), int(prev_m.sum())),
@@ -589,31 +718,33 @@ def _period_label(p: str, roles, spec) -> str:
 
 def _driver_line(dr: Driver, spec: Spec, df, seg_name: str, rest_name: str, unit: str) -> str:
     metric_col = spec.metric
-    avg = "average" if spec.agg == "mean" else "average per row"
-    if dr.kind == "text":
-        line = (f"**{_pct(dr.share_seg)} of {seg_name} {unit} mention “{dr.label}”** in "
-                f"{humanize(dr.column).lower()}, vs {_pct(dr.share_rest)} {rest_name}. Those {unit} "
-                f"{avg} {_fmt(dr.y_with, metric_col, df)} {spec.metric_label.lower()}, against "
+    one = unit[:-1] if unit.endswith("s") else unit
+    per = "" if spec.agg == "mean" else f" per {one}"
+    metric = _lc(spec.metric_label)
+
+    def outcome(prefix: str) -> str:
+        return (f"{prefix} average {_fmt(dr.y_with, metric_col, df)} {metric}{per}, against "
                 f"{_fmt(dr.y_without, metric_col, df)} for the rest.")
+
+    if dr.kind in ("text", "theme"):
+        words = f"“{dr.label}”" if dr.kind == "text" else dr.label
+        line = (f"**{_pct(dr.share_seg)} of {seg_name} {unit} mention {words}** in "
+                f"{humanize(dr.column).lower()}, vs {_pct(dr.share_rest)} {rest_name}. " + outcome(f"Those {unit}"))
         if dr.example:
             line += f" Typical note: “{dr.example}”"
         return line
-    if dr.kind == "problem":
-        line = (f"**{_pct(dr.share_seg)} of {seg_name} {unit} report a problem** in "
-                f"{humanize(dr.column).lower()}, vs {_pct(dr.share_rest)} {rest_name}. Those {unit} "
-                f"{avg} {_fmt(dr.y_with, metric_col, df)} {spec.metric_label.lower()}, against "
-                f"{_fmt(dr.y_without, metric_col, df)} for the rest.")
-        if dr.example:
-            line += f" Most common: {dr.example}."
-        return line
     if dr.kind == "category":
-        return (f"**{_pct(dr.share_seg)} of {seg_name} {unit} are {humanize(dr.column).lower()} "
-                f"“{dr.label}”**, vs {_pct(dr.share_rest)} {rest_name}; those {unit} {avg} "
-                f"{_fmt(dr.y_with, metric_col, df)} vs {_fmt(dr.y_without, metric_col, df)}.")
+        what = f"{humanize(dr.column).lower()} “{dr.label}”"
+        if dr.share_rest == 0:
+            # A group that only exists inside the segment (Sales Representatives within Sales)
+            return (f"**{what}** ({_pct(dr.share_seg)} of {seg_name} {unit}, a group found only in "
+                    f"{seg_name}): " + outcome("they"))
+        return (f"**{_pct(dr.share_seg)} of {seg_name} {unit} have {what}**, vs {_pct(dr.share_rest)} "
+                f"{rest_name}. " + outcome(f"Those {unit}"))
+    direction = "lower" if (dr.effect < 0) == (dr.mean_seg > dr.mean_rest) else "higher"
     return (f"**{dr.label} averages {_fmt(dr.mean_seg, dr.column, df)}** for {seg_name} vs "
-            f"{_fmt(dr.mean_rest, dr.column, df)} {rest_name}, and higher {dr.label.lower()} goes with "
-            f"{'lower' if (dr.effect < 0) == (dr.mean_seg > dr.mean_rest) else 'higher'} "
-            f"{spec.metric_label.lower()}.")
+            f"{_fmt(dr.mean_rest, dr.column, df)} {rest_name}; higher {_lc(dr.label)} is linked to "
+            f"{direction} {metric}.")
 
 
 def _plural(word: str) -> str:
@@ -630,11 +761,11 @@ def _segment_answer(res, spec: Spec, df) -> str:
     seg_name = spec.segment_val
     group_word = humanize(spec.segment_col).lower()
     rest_name = "elsewhere"
-    unit = "rows" if not re.search(r"order", " ".join(df.columns), re.I) else "orders"
+    unit = _unit_noun(df)
     hs, hr = res["headline"]
     ms, mr = res["means"]
     total = spec.agg == "sum"
-    what = f"average {spec.metric_label.lower()}" if spec.agg == "mean" else f"total {spec.metric_label.lower()}"
+    what = (_lc(spec.metric_label) if spec.metric == "__flag" else f"average {_lc(spec.metric_label)}" if spec.agg == "mean" else f"total {_lc(spec.metric_label)}")
     r, n = res["rank"]
     pos = ("the lowest" if r == n else "the highest" if r == 1
            else f"the {_ordinal(int(r))}-highest" if r <= n / 2 else f"the {_ordinal(int(n - r + 1))}-lowest")
@@ -682,12 +813,12 @@ def _period_answer(res, spec: Spec, df, roles) -> str:
     total = spec.agg == "sum"
     change = (v_cur / v_prev - 1) if v_prev else float("nan")
     verb = "fell" if v_cur < v_prev else "rose" if v_cur > v_prev else "held flat"
-    what = f"{'Total' if total else 'Average'} {spec.metric_label.lower()}"
+    what = spec.metric_label if spec.metric == "__flag" else f"{'Total' if total else 'Average'} {_lc(spec.metric_label)}"
     lines = [f"**{what} {verb} {abs(change) * 100:.1f}% in {cur}: {_fmt(v_cur, spec.metric, df, total)}** "
              f"vs {_fmt(v_prev, spec.metric, df, total)} in {prev}."]
     nc, np_ = res["counts"]
     if total and nc != np_ and nc > 1:
-        unit = "orders" if re.search(r"order", " ".join(df.columns), re.I) else "rows"
+        unit = _unit_noun(df)
         lines.append(f"There were {nc:,} {unit} in {cur} vs {np_:,} in {prev}.")
     bullets = []
     for share, col, val, delta in res["contributions"]:
@@ -701,7 +832,7 @@ def _period_answer(res, spec: Spec, df, roles) -> str:
             bullets.append(f"**{humanize(col)}** moved from {_fmt(before, col, df)} to {_fmt(after, col, df)} "
                            f"({(after / before - 1) * 100:+.0f}%) over the same months.")
     for dr in res["drivers"][:2]:
-        bullets.append(_driver_line(dr, spec, df, cur, f"in {prev}", "rows"))
+        bullets.append(_driver_line(dr, spec, df, cur, f"in {prev}", _unit_noun(df)))
     if bullets:
         lines.append("\n**What changed alongside it:**")
         lines += [f"- {b}" for b in bullets[:4]]
@@ -716,7 +847,7 @@ def _plot(res, spec: Spec, df, roles) -> Optional[Dict[str, Any]]:
     if res["kind"] == "period":
         s = res["series"].dropna()
         labels = [_period_label(p, roles, spec) if roles.get(spec.period_col) == "month" else p for p in s.index]
-        label = f"{'Total' if spec.agg == 'sum' else 'Average'} {spec.metric_label.lower()}"
+        label = f"{'Total' if spec.agg == 'sum' else 'Average'} {_lc(spec.metric_label)}"
         return {"type": "line" if len(s) > 8 else "bar", "x": labels, "y": [float(v) for v in s.values],
                 "datasets": [{"label": label, "data": [float(v) for v in s.values]}],
                 "x_label": "Month", "y_label": label, "title": f"{spec.metric_label} by month"}
@@ -724,15 +855,15 @@ def _plot(res, spec: Spec, df, roles) -> Optional[Dict[str, Any]]:
     top = next((d for d in res["drivers"] if d.mask is not None), None)
     if top:
         share = pd.Series(top.mask).groupby(groups.values).mean().sort_values(ascending=False) * 100
-        what = ("report a problem" if top.kind == "problem" else f"mention “{top.label}”" if top.kind == "text"
+        what = (f"mention {top.label}" if top.kind == "theme" else f"mention “{top.label}”" if top.kind == "text"
                 else f"are {humanize(top.column).lower()} “{top.label}”")
-        label = f"% of rows that {what}"
+        label = f"% of {_unit_noun(data)} that {what}"
         return {"type": "bar", "x": list(share.index), "y": [round(float(v), 1) for v in share.values],
                 "datasets": [{"label": label, "data": [round(float(v), 1) for v in share.values]}],
                 "x_label": humanize(spec.segment_col), "y_label": label,
-                "title": f"Share of rows that {what}, by {humanize(spec.segment_col).lower()}"}
+                "title": f"Share of {_unit_noun(data)} that {what}, by {humanize(spec.segment_col).lower()}"}
     g = res["per_group"][spec.agg].sort_values()
-    label = f"{'Average' if spec.agg == 'mean' else 'Total'} {spec.metric_label.lower()}"
+    label = f"{'Average' if spec.agg == 'mean' else 'Total'} {_lc(spec.metric_label)}"
     return {"type": "bar", "x": list(g.index), "y": [float(v) for v in g.values],
             "datasets": [{"label": label, "data": [float(v) for v in g.values]}],
             "x_label": humanize(spec.segment_col), "y_label": label,
@@ -755,7 +886,7 @@ def _driver_rows(res, spec, df) -> List[Dict[str, Any]]:
 
 # ── entry point ───────────────────────────────────────────────────────────────
 
-def analyze(df: pd.DataFrame, question: str, llm=None) -> Optional[Dict[str, Any]]:
+def analyze(df: pd.DataFrame, question: str, llm=None, embed=None) -> Optional[Dict[str, Any]]:
     """
     Driver analysis for a "why" question on one table. Returns None when the
     question can't be tied to a metric and a segment/period in this table,
@@ -769,7 +900,7 @@ def analyze(df: pd.DataFrame, question: str, llm=None) -> Optional[Dict[str, Any
         return None
     logger.info(f"🔎 Driver analysis: {spec.metric_label} ({spec.agg}) · "
                 f"{spec.segment_col}={spec.segment_val!r} period={spec.period}")
-    res = _segment_gap(df, roles, spec) if spec.segment_col else _period_change(df, roles, spec)
+    res = _segment_gap(df, roles, spec, embed) if spec.segment_col else _period_change(df, roles, spec, embed)
     if not res:
         return None
     answer = _segment_answer(res, spec, df) if res["kind"] == "segment" else _period_answer(res, spec, df, roles)
@@ -781,5 +912,6 @@ def analyze(df: pd.DataFrame, question: str, llm=None) -> Optional[Dict[str, Any
         "data": _driver_rows(res, spec, df),
         "row_count": len(res.get("drivers", [])),
         "analysis": {"metric": spec.metric_label, "aggregation": spec.agg, "segment_column": spec.segment_col,
-                     "segment_value": spec.segment_val, "period": spec.period, "kind": res["kind"]},
+                     "segment_value": spec.segment_val, "period": spec.period, "kind": res["kind"],
+                     "explained": round((res.get("counterfactual") or {}).get("explained", 0.0), 3)},
     }

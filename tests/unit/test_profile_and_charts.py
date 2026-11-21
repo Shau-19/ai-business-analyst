@@ -63,7 +63,7 @@ def test_kpis_sum_additive_and_average_rates():
     assert kpis["revenue"]["agg"] == "Total" and kpis["revenue"]["value"] == 2100
     assert kpis["churn_rate"]["agg"] == "Average" and kpis["churn_rate"]["value"] == pytest.approx(0.15)
     assert list(kpis)[0] == "revenue"                         # additive measure leads
-    assert kpis["revenue"]["change_pct"] == 500.0             # Jan 100 → Jun 600
+    assert kpis["revenue"]["change_pct"] == 20.0              # May 500 → Jun 600 (latest vs previous)
     assert len(kpis["revenue"]["spark"]) == 6
 
 
@@ -108,8 +108,8 @@ def test_no_note_when_data_has_no_extremes():
     assert "trend_note" not in prof["kpis"][0]
 
 
-def test_kpi_change_skipped_when_first_period_is_zero():
-    df = pd.DataFrame({"date": ["2024-01-01", "2024-02-01", "2024-03-01"], "sales": [0, 5, 9]})
+def test_kpi_change_skipped_when_previous_period_is_zero():
+    df = pd.DataFrame({"date": ["2024-01-01", "2024-02-01", "2024-03-01"], "sales": [5, 0, 9]})
     k = profile_table(df, "t")["kpis"][0]
     assert "change_pct" not in k
 
@@ -225,3 +225,20 @@ def test_no_chart_when_nothing_to_plot(res):
 def test_title_is_human():
     rows = [{"month": "Jan", "new_customers": 3}, {"month": "Feb", "new_customers": 5}]
     assert pb.build_plot_spec(_res(rows), "new customers by month")["title"] == "New customers by month"
+
+
+def test_unfinished_last_month_left_out_of_trends():
+    """Orders ending 19 Dec made every trend dive at the end and skewed the KPI change."""
+    days = pd.date_range("2024-01-01", "2024-12-19", freq="D")
+    df = pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "units": 10})
+    prof = profile_table(df, "t")
+    k = prof["kpis"][0]
+    assert k["to_label"] == "2024-11" and k["from_label"] == "2024-10"
+    trend = next(c for c in prof["charts"] if c["kind"] == "trend")
+    assert trend["plot"]["x"][-1] == "2024-11"
+
+
+def test_month_stamped_data_keeps_its_last_month():
+    df = pd.DataFrame({"date": pd.date_range("2024-01-01", periods=12, freq="MS").strftime("%Y-%m-%d"),
+                       "revenue": range(12)})
+    assert profile_table(df, "t")["kpis"][0]["to_label"] == "2024-12"

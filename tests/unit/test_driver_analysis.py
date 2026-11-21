@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from tools.data_clean import clean_frame
-from tools.driver_analysis import _problem_hits, analyze, is_why_question, parse_question
+from tools.driver_analysis import analyze, is_why_question, parse_question
 
 rng = np.random.default_rng(7)
 
@@ -68,43 +68,83 @@ def test_unrelated_question_returns_none():
     assert analyze(planted(), "Why is the sky blue?") is None
 
 
-# ── problem detection in free text ────────────────────────────────────────────
+# ── free text: words and word themes ──────────────────────────────────────────
 
-@pytest.mark.parametrize("text, hits", [
-    ("Item arrived damaged; customer requested a replacement.", ["damaged", "replacement"]),
-    ("Late delivery (5 days), customer complained.", ["late", "complained"]),
-    ("Smooth order, no issues.", []),                      # negated
-    ("Not damaged at all, great.", []),
-    ("Invoice re-issued with GST number.", []),            # "issued" is not "issue"
-    ("Will call later about the dental kit.", []),         # "later", "dental"
-    ("Stainless steel bottle, delivered.", []),
+@pytest.mark.parametrize("text, words", [
+    ("Entregó tarde, caja dañada", ["entregó", "tarde", "caja", "dañada"]),
+    ("डिलीवरी देर से हुई", ["डिलीवरी", "देर", "से", "हुई"]),
+    ("Box crushed; screen cracked 😞", ["box", "crushed", "screen", "cracked"]),
 ])
-def test_problem_words(text, hits):
-    assert _problem_hits(text) == hits
+def test_words_split_in_any_script(text, words):
+    from tools.driver_analysis import _words
+    assert _words(text) == words
+
+
+def test_no_keyword_list_in_the_analyst():
+    """Themes come from the data and the embedder, never from a built-in word list."""
+    import tools.driver_analysis as da
+    assert not any(hasattr(da, n) for n in ("PROBLEM_STEMS", "PROBLEM_WORDS", "_problem_hits"))
 
 
 # ── segment gaps ──────────────────────────────────────────────────────────────
 
-def test_finds_the_planted_cause_and_explains_the_gap():
-    r = analyze(planted(), "Why are customer ratings lower in the West region?")
+def test_finds_the_planted_cause_and_explains_the_gap(embedder):
+    r = analyze(planted(), "Why are customer ratings lower in the West region?", embed=embedder)
     assert r and r["analysis"]["kind"] == "segment"
+    kinds = [d["kind"] for d in r["data"]]
+    assert kinds and set(kinds) <= {"text", "theme"}, r["data"]     # the notes, nothing random
     top = r["data"][0]
-    assert top["kind"] == "problem"
-    assert top["segment_share"] > 0.25 and top["others_share"] < 0.15
-    assert "report a problem" in r["answer"]
+    assert top["segment_share"] > top["others_share"] and top["metric_with"] < top["metric_without"]
     assert "of the gap" in r["answer"]
-    assert r["plot"]["x"][0] == "West"                     # West has the highest problem share
 
 
-def test_messy_file_west_ratings(messy_csv):
+def test_messy_file_west_ratings(messy_csv, embedder):
+    df, _ = clean_frame(pd.read_csv(messy_csv, dtype=str, keep_default_na=False))
+    r = analyze(df, "Why are customer ratings lower in the West region?", embed=embedder)
+    assert r["answer"].startswith("**West has the lowest average customer rating: 3.51**")
+    words = " ".join(d["factor"] for d in r["data"]).lower()
+    assert "damaged" in words or "cracked" in words
+    assert r["analysis"]["explained"] >= 0.9
+
+
+def test_works_without_an_embedder(messy_csv):
     df, _ = clean_frame(pd.read_csv(messy_csv, dtype=str, keep_default_na=False))
     r = analyze(df, "Why are customer ratings lower in the West region?")
-    assert r["answer"].startswith("**West has the lowest average customer rating: 3.51**")
-    top = r["data"][0]
-    # Generator: 32.6% of West orders had a problem vs 12.6% elsewhere
-    assert top["kind"] == "problem"
-    assert top["segment_share"] == pytest.approx(0.326, abs=0.03)
-    assert top["others_share"] == pytest.approx(0.126, abs=0.03)
+    assert r and all(d["kind"] in ("text", "category", "numeric") for d in r["data"])
+
+
+def test_structural_features_are_not_causes():
+    """A value that never (or always) occurs in the segment is structure, not a reason."""
+    df = planted()
+    df["region_group"] = np.where(df.region == "West", "Pacific", "Other")       # 100% of West
+    df["service"] = np.where(df.region == "West", "Standard", rng.choice(["Standard", "None"], len(df)))
+    r = analyze(df, "Why are customer ratings lower in the West region?")
+    factors = [d["factor"] for d in r["data"]]
+    assert not any("Region Group" in f or "Service: None" in f for f in factors), factors
+
+
+def test_plural_segment_name_matches():
+    df = planted()
+    df["role"] = rng.choice(["Sales Representative", "Engineer", "Manager"], len(df))
+    spec = parse_question(df, "Why are customer ratings lower for Sales Representatives?")
+    assert (spec.segment_col, spec.segment_val) == ("role", "Sales Representative")
+
+
+def test_yes_no_column_becomes_a_rate():
+    df = planted()
+    df["churned"] = np.where(rng.random(len(df)) < np.where(df.region == "West", 0.4, 0.1), "Yes", "No")
+    r = analyze(df, "Why is churn higher in the West?")
+    assert r["analysis"]["metric"] == "Churned rate"
+    assert r["answer"].startswith("**West has the highest churned rate:")
+    assert "%" in r["answer"].splitlines()[0]
+
+
+def test_outcome_proxies_are_not_drivers():
+    """'Recommended' moves in lockstep with 'Rating': the same outcome, not a cause."""
+    df = planted()
+    df["recommended"] = (df.customer_rating >= 4).astype(int)
+    r = analyze(df, "Why are customer ratings lower in the West region?")
+    assert not any(d["factor"] == "Recommended" for d in r["data"])
 
 
 def test_no_real_gap_says_so_instead_of_inventing_causes():
@@ -168,3 +208,27 @@ def test_period_contribution_by_category():
 def test_first_period_has_nothing_to_compare():
     df = planted()
     assert analyze(df, "Why was revenue low in January 2024?") is None
+
+
+# ── wording ───────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("cols, noun", [(["Order ID", "x"], "orders"), (["Employee ID"], "employees"),
+                                        (["customer_id"], "customers"), (["TicketID"], "tickets"),
+                                        (["EmployeeNumber"], "employees"), (["Row ID", "Order ID"], "orders"),
+                                        (["Phone Number", "x"], "rows"), (["id"], "rows")])
+def test_unit_noun_from_id_column(cols, noun):
+    from tools.driver_analysis import _unit_noun
+    df = pd.DataFrame({c: [f"{c}{i}" for i in range(20)] for c in cols})
+    assert _unit_noun(df) == noun
+
+
+def test_unit_noun_ignores_ids_that_repeat():
+    """'Clothing ID' on a reviews table names the item, not the row."""
+    from tools.driver_analysis import _unit_noun
+    df = pd.DataFrame({"Clothing ID": [1, 1, 2, 2, 3], "Review Text": list("abcde")})
+    assert _unit_noun(df) == "rows"
+
+
+def test_acronyms_keep_their_case():
+    from tools.driver_analysis import _lc
+    assert _lc("CSAT") == "CSAT" and _lc("Customer Rating") == "customer rating" and _lc("NPS Score") == "NPS score"

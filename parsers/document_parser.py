@@ -48,6 +48,11 @@ class DocumentParser:
                     },
                 ))
 
+        if len(documents) == 1:
+            # Only the "PDF Document: x, N pages" stub: a scanned image with no
+            # text layer. Indexing it would make every question "not found".
+            raise ValueError("no readable text (looks like a scanned image; run OCR and upload again)")
+
         logger.info(f"✅ Parsed {len(documents)} chunks from {filename}")
         return documents
 

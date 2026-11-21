@@ -37,7 +37,8 @@ ID_CAMEL = re.compile(r"[a-z0-9](ID|Id)$")
 def _id_name(col) -> bool:
     return bool(ID_HINT.search(str(col).lower()) or ID_CAMEL.search(str(col)))
 MEAN_HINT = re.compile(r"(rate|pct|percent|ratio|avg|average|mean|score|churn|margin|age|price|"
-                       r"size|per_|_per|lpa|days|duration|rating|discount|temperature|tenure)", re.IGNORECASE)
+                       r"size|per_|_per|lpa|days|duration|rating|discount|temperature|tenure|"
+                       r"satisf|csat|nps|hours|minutes|stars)", re.IGNORECASE)
 MEASURE_PRIORITY = ("revenue", "sales", "amount", "profit", "cost", "spend", "price", "total",
                     "units", "quantity", "qty", "orders", "customers", "value", "salary")
 
@@ -45,6 +46,11 @@ MEASURE_PRIORITY = ("revenue", "sales", "amount", "profit", "cost", "spend", "pr
 def humanize(col: str) -> str:
     s = re.sub(r"([a-z])([A-Z])", r"\1 \2", str(col)).replace("_", " ").strip()
     return s[:1].upper() + s[1:]
+
+
+def _lc(label: str) -> str:
+    """Lowercase for mid-sentence use, keeping acronyms: 'CSAT' stays CSAT."""
+    return " ".join(w if (w.isupper() and len(w) > 1) else w.lower() for w in str(label).split())
 
 
 def _num(v) -> Optional[float]:
@@ -135,6 +141,11 @@ def _period_frame(df: pd.DataFrame, roles: Dict[str, str]):
         # astype(str) turns a missing date into the text "NaT", which then
         # showed up as the last month on charts and in "2023-01 → NaT".
         key = key.where(d.notna())
+        # A month that has barely started (orders end 19 Dec) reads as a crash
+        # at the end of every trend. Leave it out when the dates are daily.
+        last = d.max()
+        if span_days > 62 and last.day < 25 and d.dt.day.nunique() > 3:
+            key = key.where(key != last.strftime("%Y-%m"))
         return key, (lambda k: k), date
     return None
 
@@ -187,12 +198,14 @@ def _kpis(df, roles, measures) -> List[Dict[str, Any]]:
                "value": _num(value)}
         typical, n_ext, biggest = _typical(df, m)
         trend = _series_by_period(typical, roles, m)
-        if trend and trend["values"][0] not in (None, 0) and trend["values"][-1] is not None:
-            first, last = trend["values"][0], trend["values"][-1]
+        # Change = latest period vs the one before. First-vs-last compared a
+        # thin first month (a few orders) with the latest, giving +145% swings.
+        if trend and trend["values"][-2] not in (None, 0) and trend["values"][-1] is not None:
+            prev, last = trend["values"][-2], trend["values"][-1]
             kpi.update({
                 "spark": trend["values"],
-                "change_pct": round((last - first) / abs(first) * 100, 1),
-                "from_label": trend["labels"][0], "to_label": trend["labels"][-1],
+                "change_pct": round((last - prev) / abs(prev) * 100, 1),
+                "from_label": trend["labels"][-2], "to_label": trend["labels"][-1],
                 "last": last,
             })
             if n_ext:
@@ -211,16 +224,16 @@ def _charts(df, roles, measures) -> List[Dict[str, Any]]:
     note = _excluded_note(n_ext, biggest)
     trend = _series_by_period(df, roles, m)
     if trend:
-        label = f"{'Average' if trend['agg'] == 'mean' else 'Total'} {humanize(m).lower()}"
+        label = f"{'Average' if trend['agg'] == 'mean' else 'Total'} {_lc(humanize(m))}"
         charts.append({
             "kind": "trend",
             "note": note,
-            "question": f"Show {humanize(m).lower()} over time",
+            "question": f"Show {_lc(humanize(m))} over time",
             "plot": {"type": "line" if len(trend["labels"]) > 8 else "bar",
                      "x": trend["labels"], "y": trend["values"],
                      "datasets": [{"label": label, "data": trend["values"]}],
                      "x_label": humanize(trend["axis"]), "y_label": label,
-                     "title": f"{humanize(m)} by {humanize(trend['axis']).lower()}"},
+                     "title": f"{humanize(m)} by {_lc(humanize(trend['axis']))}"},
         })
     cats = [c for c, r in roles.items() if r == "categorical" and 2 <= full[c].nunique() <= 25]
     if cats:
@@ -228,15 +241,15 @@ def _charts(df, roles, measures) -> List[Dict[str, Any]]:
         agg = _agg_name(m)
         g = (df.assign(_v=pd.to_numeric(df[m], errors="coerce"))
                .groupby(c)["_v"].agg(agg).sort_values(ascending=False).head(10))
-        label = f"{'Average' if agg == 'mean' else 'Total'} {humanize(m).lower()}"
+        label = f"{'Average' if agg == 'mean' else 'Total'} {_lc(humanize(m))}"
         charts.append({
             "kind": "breakdown",
             "note": note,
-            "question": f"What is the {label.lower()} by {humanize(c).lower()}?",
+            "question": f"What is the {label.lower()} by {_lc(humanize(c))}?",
             "plot": {"type": "bar", "x": [str(k) for k in g.index], "y": [_num(v) for v in g.values],
                      "datasets": [{"label": label, "data": [_num(v) for v in g.values]}],
                      "x_label": humanize(c), "y_label": label,
-                     "title": f"{humanize(m)} by {humanize(c).lower()}"},
+                     "title": f"{humanize(m)} by {_lc(humanize(c))}"},
         })
     return charts
 
@@ -246,13 +259,13 @@ def _questions(roles, measures) -> List[str]:
     has_time = any(r in ("date", "month") for r in roles.values())
     qs = []
     if measures and cats:
-        qs.append(f"Which {humanize(cats[0]).lower()} has the highest {humanize(measures[0]).lower()}?")
+        qs.append(f"Which {_lc(humanize(cats[0]))} has the highest {_lc(humanize(measures[0]))}?")
     if measures and has_time:
-        qs.append(f"How did {humanize(measures[0]).lower()} change over time?")
+        qs.append(f"How did {_lc(humanize(measures[0]))} change over time?")
     if len(measures) > 1:
-        qs.append(f"Is there a relationship between {humanize(measures[0]).lower()} and {humanize(measures[1]).lower()}?")
+        qs.append(f"Is there a relationship between {_lc(humanize(measures[0]))} and {_lc(humanize(measures[1]))}?")
     if measures and has_time:
-        qs.append(f"Forecast {humanize(measures[0]).lower()} for the next 6 periods")
+        qs.append(f"Forecast {_lc(humanize(measures[0]))} for the next 6 periods")
     qs.append("Summarize the key trends in this data")
     return qs[:5]
 
@@ -288,7 +301,7 @@ def _why_question(df, roles, measures) -> Optional[str]:
     means = pd.to_numeric(df[m], errors="coerce").groupby(df[c]).mean().dropna()
     if len(means) < 3:
         return None
-    return f"Why is {humanize(m).lower()} lower in {means.idxmin()}?"
+    return f"Why is {_lc(humanize(m))} lower in {means.idxmin()}?"
 
 
 def profile_table(df: pd.DataFrame, table: str, source: Optional[str] = None) -> Dict[str, Any]:

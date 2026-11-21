@@ -5,13 +5,15 @@ pytest                                   # unit + API layers (API layer skips if
 pytest tests/unit                        # no server, no network, ~1 min
 ANALYST_URL=http://127.0.0.1:8001 pytest # point the API layer at another server
 pytest -m llm                            # answer-quality layer, spends ~25 LLM calls
-pytest -m "api or not api"               # everything
+python tests/realdata/fetch.py; pytest -m realdata   # 4 public datasets (Telco, IBM HR, Superstore, reviews)
+pytest -m "api or llm or realdata or not api"   # everything
 ```
 
 | Layer | Needs | What it guards |
 |---|---|---|
 | `unit/` | nothing | import cleaning, CSV encodings and delimiters, SQL guard, session isolation, query time limit, value rewriter, profile and charts, LLM fallback, auth and quota |
 | `api/` | running server | auth on every write endpoint, input validation, upload limits and path traversal, isolation, delete, dashboard, parallel reads |
+| `realdata/` | `fetch.py` once (12 MB) | the why-analyst on public datasets, checked against documented findings computed with pandas in each test |
 | `llm/` | server + LLM key | answers match numbers hand-computed from `fixtures/messy_orders.csv`, injection and cross-session attacks, documents, streaming |
 
 The live tests create conversations as user `pytest_qa` and delete them at the end.

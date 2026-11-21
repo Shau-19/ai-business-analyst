@@ -54,6 +54,17 @@ def tmp_db(tmp_path):
 
 
 @pytest.fixture(scope="session")
+def embedder():
+    """The app's sentence embedder (same model as RAG); skips if it can't load."""
+    try:
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from config import settings
+        return HuggingFaceEmbeddings(model_name=settings.EMBEDDING_MODEL).embed_documents
+    except Exception as e:
+        pytest.skip(f"embedding model unavailable: {e}")
+
+
+@pytest.fixture(scope="session")
 def messy_csv():
     return FIXTURES / "messy_orders.csv"
 

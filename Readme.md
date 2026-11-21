@@ -58,20 +58,35 @@ The eval isn't just a scorecard — writing it surfaced three real, latent bugs 
 ## 🔎 Built for real exports, not demo CSVs
 
 ### Answers "why", not just "what"
-`tools/driver_analysis.py` handles questions like *"Why are customer ratings lower in the West?"* or
-*"Why did revenue drop in March?"*. A single GROUP BY shows that West is lower. The analyst also
-compares West orders with all the others on every other column: product mix, sales rep, discount,
-and problem reports in free-text notes. It keeps only the differences that line up with the gap, then
-checks how much of the gap disappears when those rows are left out:
+`tools/driver_analysis.py` handles questions like *"Why is attrition higher in Sales?"* or
+*"Why did revenue drop in March?"*. A single GROUP BY only shows that Sales is higher. The analyst
+compares the segment with all the others on every other column: categories, numbers, and themes
+in free-text notes. It keeps only the differences that line up with the gap and are big enough not
+to be chance, then checks how much of the gap disappears when those rows are left out. On the
+public IBM HR attrition dataset:
 
-> **West has the lowest average customer rating: 3.51** vs 3.91 for the other regions.
-> - **31% of West orders report a problem** in notes, vs 12% elsewhere. Those orders average 2.08, against 4.17 for the rest. Most common: wobbles, refund, late, complained.
+> **Sales has the highest attrition rate: 20.6%** vs 14.2% for the other departments.
+> - **Job role “Sales Representative”** (19% of Sales employees, a group found only in Sales): they average 39.8% attrition rate, against 14.7% for the rest.
 >
-> Leaving those orders out, West averages 4.18 vs 4.16 elsewhere, so they account for about **100% of the gap**.
+> Leaving those employees out, Sales averages 15.9% vs 14.2% elsewhere, so they account for about **74% of the gap**.
 
-All the numbers come from pandas statistics, not the LLM. When there is no real gap ("Why are
-Electronics ratings low?" when they're level with the rest), the analyst says so instead of
-inventing a cause.
+- **No built-in word lists.** Free text is grouped into themes by embedding the vocabulary with
+  the app's sentence model and clustering it (e.g. "damaged, cracked" or "return, unflattering").
+  The statistics decide which theme matters. Set `EMBEDDING_MODEL` to a multilingual model for
+  notes in other languages.
+- **Doesn't invent causes.** It skips features that are true by definition (0% or 100% of the
+  segment) and outcome proxies (a "Recommended" flag next to "Rating"). When there's no real gap
+  ("Why are Electronics ratings low?"), it says so.
+- **Every number comes from pandas,** not the LLM. Yes/no columns (churn, attrition) become rates.
+
+**Validated on public data it wasn't built around** (`pytest -m realdata`; expected values computed independently in each test):
+
+| Dataset | Documented finding | The analyst finds |
+|---|---|---|
+| IBM Telco churn (7,043) | Fiber customers pay more and lack add-ons | Monthly charges 91.50 vs 43.79; no online security 73% vs 31% |
+| IBM HR attrition (1,470) | Sales Representatives drive attrition; junior and low-paid | 39.8% attrition; income $2,626 vs $6,735; job level 1.1 vs 2.1 |
+| Superstore (8,399) | Tables lose money | Furniture rows mentioning “table, tables” average −$127 profit |
+| Clothing reviews (23,486) | Trend items draw fit and return complaints | “return, pattern, print, unflattering” in 29% vs 16% of reviews |
 
 ### Cleans messy files on import
 `tools/data_clean.py` turns `"$1,299.00"`, `"12 units"`, `"4.5/5"` and `"15 %"` into numbers. It also
@@ -88,8 +103,9 @@ test suite runs prompt-injection, cross-session and destructive questions agains
 
 ### Tested end to end
 ```bash
-pytest                 # 274 unit tests (~2 min) + 50 API tests against a running server
+pytest                 # 301 unit tests (~2 min) + 50 API tests against a running server
 pytest -m llm          # 23 answer-quality tests: answers match hand-computed numbers on a messy 1,000-row file
+python tests/realdata/fetch.py && pytest -m realdata   # 14 tests on 4 public datasets (Telco, IBM HR, Superstore, reviews)
 ```
 See [tests/README.md](tests/README.md).
 
