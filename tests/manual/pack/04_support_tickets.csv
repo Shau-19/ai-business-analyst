@@ -1,0 +1,401 @@
+﻿Ticket ID	Opened	Category	Priority	Resolution Hours	CSAT	Agent	Description
+T-5000	2024-07-05 08:00	Billing	Low	5.9	4	Omar	Charged twice for order, asked for refund.
+T-5001	2024-09-04 16:00	Shipping	High	6.0	4	Léa	Box arrived damaged, SwiftShip driver refused to wait.
+T-5002	2024-07-06 14:00	Billing	Medium	2.3	3	Ravi	Charged twice for order, asked for refund.
+T-5003	2024-10-14 11:00	Technical	Medium	9.2	5	Zoë	Cannot reset password, link expired.
+T-5004	2024-10-05 03:00	Billing	Medium	5.7	3	Kenji	Promo code not applied at checkout.
+T-5005	2024-09-29 20:00	Shipping	Medium	6.2	3	Omar	Box arrived damaged, SwiftShip driver refused to wait.
+T-5006	2024-10-12 21:00	Technical	Medium	11.7	4	Ravi	Export to Excel fails for large orders.
+T-5007	2024-10-24 02:00	Billing	Low	17.8	4	Kenji	Charged twice for order, asked for refund.
+T-5008	2024-08-21 07:00	Technical	High	15.0	4	Zoë	Export to Excel fails for large orders.
+T-5009	2024-08-23 03:00	Billing	Medium	1.6	3	Léa	Promo code not applied at checkout.
+T-5010	2024-07-20 06:00	Account	Urgent	6.1	4	Ravi	Two accounts merged by mistake.
+T-5011	2024-08-10 03:00	Billing	Low	15.0	1	Ana	Refund still not received after two weeks, escalated to finance.
+T-5012	2024-09-21 12:00	Billing	Urgent	9.0	4	Kenji	Invoice shows wrong GST number.
+T-5013	2024-09-20 20:00	Account	Medium	12.0	4	Ravi	Wants to change registered email.
+T-5014	2024-09-13 20:00	Technical	Medium	9.1	5	Ravi	App crashes when uploading a photo.
+T-5015	2024-08-09 17:00	Shipping	Medium	13.4	4	Zoë	Delivery late by 6 days.
+T-5016	2024-07-05 22:00	Technical	Medium	13.8	5	Zoë	Cannot reset password, link expired.
+T-5017	2024-08-22 09:00	Billing	Urgent	5.1	4	Kenji	Invoice shows wrong GST number.
+T-5018	2024-09-30 14:00	Shipping	Low	2.1	5	Léa	Parcel delivered to wrong address.
+T-5019	2024-08-31 08:00	Billing	Medium	25.3	5	Kenji	Promo code not applied at checkout.
+T-5020	2024-08-07 03:00	Technical	High	9.2	5	Léa	Dashboard loads slowly on mobile.
+T-5021	2024-09-12 21:00	Billing	High	14.1	2	Zoë	Refund still not received after two weeks, escalated to finance.
+T-5022	2024-07-10 23:00	Shipping	Medium	8.1	3	Omar	Box arrived damaged, SwiftShip driver refused to wait.
+T-5023	2024-08-15 18:00	Technical	Low	32.6	5	Omar	Cannot reset password, link expired.
+T-5024	2024-10-05 08:00	Account	High	18.8	5	Omar	Asked to close account.
+T-5025	2024-10-03 03:00	Shipping	Medium	26.6	5	Ana	Delivery late by 6 days.
+T-5026	2024-09-06 11:00	Technical	High	8.9	3	Ana	App crashes when uploading a photo.
+T-5027	2024-07-13 04:00	Billing	Urgent	12.3	4	Léa	Promo code not applied at checkout.
+T-5028	2024-10-09 11:00	Technical	Low	28.6	5	Zoë	Cannot reset password, link expired.
+T-5029	2024-09-19 14:00	Shipping	Medium	9.6	3	Ana	Courier marked delivered but nothing arrived.
+T-5030	2024-08-06 12:00	Shipping	Low	6.1	5	Ravi	Parcel delivered to wrong address.
+T-5031	2024-08-17 22:00	Shipping	Low	11.3	5	Zoë	Courier marked delivered but nothing arrived.
+T-5032	2024-10-27 02:00	Technical	Medium	18.8	4	Ana	Cannot reset password, link expired.
+T-5033	2024-08-25 16:00	Shipping	Urgent	7.5	3	Ana	Courier marked delivered but nothing arrived.
+T-5034	2024-07-08 10:00	Technical	Medium	7.8	3	Léa	App crashes when uploading a photo.
+T-5035	2024-10-26 23:00	Account	Medium	9.0	5	Zoë	Wants to change registered email.
+T-5036	2024-07-26 02:00	Shipping	Urgent	9.5	4	Ravi	Parcel delivered to wrong address.
+T-5037	2024-07-20 10:00	Shipping	Medium	7.6	4	Ravi	Courier marked delivered but nothing arrived.
+T-5038	2024-08-18 10:00	Technical	Medium	6.1	4	Kenji	Export to Excel fails for large orders.
+T-5039	2024-10-10 10:00	Account	Medium	10.1	4	Kenji	Needs GST invoice for company account.
+T-5040	2024-07-07 16:00	Technical	High	7.5	3	Léa	App crashes when uploading a photo.
+T-5041	2024-07-14 13:00	Shipping	Low	14.9	3	Omar	Box arrived damaged, SwiftShip driver refused to wait.
+T-5042	2024-07-25 08:00	Billing	Urgent	12.2	2	Ana	Refund still not received after two weeks, escalated to finance.
+T-5043	2024-10-10 15:00	Billing	High	12.2	5	Zoë	Charged twice for order, asked for refund.
+T-5044	2024-07-24 01:00	Account	Low	8.1	5	Léa	Needs GST invoice for company account.
+T-5045	2024-08-16 23:00	Technical	High	11.1	4	Omar	Dashboard loads slowly on mobile.
+T-5046	2024-08-18 16:00	Technical	Low	7.2	3	Omar	Cannot reset password, link expired.
+T-5047	2024-07-08 08:00	Billing	High	6.4	4	Ana	Invoice shows wrong GST number.
+T-5048	2024-08-02 07:00	Billing	Urgent	32.3	3	Zoë	Refund still not received after two weeks, escalated to finance.
+T-5049	2024-07-09 05:00	Billing	Urgent	11.4	5	Kenji	Charged twice for order, asked for refund.
+T-5050	2024-08-15 19:00	Billing	Medium	15.5	4	Ravi	Invoice shows wrong GST number.
+T-5051	2024-07-05 14:00	Billing	Low	29.2	2	Ravi	Refund still not received after two weeks, escalated to finance.
+T-5052	2024-07-14 10:00	Account	Medium	6.8	4	Omar	Asked to close account.
+T-5053	2024-09-19 20:00	Account	Low	4.5	5	Léa	Asked to close account.
+T-5054	2024-09-04 07:00	Account	Low	9.0	2	Kenji	Asked to close account.
+T-5055	2024-08-03 00:00	Billing	Urgent	13.3	5	Zoë	Promo code not applied at checkout.
+T-5056	2024-07-15 11:00	Shipping	Low	0.6	3	Kenji	Parcel delivered to wrong address.
+T-5057	2024-10-14 11:00	Technical	High	4.6	4	Ana	Cannot reset password, link expired.
+T-5058	2024-10-02 18:00	Account	Low	10.8	4	Ana	Two accounts merged by mistake.
+T-5059	2024-08-21 21:00	Shipping	Medium	12.8	3	Omar	Courier marked delivered but nothing arrived.
+T-5060	2024-08-04 15:00	Technical	Medium	5.6	4	Zoë	Dashboard loads slowly on mobile.
+T-5061	2024-09-20 21:00	Technical	Medium	3.8	3	Kenji	Export to Excel fails for large orders.
+T-5062	2024-08-31 22:00	Billing	Medium	6.8	4	Zoë	Charged twice for order, asked for refund.
+T-5063	2024-07-07 06:00	Technical	Low	12.7	3	Léa	App crashes when uploading a photo.
+T-5064	2024-08-01 01:00	Technical	Medium	5.6	3	Zoë	Cannot reset password, link expired.
+T-5065	2024-10-18 09:00	Billing	Medium	14.3	2	Omar	Refund still not received after two weeks, escalated to finance.
+T-5066	2024-07-14 18:00	Account	High	5.0	4	Zoë	Asked to close account.
+T-5067	2024-07-23 09:00	Billing	Medium	6.2	4	Ravi	Charged twice for order, asked for refund.
+T-5068	2024-08-26 05:00	Billing	Medium	14.2	3	Ana	Invoice shows wrong GST number.
+T-5069	2024-09-03 13:00	Billing	Urgent	10.3	4	Omar	Invoice shows wrong GST number.
+T-5070	2024-10-25 13:00	Billing	Urgent	41.9	2	Omar	Refund still not received after two weeks, escalated to finance.
+T-5071	2024-09-13 09:00	Billing	Low	10.3	4	Zoë	Invoice shows wrong GST number.
+T-5072	2024-10-10 13:00	Billing	Low	22.7	2	Ana	Refund still not received after two weeks, escalated to finance.
+T-5073	2024-08-12 05:00	Billing	High	21.4	4	Omar	Charged twice for order, asked for refund.
+T-5074	2024-08-09 03:00	Technical	Low	11.2	2	Léa	Export to Excel fails for large orders.
+T-5075	2024-08-08 06:00	Billing	High	5.1	4	Omar	Promo code not applied at checkout.
+T-5076	2024-10-28 22:00	Shipping	Medium	5.4	4	Ana	Parcel delivered to wrong address.
+T-5077	2024-08-22 22:00	Technical	High	1.7	5	Léa	Cannot reset password, link expired.
+T-5078	2024-10-24 20:00	Billing	Medium	35.4	1	Kenji	Refund still not received after two weeks, escalated to finance.
+T-5079	2024-09-04 13:00	Billing	Medium	16.7	4	Ravi	Charged twice for order, asked for refund.
+T-5080	2024-07-09 10:00	Shipping	Urgent	14.4	3	Omar	Box arrived damaged, SwiftShip driver refused to wait.
+T-5081	2024-07-27 04:00	Billing	Low	9.8	5	Ana	Invoice shows wrong GST number.
+T-5082	2024-09-30 23:00	Technical	Low	21.3	4	Zoë	Export to Excel fails for large orders.
+T-5083	2024-10-21 16:00	Technical	Medium	9.7	5	Zoë	Cannot reset password, link expired.
+T-5084	2024-09-11 19:00	Billing	Low	19.8	4	Léa	Promo code not applied at checkout.
+T-5085	2024-07-03 13:00	Billing	Low	2.6	5	Ana	Invoice shows wrong GST number.
+T-5086	2024-07-28 20:00	Billing	Low	8.8	5	Kenji	Promo code not applied at checkout.
+T-5087	2024-10-02 19:00	Technical	Medium	20.5	4	Ravi	Dashboard loads slowly on mobile.
+T-5088	2024-08-11 17:00	Technical	Medium	14.2	5	Kenji	App crashes when uploading a photo.
+T-5089	2024-09-25 15:00	Shipping	High	12.6	5	Zoë	Courier marked delivered but nothing arrived.
+T-5090	2024-09-09 19:00	Shipping	Urgent	14.5	4	Kenji	Box arrived damaged, SwiftShip driver refused to wait.
+T-5091	2024-08-19 11:00	Technical	Medium	19.8	3	Zoë	Dashboard loads slowly on mobile.
+T-5092	2024-10-16 23:00	Account	Low	32.0	5	Omar	Wants to change registered email.
+T-5093	2024-08-16 17:00	Account	High	7.1	5	Omar	Two accounts merged by mistake.
+T-5094	2024-07-26 17:00	Technical	Urgent	4.8	4	Léa	Export to Excel fails for large orders.
+T-5095	2024-10-23 07:00	Billing	Medium	1.2	2	Ana	Charged twice for order, asked for refund.
+T-5096	2024-09-19 22:00	Billing	Medium	26.8	2	Ana	Refund still not received after two weeks, escalated to finance.
+T-5097	2024-09-25 17:00	Billing	Low	14.5	5	Ana	Promo code not applied at checkout.
+T-5098	2024-10-09 01:00	Account	Medium	4.8	5	Ravi	Asked to close account.
+T-5099	2024-07-19 05:00	Billing	Low	14.2	4	Ravi	Invoice shows wrong GST number.
+T-5100	2024-09-05 05:00	Technical	Medium	14.4	5	Ravi	Cannot reset password, link expired.
+T-5101	2024-07-14 06:00	Billing	Medium	39.3	4	Kenji	Promo code not applied at checkout.
+T-5102	2024-09-13 17:00	Technical	Medium	16.8	5	Zoë	App crashes when uploading a photo.
+T-5103	2024-08-14 10:00	Technical	Low	10.5	3	Ana	App crashes when uploading a photo.
+T-5104	2024-09-19 10:00	Technical	Medium	9.6	4	Ana	App crashes when uploading a photo.
+T-5105	2024-07-27 01:00	Billing	Low	8.1	5	Zoë	Promo code not applied at checkout.
+T-5106	2024-08-03 17:00	Account	Urgent	14.9	5	Ravi	Wants to change registered email.
+T-5107	2024-08-28 06:00	Shipping	High	10.2	3	Léa	Box arrived damaged, SwiftShip driver refused to wait.
+T-5108	2024-07-03 18:00	Billing	Low	6.3	5	Ravi	Promo code not applied at checkout.
+T-5109	2024-07-31 09:00	Shipping	Medium	12.1	2	Ravi	Parcel delivered to wrong address.
+T-5110	2024-10-03 17:00	Technical	Low	16.1	4	Ravi	App crashes when uploading a photo.
+T-5111	2024-07-31 10:00	Shipping	Low	2.0	5	Kenji	Parcel delivered to wrong address.
+T-5112	2024-10-10 10:00	Technical	Medium	11.0	4	Ana	Export to Excel fails for large orders.
+T-5113	2024-08-15 12:00	Shipping	High	7.7	4	Ana	Parcel delivered to wrong address.
+T-5114	2024-07-13 04:00	Billing	Low	31.9	1	Ana	Refund still not received after two weeks, escalated to finance.
+T-5115	2024-07-16 08:00	Shipping	Medium	11.7	5	Ana	Parcel delivered to wrong address.
+T-5116	2024-08-05 23:00	Technical	High	6.8	3	Léa	Export to Excel fails for large orders.
+T-5117	2024-07-27 20:00	Billing	Low	13.2	5	Zoë	Charged twice for order, asked for refund.
+T-5118	2024-08-07 20:00	Technical	High	20.1	3	Ravi	App crashes when uploading a photo.
+T-5119	2024-08-04 13:00	Billing	Medium	5.6	5	Ravi	Promo code not applied at checkout.
+T-5120	2024-09-12 04:00	Shipping	High	14.9	4	Omar	Parcel delivered to wrong address.
+T-5121	2024-07-24 06:00	Shipping	Low	11.7	3	Omar	Delivery late by 6 days.
+T-5122	2024-08-12 11:00	Shipping	Low	2.6	4	Omar	Parcel delivered to wrong address.
+T-5123	2024-10-17 01:00	Billing	Low	4.2	5	Ravi	Promo code not applied at checkout.
+T-5124	2024-07-21 11:00	Shipping	High	11.4	4	Kenji	Courier marked delivered but nothing arrived.
+T-5125	2024-08-14 00:00	Technical	Medium	11.2	4	Kenji	Export to Excel fails for large orders.
+T-5126	2024-07-04 13:00	Shipping	Low	13.3	5	Zoë	Delivery late by 6 days.
+T-5127	2024-10-14 08:00	Technical	Low	1.5	4	Kenji	Cannot reset password, link expired.
+T-5128	2024-10-14 01:00	Technical	High	17.2	5	Ana	Cannot reset password, link expired.
+T-5129	2024-10-22 17:00	Shipping	Urgent	22.1	5	Ravi	Box arrived damaged, SwiftShip driver refused to wait.
+T-5130	2024-10-26 20:00	Billing	Low	32.1	2	Omar	Refund still not received after two weeks, escalated to finance.
+T-5131	2024-10-10 17:00	Billing	Medium	11.8	4	Omar	Charged twice for order, asked for refund.
+T-5132	2024-09-28 16:00	Billing	Medium	12.8	3	Zoë	Refund still not received after two weeks, escalated to finance.
+T-5133	2024-09-04 17:00	Technical	Medium	19.9	5	Ravi	App crashes when uploading a photo.
+T-5134	2024-07-20 05:00	Shipping	Low	1.3	4	Ana	Delivery late by 6 days.
+T-5135	2024-07-21 23:00	Account	Low	10.0	3	Léa	Wants to change registered email.
+T-5136	2024-09-30 11:00	Technical	Low	18.0	5	Kenji	Dashboard loads slowly on mobile.
+T-5137	2024-08-30 10:00	Shipping	Medium	1.0	4	Kenji	Box arrived damaged, SwiftShip driver refused to wait.
+T-5138	2024-09-05 09:00	Billing	Urgent	13.6	5	Ana	Promo code not applied at checkout.
+T-5139	2024-08-30 07:00	Shipping	High	18.8	5	Léa	Courier marked delivered but nothing arrived.
+T-5140	2024-07-23 20:00	Billing	Medium	5.3	3	Ravi	Invoice shows wrong GST number.
+T-5141	2024-08-04 00:00	Billing	High	7.9	5	Léa	Promo code not applied at checkout.
+T-5142	2024-08-07 12:00	Shipping	High	24.0	4	Zoë	Courier marked delivered but nothing arrived.
+T-5143	2024-07-28 18:00	Account	Low	13.8	4	Kenji	Needs GST invoice for company account.
+T-5144	2024-07-10 03:00	Shipping	Medium	18.5	5	Omar	Courier marked delivered but nothing arrived.
+T-5145	2024-08-09 14:00	Technical	Low	6.0	4	Ana	App crashes when uploading a photo.
+T-5146	2024-08-12 13:00	Shipping	Medium	5.5	4	Omar	Parcel delivered to wrong address.
+T-5147	2024-10-08 22:00	Technical	Medium	10.6	5	Zoë	App crashes when uploading a photo.
+T-5148	2024-09-04 20:00	Shipping	Medium	21.9	4	Omar	Parcel delivered to wrong address.
+T-5149	2024-10-18 01:00	Shipping	Medium	12.7	3	Kenji	Courier marked delivered but nothing arrived.
+T-5150	2024-07-18 07:00	Billing	Low	24.5	3	Omar	Refund still not received after two weeks, escalated to finance.
+T-5151	2024-10-09 07:00	Billing	Low	3.6	5	Omar	Promo code not applied at checkout.
+T-5152	2024-07-26 14:00	Technical	Urgent	9.2	4	Ana	Dashboard loads slowly on mobile.
+T-5153	2024-09-09 03:00	Account	Low	5.2	5	Ana	Needs GST invoice for company account.
+T-5154	2024-08-07 22:00	Billing	High	6.3	5	Ravi	Invoice shows wrong GST number.
+T-5155	2024-10-01 22:00	Account	Medium	12.5	4	Léa	Needs GST invoice for company account.
+T-5156	2024-07-12 09:00	Shipping	High	11.9	4	Omar	Parcel delivered to wrong address.
+T-5157	2024-09-04 19:00	Billing	Medium	17.6	4	Kenji	Promo code not applied at checkout.
+T-5158	2024-07-13 18:00	Billing	Low	35.8	5	Ana	Invoice shows wrong GST number.
+T-5159	2024-08-21 14:00	Shipping	Low	5.9	5	Léa	Delivery late by 6 days.
+T-5160	2024-09-16 11:00	Shipping	High	11.0	3	Léa	Parcel delivered to wrong address.
+T-5161	2024-10-19 10:00	Billing	Medium	12.6	3	Omar	Refund still not received after two weeks, escalated to finance.
+T-5162	2024-08-30 08:00	Technical	Low	5.8	4	Omar	Dashboard loads slowly on mobile.
+T-5163	2024-09-27 18:00	Billing	Low	4.4	4	Léa	Charged twice for order, asked for refund.
+T-5164	2024-10-22 11:00	Billing	Urgent	5.8	2	Ana	Promo code not applied at checkout.
+T-5165	2024-09-30 13:00	Account	Medium	16.2	5	Zoë	Two accounts merged by mistake.
+T-5166	2024-09-23 13:00	Shipping	Medium	7.2	5	Omar	Delivery late by 6 days.
+T-5167	2024-10-14 06:00	Account	Medium	38.8	5	Léa	Wants to change registered email.
+T-5168	2024-07-03 11:00	Technical	High	8.0	4	Léa	Export to Excel fails for large orders.
+T-5169	2024-10-12 05:00	Account	Medium	10.1	5	Ana	Needs GST invoice for company account.
+T-5170	2024-08-22 15:00	Billing	Medium	10.6	5	Ana	Charged twice for order, asked for refund.
+T-5171	2024-08-24 22:00	Shipping	Low	15.8	4	Ravi	Delivery late by 6 days.
+T-5172	2024-07-02 17:00	Shipping	Medium	14.2	4	Omar	Box arrived damaged, SwiftShip driver refused to wait.
+T-5173	2024-07-17 00:00	Billing	Medium	12.2	4	Ana	Invoice shows wrong GST number.
+T-5174	2024-09-13 12:00	Billing	Medium	8.5	3	Ana	Charged twice for order, asked for refund.
+T-5175	2024-08-19 06:00	Technical	High	26.4	4	Ana	App crashes when uploading a photo.
+T-5176	2024-09-04 06:00	Shipping	Medium	11.0	4	Zoë	Box arrived damaged, SwiftShip driver refused to wait.
+T-5177	2024-09-12 02:00	Billing	High	87.8	3	Ravi	Refund still not received after two weeks, escalated to finance.
+T-5178	2024-09-05 18:00	Account	High	9.4	4	Ana	Asked to close account.
+T-5179	2024-10-15 05:00	Shipping	Medium	6.3	3	Ana	Parcel delivered to wrong address.
+T-5180	2024-09-12 18:00	Billing	Medium	10.6	3	Zoë	Charged twice for order, asked for refund.
+T-5181	2024-10-07 15:00	Technical	Low	8.9	4	Ana	App crashes when uploading a photo.
+T-5182	2024-08-19 20:00	Shipping	Low	16.8	4	Ana	Box arrived damaged, SwiftShip driver refused to wait.
+T-5183	2024-09-26 19:00	Technical	High	13.8	4	Kenji	App crashes when uploading a photo.
+T-5184	2024-07-18 21:00	Technical	Low	9.7	5	Léa	Dashboard loads slowly on mobile.
+T-5185	2024-08-19 02:00	Shipping	Low	2.3	3	Zoë	Parcel delivered to wrong address.
+T-5186	2024-07-25 03:00	Technical	Medium	10.2	4	Omar	Export to Excel fails for large orders.
+T-5187	2024-07-07 11:00	Account	Low	13.4	4	Zoë	Wants to change registered email.
+T-5188	2024-10-13 06:00	Technical	High	3.9	3	Omar	Export to Excel fails for large orders.
+T-5189	2024-07-30 04:00	Technical	Low	31.8	3	Zoë	Dashboard loads slowly on mobile.
+T-5190	2024-07-29 19:00	Billing	Medium	7.6	2	Kenji	Refund still not received after two weeks, escalated to finance.
+T-5191	2024-09-06 16:00	Billing	Medium	36.3	3	Omar	Promo code not applied at checkout.
+T-5192	2024-09-29 15:00	Shipping	Low	24.5	3	Omar	Parcel delivered to wrong address.
+T-5193	2024-07-01 20:00	Technical	Medium	6.9	4	Zoë	App crashes when uploading a photo.
+T-5194	2024-08-15 22:00	Technical	Medium	14.3	4	Omar	App crashes when uploading a photo.
+T-5195	2024-07-14 12:00	Shipping	High	5.3	4	Omar	Parcel delivered to wrong address.
+T-5196	2024-09-24 07:00	Technical	High	28.4	4	Kenji	App crashes when uploading a photo.
+T-5197	2024-07-07 00:00	Account	Low	4.9	3	Zoë	Asked to close account.
+T-5198	2024-07-26 21:00	Technical	Urgent	11.2	2	Kenji	Cannot reset password, link expired.
+T-5199	2024-08-30 00:00	Shipping	Low	6.5	4	Ana	Courier marked delivered but nothing arrived.
+T-5200	2024-08-07 10:00	Account	Low	2.8	4	Ana	Two accounts merged by mistake.
+T-5201	2024-08-11 20:00	Technical	High	14.1	5	Zoë	Cannot reset password, link expired.
+T-5202	2024-08-16 06:00	Billing	High	6.9	5	Ana	Promo code not applied at checkout.
+T-5203	2024-10-12 07:00	Technical	Medium	1.8	5	Omar	App crashes when uploading a photo.
+T-5204	2024-07-29 14:00	Account	Medium	5.7	3	Omar	Wants to change registered email.
+T-5205	2024-08-13 16:00	Account	Medium	1.7	3	Léa	Wants to change registered email.
+T-5206	2024-09-25 11:00	Technical	High	10.9	5	Omar	Dashboard loads slowly on mobile.
+T-5207	2024-09-29 03:00	Shipping	Medium	16.7	4	Léa	Box arrived damaged, SwiftShip driver refused to wait.
+T-5208	2024-10-04 06:00	Billing	High	16.4	4	Omar	Invoice shows wrong GST number.
+T-5209	2024-08-22 02:00	Billing	Urgent	3.6	4	Zoë	Promo code not applied at checkout.
+T-5210	2024-09-02 04:00	Technical	Low	11.8	5	Ana	Cannot reset password, link expired.
+T-5211	2024-07-26 00:00	Shipping	Medium	2.9	4	Ravi	Courier marked delivered but nothing arrived.
+T-5212	2024-10-02 07:00	Technical	Low	9.0	4	Ravi	Dashboard loads slowly on mobile.
+T-5213	2024-10-20 09:00	Billing	High	22.9	2	Léa	Refund still not received after two weeks, escalated to finance.
+T-5214	2024-09-09 15:00	Technical	Low	7.4	5	Zoë	Export to Excel fails for large orders.
+T-5215	2024-10-14 04:00	Shipping	Medium	10.0	3	Ravi	Delivery late by 6 days.
+T-5216	2024-08-04 18:00	Account	High	5.8	4	Kenji	Two accounts merged by mistake.
+T-5217	2024-09-23 06:00	Shipping	Low	12.3	5	Ana	Courier marked delivered but nothing arrived.
+T-5218	2024-07-29 14:00	Billing	Low	12.8	4	Ana	Promo code not applied at checkout.
+T-5219	2024-08-30 19:00	Account	Medium	3.9	4	Ravi	Two accounts merged by mistake.
+T-5220	2024-07-24 00:00	Billing	Medium	5.3	5	Ana	Promo code not applied at checkout.
+T-5221	2024-07-05 06:00	Technical	Medium	6.2	5	Léa	App crashes when uploading a photo.
+T-5222	2024-07-17 16:00	Shipping	High	2.8	5	Ana	Delivery late by 6 days.
+T-5223	2024-07-31 02:00	Shipping	Medium	4.2	3	Ravi	Delivery late by 6 days.
+T-5224	2024-07-10 02:00	Technical	Medium	10.3	4	Léa	Export to Excel fails for large orders.
+T-5225	2024-08-23 03:00	Technical	High	1.8	5	Ana	Cannot reset password, link expired.
+T-5226	2024-10-27 01:00	Technical	High	8.3	5	Ana	Dashboard loads slowly on mobile.
+T-5227	2024-10-25 14:00	Shipping	Low	12.0	4	Omar	Courier marked delivered but nothing arrived.
+T-5228	2024-08-09 06:00	Technical	Medium	26.3	5	Léa	App crashes when uploading a photo.
+T-5229	2024-09-05 20:00	Billing	Low	43.5	3	Omar	Refund still not received after two weeks, escalated to finance.
+T-5230	2024-09-11 12:00	Billing	Low	11.3	3	Kenji	Promo code not applied at checkout.
+T-5231	2024-08-14 10:00	Technical	Low	5.9	4	Omar	Dashboard loads slowly on mobile.
+T-5232	2024-08-16 04:00	Shipping	Medium	2.7	5	Omar	Delivery late by 6 days.
+T-5233	2024-08-07 10:00	Billing	Urgent	35.1	5	Zoë	Promo code not applied at checkout.
+T-5234	2024-07-29 17:00	Shipping	High	1.7	5	Ana	Box arrived damaged, SwiftShip driver refused to wait.
+T-5235	2024-07-03 07:00	Technical	Medium	10.6	4	Kenji	Export to Excel fails for large orders.
+T-5236	2024-07-09 02:00	Billing	Medium	44.3	3	Kenji	Refund still not received after two weeks, escalated to finance.
+T-5237	2024-09-13 07:00	Technical	High	3.6	4	Léa	Cannot reset password, link expired.
+T-5238	2024-07-23 10:00	Technical	Low	8.5	5	Kenji	Dashboard loads slowly on mobile.
+T-5239	2024-08-21 13:00	Shipping	High	7.8	4	Zoë	Courier marked delivered but nothing arrived.
+T-5240	2024-09-01 01:00	Technical	Medium	10.6	4	Zoë	Cannot reset password, link expired.
+T-5241	2024-10-19 22:00	Billing	Low	12.6	4	Zoë	Promo code not applied at checkout.
+T-5242	2024-09-12 14:00	Shipping	Low	10.0	3	Léa	Courier marked delivered but nothing arrived.
+T-5243	2024-09-12 18:00	Shipping	High	6.7	4	Kenji	Box arrived damaged, SwiftShip driver refused to wait.
+T-5244	2024-09-26 05:00	Shipping	Medium	8.4	4	Omar	Parcel delivered to wrong address.
+T-5245	2024-09-28 14:00	Account	High	3.2	4	Ana	Asked to close account.
+T-5246	2024-07-12 14:00	Billing	Urgent	24.2	3	Kenji	Refund still not received after two weeks, escalated to finance.
+T-5247	2024-09-02 10:00	Technical	High	13.6	4	Omar	Cannot reset password, link expired.
+T-5248	2024-08-02 23:00	Billing	Medium	7.5	3	Léa	Refund still not received after two weeks, escalated to finance.
+T-5249	2024-07-04 14:00	Technical	High	22.6	5	Omar	App crashes when uploading a photo.
+T-5250	2024-10-18 10:00	Technical	Medium	15.3	5	Ravi	Export to Excel fails for large orders.
+T-5251	2024-10-28 01:00	Technical	Low	7.2	4	Omar	Export to Excel fails for large orders.
+T-5252	2024-09-24 07:00	Billing	High	11.2	3	Kenji	Charged twice for order, asked for refund.
+T-5253	2024-10-26 20:00	Shipping	Medium	17.1	4	Zoë	Courier marked delivered but nothing arrived.
+T-5254	2024-08-11 17:00	Account	Medium	15.4	4	Omar	Wants to change registered email.
+T-5255	2024-10-11 23:00	Shipping	Urgent	7.4	4	Ravi	Box arrived damaged, SwiftShip driver refused to wait.
+T-5256	2024-09-23 04:00	Billing	High	3.4	4	Léa	Invoice shows wrong GST number.
+T-5257	2024-08-12 12:00	Billing	Urgent	14.5	5	Ravi	Charged twice for order, asked for refund.
+T-5258	2024-10-03 20:00	Billing	Medium	24.0	2	Zoë	Refund still not received after two weeks, escalated to finance.
+T-5259	2024-10-19 13:00	Technical	Medium	29.0	3	Léa	Dashboard loads slowly on mobile.
+T-5260	2024-07-26 09:00	Billing	Low	12.0	4	Kenji	Invoice shows wrong GST number.
+T-5261	2024-10-25 14:00	Billing	Low	20.6	2	Léa	Refund still not received after two weeks, escalated to finance.
+T-5262	2024-07-16 17:00	Billing	Medium	31.8	4	Zoë	Invoice shows wrong GST number.
+T-5263	2024-08-10 05:00	Billing	Low	16.9	5	Omar	Invoice shows wrong GST number.
+T-5264	2024-09-07 08:00	Shipping	High	18.0	4	Ana	Parcel delivered to wrong address.
+T-5265	2024-07-10 18:00	Billing	Medium	11.1	4	Ana	Charged twice for order, asked for refund.
+T-5266	2024-10-28 11:00	Shipping	Medium	8.1	5	Léa	Parcel delivered to wrong address.
+T-5267	2024-07-19 06:00	Shipping	High	4.6	5	Omar	Box arrived damaged, SwiftShip driver refused to wait.
+T-5268	2024-10-02 05:00	Billing	Medium	7.1	5	Ana	Promo code not applied at checkout.
+T-5269	2024-08-05 02:00	Technical	Medium	5.5	5	Léa	Dashboard loads slowly on mobile.
+T-5270	2024-07-12 23:00	Billing	High	4.1	5	Omar	Invoice shows wrong GST number.
+T-5271	2024-07-04 07:00	Shipping	High	6.3	5	Ravi	Delivery late by 6 days.
+T-5272	2024-08-13 01:00	Shipping	Medium	1.5	4	Kenji	Parcel delivered to wrong address.
+T-5273	2024-07-04 04:00	Billing	Urgent	25.8	5	Ravi	Charged twice for order, asked for refund.
+T-5274	2024-08-06 20:00	Shipping	Low	0.6	4	Zoë	Box arrived damaged, SwiftShip driver refused to wait.
+T-5275	2024-07-10 12:00	Billing	High	33.7	2	Zoë	Refund still not received after two weeks, escalated to finance.
+T-5276	2024-07-23 02:00	Account	Medium	18.1	4	Kenji	Wants to change registered email.
+T-5277	2024-09-10 17:00	Technical	High	6.0	4	Zoë	Cannot reset password, link expired.
+T-5278	2024-07-07 22:00	Shipping	Urgent	36.6	4	Ana	Parcel delivered to wrong address.
+T-5279	2024-08-12 19:00	Billing	Medium	16.7	3	Omar	Invoice shows wrong GST number.
+T-5280	2024-09-07 11:00	Shipping	Medium	28.1	4	Ravi	Parcel delivered to wrong address.
+T-5281	2024-09-06 17:00	Shipping	Medium	15.2	2	Zoë	Delivery late by 6 days.
+T-5282	2024-07-30 01:00	Account	High	13.5	4	Zoë	Two accounts merged by mistake.
+T-5283	2024-08-19 07:00	Shipping	Medium	32.6	5	Ana	Parcel delivered to wrong address.
+T-5284	2024-08-23 00:00	Shipping	Low	9.9	4	Ana	Box arrived damaged, SwiftShip driver refused to wait.
+T-5285	2024-10-29 06:00	Shipping	Medium	13.3	4	Zoë	Courier marked delivered but nothing arrived.
+T-5286	2024-10-12 00:00	Account	Low	35.5	4	Zoë	Two accounts merged by mistake.
+T-5287	2024-09-17 18:00	Billing	Medium	57.8	1	Zoë	Refund still not received after two weeks, escalated to finance.
+T-5288	2024-08-10 00:00	Billing	High	2.3	4	Zoë	Charged twice for order, asked for refund.
+T-5289	2024-08-30 20:00	Billing	Medium	16.2	4	Ana	Charged twice for order, asked for refund.
+T-5290	2024-10-16 22:00	Account	Low	15.6	4	Zoë	Wants to change registered email.
+T-5291	2024-08-27 19:00	Billing	Low	12.1	2	Léa	Charged twice for order, asked for refund.
+T-5292	2024-10-28 22:00	Billing	Low	3.2	4	Kenji	Charged twice for order, asked for refund.
+T-5293	2024-09-28 16:00	Shipping	Low	17.9	4	Ravi	Parcel delivered to wrong address.
+T-5294	2024-07-17 03:00	Account	Medium	36.9	4	Ravi	Needs GST invoice for company account.
+T-5295	2024-08-08 11:00	Account	High	3.2	4	Kenji	Needs GST invoice for company account.
+T-5296	2024-08-18 20:00	Account	Medium	13.6	4	Léa	Wants to change registered email.
+T-5297	2024-08-03 12:00	Billing	Medium	40.9	3	Kenji	Charged twice for order, asked for refund.
+T-5298	2024-10-11 15:00	Billing	Medium	5.4	4	Léa	Invoice shows wrong GST number.
+T-5299	2024-07-09 10:00	Technical	Medium	2.6	4	Ana	App crashes when uploading a photo.
+T-5300	2024-10-27 06:00	Billing	High	11.9	2	Léa	Refund still not received after two weeks, escalated to finance.
+T-5301	2024-08-13 11:00	Billing	Urgent	11.4	5	Ravi	Promo code not applied at checkout.
+T-5302	2024-09-16 18:00	Billing	Medium	41.4	2	Ana	Refund still not received after two weeks, escalated to finance.
+T-5303	2024-07-14 14:00	Shipping	Medium	14.4	4	Léa	Parcel delivered to wrong address.
+T-5304	2024-09-25 23:00	Billing	Low	13.8	4	Zoë	Invoice shows wrong GST number.
+T-5305	2024-09-18 23:00	Billing	Medium	11.6	4	Zoë	Charged twice for order, asked for refund.
+T-5306	2024-09-13 21:00	Account	Medium	26.2	5	Ravi	Two accounts merged by mistake.
+T-5307	2024-10-07 18:00	Shipping	Low	6.6	3	Omar	Parcel delivered to wrong address.
+T-5308	2024-09-25 06:00	Billing	High	22.8	4	Ravi	Charged twice for order, asked for refund.
+T-5309	2024-07-21 18:00	Shipping	Medium	11.2	4	Zoë	Delivery late by 6 days.
+T-5310	2024-08-18 01:00	Account	Urgent	8.2	4	Zoë	Two accounts merged by mistake.
+T-5311	2024-10-02 17:00	Technical	Medium	18.2	4	Zoë	Cannot reset password, link expired.
+T-5312	2024-10-26 19:00	Shipping	High	4.7	4	Omar	Parcel delivered to wrong address.
+T-5313	2024-07-21 14:00	Technical	High	8.6	3	Omar	App crashes when uploading a photo.
+T-5314	2024-10-11 09:00	Technical	Medium	7.0	4	Ravi	Dashboard loads slowly on mobile.
+T-5315	2024-10-10 06:00	Shipping	Medium	14.6	3	Kenji	Delivery late by 6 days.
+T-5316	2024-10-25 05:00	Billing	Low	3.4	3	Omar	Refund still not received after two weeks, escalated to finance.
+T-5317	2024-10-04 04:00	Billing	Low	4.5	4	Ravi	Charged twice for order, asked for refund.
+T-5318	2024-07-22 18:00	Account	Medium	14.8	3	Léa	Asked to close account.
+T-5319	2024-08-18 17:00	Technical	High	12.3	4	Zoë	App crashes when uploading a photo.
+T-5320	2024-07-13 23:00	Shipping	Medium	5.9	5	Zoë	Delivery late by 6 days.
+T-5321	2024-08-21 04:00	Technical	High	8.4	4	Omar	Cannot reset password, link expired.
+T-5322	2024-08-17 11:00	Shipping	Medium	7.2	5	Omar	Delivery late by 6 days.
+T-5323	2024-10-02 08:00	Billing	Medium	1.7	4	Kenji	Promo code not applied at checkout.
+T-5324	2024-10-16 04:00	Shipping	Low	6.2	4	Léa	Parcel delivered to wrong address.
+T-5325	2024-09-01 14:00	Technical	Low	12.9	3	Ana	Dashboard loads slowly on mobile.
+T-5326	2024-07-30 04:00	Billing	High	28.6	3	Ravi	Invoice shows wrong GST number.
+T-5327	2024-09-25 02:00	Billing	Low	1.9	4	Kenji	Charged twice for order, asked for refund.
+T-5328	2024-07-31 05:00	Technical	High	8.3	4	Zoë	Export to Excel fails for large orders.
+T-5329	2024-10-25 07:00	Technical	Urgent	16.3	4	Ravi	Dashboard loads slowly on mobile.
+T-5330	2024-07-23 20:00	Shipping	Medium	10.4	4	Zoë	Delivery late by 6 days.
+T-5331	2024-10-12 20:00	Shipping	Medium	11.1	3	Ana	Parcel delivered to wrong address.
+T-5332	2024-07-07 06:00	Technical	Low	11.1	4	Omar	App crashes when uploading a photo.
+T-5333	2024-10-12 06:00	Technical	Medium	31.5	4	Léa	Dashboard loads slowly on mobile.
+T-5334	2024-07-16 16:00	Technical	Low	3.1	5	Kenji	Export to Excel fails for large orders.
+T-5335	2024-10-03 08:00	Shipping	Medium	4.3	3	Ravi	Courier marked delivered but nothing arrived.
+T-5336	2024-09-01 04:00	Billing	Medium	11.5	1	Kenji	Refund still not received after two weeks, escalated to finance.
+T-5337	2024-08-27 05:00	Billing	Medium	12.3	4	Zoë	Promo code not applied at checkout.
+T-5338	2024-07-30 01:00	Billing	Medium	3.2	4	Omar	Charged twice for order, asked for refund.
+T-5339	2024-08-20 06:00	Technical	High	4.3	3	Ravi	Cannot reset password, link expired.
+T-5340	2024-09-13 06:00	Billing	High	1.5	3	Zoë	Charged twice for order, asked for refund.
+T-5341	2024-07-05 17:00	Technical	High	7.0	5	Ana	Cannot reset password, link expired.
+T-5342	2024-07-11 11:00	Billing	Medium	23.1	4	Kenji	Invoice shows wrong GST number.
+T-5343	2024-08-28 16:00	Billing	Low	2.6	3	Kenji	Promo code not applied at checkout.
+T-5344	2024-10-13 06:00	Technical	Urgent	23.4	4	Ana	Dashboard loads slowly on mobile.
+T-5345	2024-10-26 21:00	Technical	Low	13.6	3	Léa	Export to Excel fails for large orders.
+T-5346	2024-10-11 22:00	Technical	Medium	3.0	5	Ana	Dashboard loads slowly on mobile.
+T-5347	2024-08-31 04:00	Shipping	Medium	2.7	5	Kenji	Box arrived damaged, SwiftShip driver refused to wait.
+T-5348	2024-10-07 04:00	Billing	Medium	13.6	5	Omar	Invoice shows wrong GST number.
+T-5349	2024-09-23 11:00	Shipping	Medium	3.6	5	Ravi	Delivery late by 6 days.
+T-5350	2024-08-24 18:00	Billing	High	10.7	4	Kenji	Invoice shows wrong GST number.
+T-5351	2024-08-05 23:00	Shipping	Low	24.0	5	Zoë	Box arrived damaged, SwiftShip driver refused to wait.
+T-5352	2024-08-01 07:00	Shipping	Medium	17.1	4	Zoë	Box arrived damaged, SwiftShip driver refused to wait.
+T-5353	2024-09-13 02:00	Billing	Medium	23.5	3	Ana	Charged twice for order, asked for refund.
+T-5354	2024-10-03 13:00	Technical	Low	2.9	4	Ravi	App crashes when uploading a photo.
+T-5355	2024-10-17 23:00	Technical	Medium	17.6	5	Ana	Export to Excel fails for large orders.
+T-5356	2024-07-22 18:00	Shipping	Low	3.0	2	Ravi	Delivery late by 6 days.
+T-5357	2024-08-03 05:00	Shipping	Low	39.2	3	Zoë	Box arrived damaged, SwiftShip driver refused to wait.
+T-5358	2024-07-24 08:00	Technical	Medium	5.5	4	Ana	Cannot reset password, link expired.
+T-5359	2024-07-03 04:00	Shipping	High	4.8	5	Omar	Parcel delivered to wrong address.
+T-5360	2024-07-05 22:00	Billing	Medium	14.8	4	Ravi	Charged twice for order, asked for refund.
+T-5361	2024-08-10 09:00	Shipping	Low	5.6	3	Kenji	Courier marked delivered but nothing arrived.
+T-5362	2024-07-10 16:00	Technical	Medium	9.3	3	Léa	Export to Excel fails for large orders.
+T-5363	2024-08-06 18:00	Account	High	5.7	4	Léa	Asked to close account.
+T-5364	2024-09-25 07:00	Billing	Low	73.1	3	Ana	Refund still not received after two weeks, escalated to finance.
+T-5365	2024-10-06 06:00	Billing	Medium	6.6	3	Ravi	Refund still not received after two weeks, escalated to finance.
+T-5366	2024-09-23 18:00	Technical	Medium	28.1	5	Léa	Cannot reset password, link expired.
+T-5367	2024-10-08 10:00	Technical	Medium	19.5	5	Kenji	Export to Excel fails for large orders.
+T-5368	2024-08-04 11:00	Shipping	Medium	6.7	4	Zoë	Courier marked delivered but nothing arrived.
+T-5369	2024-08-16 02:00	Billing	High	34.3	4	Zoë	Promo code not applied at checkout.
+T-5370	2024-07-16 08:00	Shipping	Medium	0.8	3	Léa	Parcel delivered to wrong address.
+T-5371	2024-09-24 10:00	Technical	Medium	49.4	5	Léa	Cannot reset password, link expired.
+T-5372	2024-09-14 19:00	Shipping	High	6.5	4	Ana	Box arrived damaged, SwiftShip driver refused to wait.
+T-5373	2024-09-29 04:00	Account	Low	29.6	4	Léa	Needs GST invoice for company account.
+T-5374	2024-08-20 16:00	Shipping	Urgent	25.5	5	Léa	Courier marked delivered but nothing arrived.
+T-5375	2024-09-25 02:00	Billing	Medium	17.9	4	Ana	Charged twice for order, asked for refund.
+T-5376	2024-08-30 02:00	Account	Medium	23.9	3	Kenji	Needs GST invoice for company account.
+T-5377	2024-07-12 17:00	Shipping	High	6.6	3	Ana	Parcel delivered to wrong address.
+T-5378	2024-10-20 18:00	Technical	Low	7.9	5	Kenji	Cannot reset password, link expired.
+T-5379	2024-07-19 12:00	Shipping	Low	28.7	5	Ana	Parcel delivered to wrong address.
+T-5380	2024-09-02 04:00	Technical	Medium	2.4	4	Omar	Cannot reset password, link expired.
+T-5381	2024-08-01 12:00	Billing	Low	14.0	4	Ravi	Charged twice for order, asked for refund.
+T-5382	2024-07-05 17:00	Billing	Low	6.4	4	Zoë	Invoice shows wrong GST number.
+T-5383	2024-09-14 18:00	Shipping	Medium	4.7	5	Ana	Box arrived damaged, SwiftShip driver refused to wait.
+T-5384	2024-10-28 13:00	Billing	Medium	29.8	4	Léa	Refund still not received after two weeks, escalated to finance.
+T-5385	2024-07-28 04:00	Billing	High	57.3	3	Ravi	Refund still not received after two weeks, escalated to finance.
+T-5386	2024-09-15 04:00	Billing	Medium	34.0	4	Ravi	Charged twice for order, asked for refund.
+T-5387	2024-08-12 15:00	Billing	Low	23.3	3	Léa	Charged twice for order, asked for refund.
+T-5388	2024-09-12 19:00	Account	Medium	7.0	4	Omar	Wants to change registered email.
+T-5389	2024-08-03 15:00	Billing	High	8.0	4	Ana	Promo code not applied at checkout.
+T-5390	2024-08-30 07:00	Billing	Medium	27.0	4	Ravi	Promo code not applied at checkout.
+T-5391	2024-10-22 15:00	Billing	Medium	5.0	2	Ana	Refund still not received after two weeks, escalated to finance.
+T-5392	2024-09-19 06:00	Technical	Medium	12.4	4	Kenji	Export to Excel fails for large orders.
+T-5393	2024-10-17 18:00	Technical	Low	10.8	5	Zoë	Export to Excel fails for large orders.
+T-5394	2024-07-18 01:00	Billing	Low	10.2	4	Omar	Promo code not applied at checkout.
+T-5395	2024-09-02 02:00	Billing	Medium	5.7	4	Ravi	Charged twice for order, asked for refund.
+T-5396	2024-09-28 15:00	Technical	Medium	25.2	5	Kenji	App crashes when uploading a photo.
+T-5397	2024-09-19 13:00	Shipping	Low	17.1	4	Kenji	Courier marked delivered but nothing arrived.
+T-5398	2024-08-28 03:00	Billing	Low	16.6	3	Zoë	Charged twice for order, asked for refund.
+T-5399	2024-07-04 18:00	Account	High	8.3	3	Omar	Wants to change registered email.

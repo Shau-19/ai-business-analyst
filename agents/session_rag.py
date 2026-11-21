@@ -364,7 +364,9 @@ class SessionAwareRAGAgent:
                         logger.warning(f"⚠️  Unsupported format: {ext}")
                         errors.append(f"{filename}: unsupported format '{ext or 'none'}'")
                         continue
- 
+                    if not any(d.page_content.strip() for d in docs):
+                        raise ValueError("no readable text")
+
                     for doc in docs:
                         doc.metadata["source_type"] = "document"
                         doc.metadata["source"]      = filename

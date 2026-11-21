@@ -146,15 +146,18 @@ class ForecastAgent:
             pdf["y"]    = pd.to_numeric(pdf["y"], errors="coerce")
             pdf         = pdf.dropna().sort_values("ds").reset_index(drop=True)
 
+            pdf, freq, agg_notes = self._to_period_series(pdf, value_col)
+            if agg_notes:
+                date_note = " ".join(([date_note] if date_note else []) + agg_notes)
+
             if len(pdf) < 3:
                 return {
                     "success": False,
-                    "error":   f"Only {len(pdf)} valid rows — need at least 3 to forecast.",
+                    "error":   f"Only {len(pdf)} periods of data — need at least 3 to forecast.",
                     "routing": "forecast",
                 }
 
             # Fit Prophet
-            freq  = self._infer_frequency(pdf["ds"])
             model = Prophet(
                 yearly_seasonality="auto",
                 weekly_seasonality="auto",
@@ -168,6 +171,9 @@ class ForecastAgent:
 
             anomalies  = self._detect_anomalies(pdf, forecast)
             chart_data = self._build_chart_data(pdf, forecast)
+            if freq in ("MS", "QS", "YS"):          # monthly axis: 2024-01, not 2024-01-01
+                for row in chart_data:
+                    row["date"] = str(row["date"])[:7]
             explanation = self._generate_narrative(
                 question, value_col, pdf, forecast, anomalies, periods
             )
@@ -351,6 +357,58 @@ class ForecastAgent:
         return best_col
 
     # ── Frequency inference ───────────────────────────────────────────────────
+
+    def _to_period_series(self, pdf: pd.DataFrame, value_col: str):
+        """
+        One value per period, which is what Prophet models.
+
+        Transaction-level data (one row per order, or one row per channel per
+        month) used to go in raw: 4 channel rows per month looked like daily
+        data, so "forecast revenue" predicted the next 6 *days* of a single
+        channel. Now rows are totalled per month/week/day (averaged for rates,
+        ratings and prices), data-entry extremes are left out, and a final
+        period that has barely started is dropped so it doesn't read as a crash.
+        """
+        from tools.data_clean import outlier_mask
+        from tools.data_profile import MEAN_HINT
+
+        notes: List[str] = []
+        agg = "mean" if MEAN_HINT.search(str(value_col)) else "sum"
+        d = pdf["ds"]
+        span = (d.max() - d.min()).days
+        distinct = pd.Series(sorted(d.unique()))
+        native = self._infer_frequency(distinct)
+
+        # Already a clean series — one row per evenly spaced date, no clock
+        # times (monthly revenue, a daily sensor reading): keep it as is.
+        if len(pdf) < 3:
+            return pdf, native, notes
+        if not d.duplicated().any() and not (d.dt.normalize() != d).any():
+            gaps = distinct.diff().dropna().dt.days
+            if len(gaps) < 2 or gaps.std() <= max(1.5, 0.15 * gaps.median()):
+                return pdf, native, notes
+
+        extreme = outlier_mask(pdf["y"])
+        if extreme.any():
+            notes.append(f"{int(extreme.sum())} extreme value{'s' if extreme.sum() > 1 else ''} left out.")
+            pdf = pdf[~extreme]
+
+        freq, word = ("MS", "month") if span > 120 else ("W-MON", "week") if span > 21 else ("D", "day")
+        rows = len(pdf)
+        series = pdf.set_index("ds")["y"].resample(freq).agg(agg)
+        if agg == "mean":
+            series = series.dropna()
+        else:
+            series = series.fillna(0)
+        # Drop a last period that has barely started (data ends 3 Dec → December looks like a crash)
+        last = pdf["ds"].max()
+        if freq == "MS" and native in ("D", "W") and last.day < 25 and len(series) > 3:
+            series = series.iloc[:-1]
+            notes.append(f"{last.strftime('%B %Y')} is incomplete (data ends {last.strftime('%d %b')}), so it was left out.")
+        out = series.reset_index()
+        out.columns = ["ds", "y"]
+        notes.insert(0, f"{'Totalled' if agg == 'sum' else 'Averaged'} per {word}: {rows:,} rows → {len(out)} {word}s.")
+        return out, freq, notes
 
     def _infer_frequency(self, dates: pd.Series) -> str:
         if len(dates) < 2:

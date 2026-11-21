@@ -72,6 +72,8 @@ class HybridCSVProcessor:
         # Clean once, then feed the SAME frame to SQL, RAG and metadata so
         # every view of the data agrees (see tools/data_clean.py).
         df, quality = self._load_clean(file_path)
+        if df.empty:
+            raise ValueError("has column headers but no data rows")
         sql_table = self._import_to_sql(file_path, conversation_id, df=df)
         rag_docs  = self._parse_to_rag(file_path, df=df)
         metadata  = self._extract_metadata(file_path, df=df)

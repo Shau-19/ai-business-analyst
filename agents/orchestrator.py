@@ -592,8 +592,25 @@ Question: {question}""",
 
             # ── HYBRID ────────────────────────────────────────────────────────
             else:
-                logger.info("📤  A2A → sql_agent + rag_agent (HYBRID)")
                 session_tables = self.rag_agent.get_csv_tables(conversation_id)
+                loaded = self.rag_agent.get_session_status(conversation_id).get("loaded_files", [])
+                has_docs = any(not f.lower().endswith((".csv", ".xlsx", ".xls")) for f in loaded)
+
+                # With only spreadsheets there is no document to merge: the
+                # "RAG" side would just retrieve a few raw rows of the same
+                # table, and synthesis then let one row (Events, one month)
+                # override the correct SUM/SUM aggregate (Email). Answer from SQL.
+                if session_tables and not has_docs:
+                    logger.info("📤  A2A → sql_agent (HYBRID question, spreadsheet-only session)")
+                    result = await self._dispatch("sql_agent", {
+                        "question": question, "allowed_tables": session_tables,
+                        "conversation_id": conversation_id,
+                    })
+                    result.update({"routing": "sql", "agent": "sql_agent",
+                                   "routing_reason": "Comparison on uploaded data (no documents to merge)"})
+                    return result
+
+                logger.info("📤  A2A → sql_agent + rag_agent (HYBRID)")
 
                 # The two agents are independent — run them concurrently.
                 sql_payload, rag_payload = await asyncio.gather(
@@ -709,7 +726,8 @@ Question: {question}""",
         for table in self.rag_agent.get_csv_tables(conversation_id):
             try:
                 df = self.sql_agent.db.execute_query(f'SELECT * FROM "{table}"')
-                result = driver_analyze(df, question, llm=self.routing_llm)
+                result = driver_analyze(df, question, llm=self.routing_llm,
+                                        embed=self.rag_agent.embeddings.embed_documents)
             except Exception as e:
                 logger.warning(f"⚠️  Driver analysis failed on {table}: {e}")
                 continue
@@ -740,10 +758,11 @@ Question: {question}""",
         if has_docs:
             rag = results[1] or {}
             if rag.get("success") and not rag.get("not_found") and (rag.get("answer") or "").strip():
-                extra = f"\n\n**From your documents:** {rag['answer'].strip()}"
-                result["answer"] += extra
+                text = re.sub(r"^\s*(\*\*)?Answer:?(\*\*)?\s*", "", rag["answer"].strip())
+                text = re.sub(r"\n\s*\*?Sources?:[^\n]*\*?\s*$", "", text).strip()   # sources shown separately
+                result["answer"] += f"\n\n**From your documents:** {text}"
                 result["explanation"] = result["answer"]
-                result["sources"] = rag.get("sources", [])
+                result["sources"] = [s for s in rag.get("sources", []) if s.get("type") != "csv"]
         return result
 
     # ── Hybrid synthesis helpers ──────────────────────────────────────────────
@@ -780,7 +799,8 @@ Question: {question}""",
                 f"RULES:\n"
                 f"1. Use ONLY the facts below — no outside knowledge.\n"
                 f"2. Combine numbers from SQL with context from Document into ONE answer.\n"
-                f"3. If sources contradict, prefer the more specific one.\n"
+                f"3. SQL Data is computed over the whole dataset and is authoritative for numbers. "
+                f"Document Context may quote single rows or examples: never let it override an SQL number.\n"
                 f"4. For a 'why' question, state what the data shows (the numbers) and what "
                 f"it suggests; if the cause itself isn't recorded, say so plainly.\n"
                 f"5. Write for a business user: never mention 'SQL', 'the document', 'sources' "

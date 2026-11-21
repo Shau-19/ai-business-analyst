@@ -132,7 +132,7 @@
 .ov-status p { font-size: var(--t-sm); color: var(--muted); }
 
 /* data health */
-.health .tile-title { display: inline-flex; align-items: center; gap: 8px; }
+.health .tile-title { display: flex; align-items: center; gap: 8px; }
 .health .tile-title svg { width: 17px; height: 17px; color: var(--good); }
 .health-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; }
 .health-list li { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; font-size: var(--t-sm); padding: 8px 0; border-top: 1px solid var(--border); }

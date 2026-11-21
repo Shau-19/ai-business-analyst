@@ -15,6 +15,7 @@ unparseable values) are reported, not altered.
 """
 
 import difflib
+import html
 import re
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
@@ -170,6 +171,20 @@ def _normalize_categories(col: pd.Series, name: str) -> Optional[Tuple[pd.Series
         it = iter(long)
         return len(short) >= 3 and short[0] == long[0] and all(ch in it for ch in short)
 
+    def one_letter_swap(short, long):
+        # "Finanse" → "Finance": same length, one letter differs, inside a
+        # real word. "Class A" / "Class B" and "Grade 10" / "Grade 11" differ
+        # in a short or numeric token, which is a different value, not a typo.
+        if len(short) != len(long) or len(short) < 6 or short[0] != long[0]:
+            return False
+        diffs = [i for i, (x, y) in enumerate(zip(short, long)) if x != y]
+        if len(diffs) != 1 or not (short[diffs[0]].isalpha() and long[diffs[0]].isalpha()):
+            return False
+        i = diffs[0]
+        start, end = short.rfind(" ", 0, i) + 1, short.find(" ", i)
+        token = short[start:end if end != -1 else len(short)]
+        return len(token) > 2 and not token.isdigit()
+
     merges = {}
     top = counts.iloc[0]
     for k, c in counts.items():
@@ -179,7 +194,7 @@ def _normalize_categories(col: pd.Series, name: str) -> Optional[Tuple[pd.Series
         best = None
         for t in candidates:
             ratio = difflib.SequenceMatcher(None, k, t).ratio()
-            if (is_subsequence(k, t) and ratio >= 0.7) or ratio >= 0.9:
+            if (is_subsequence(k, t) and ratio >= 0.7) or ratio >= 0.9 or one_letter_swap(k, t):
                 if best is None or ratio > best[1]:
                     best = (t, ratio)
         if best:
@@ -262,10 +277,18 @@ def clean_frame(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     df.columns = [str(c).strip() for c in df.columns]
     report: Dict[str, Any] = {"rows_in": int(len(df)), "columns": []}
 
-    # Trim whitespace in text cells before looking for duplicates
+    # Trim whitespace in text cells before looking for duplicates, and decode
+    # HTML entities that scraped exports carry ("it&#39;s", "R&amp;D").
+    def tidy(v):
+        if not isinstance(v, str):
+            return v
+        if "&" in v and ";" in v:
+            v = html.unescape(v)
+        return v.strip()
+
     for c in df.columns:
         if df[c].dtype == object:
-            df[c] = df[c].map(lambda v: v.strip() if isinstance(v, str) else v)
+            df[c] = df[c].map(tidy)
     # Identical rows are only provably duplicates when the file has a key
     # (an order/customer ID that is unique once repeats are dropped). In a
     # log without one, two identical rows can be two real sales; removing

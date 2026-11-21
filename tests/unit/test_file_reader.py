@@ -68,3 +68,21 @@ def test_excel_file(tmp_path):
     p = tmp_path / "f.xlsx"
     pd.DataFrame({"Name": ["Chloé", "Asha"], "Sales": [10, 20]}).to_excel(p, index=False)
     assert read(str(p))["Sales"].tolist() == [10, 20]
+
+
+def test_headers_only_csv_is_reported_not_imported(tmp_path, tmp_db):
+    p = tmp_path / "headers_only.csv"
+    p.write_text("Region,Revenue\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="no data rows"):
+        HybridCSVProcessor(tmp_db).process_file(str(p), "abc12345")
+
+
+def test_scanned_pdf_without_text_is_reported(tmp_path):
+    from reportlab.pdfgen import canvas
+    from parsers.document_parser import DocumentParser
+    p = tmp_path / "scan.pdf"
+    c = canvas.Canvas(str(p))
+    c.rect(50, 50, 200, 200, fill=1)
+    c.save()
+    with pytest.raises(ValueError, match="no readable text"):
+        DocumentParser.parse_pdf(str(p))

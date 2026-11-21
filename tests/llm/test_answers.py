@@ -89,7 +89,8 @@ def test_why_question_finds_the_cause(http, messy_cid):
     assert d["success"] and d["routing"] == "analysis", d.get("routing")
     t = text_of(d)
     assert t.startswith("**West has the lowest average customer rating")
-    assert "report a problem" in t and "of the gap" in t
+    assert "mention" in t and "of the gap" in t
+    assert any(w in t for w in ("damaged", "cracked", "complained", "wrong"))
     assert d["plot"]["x"][0] == "West"
     for word in ("SQL", "the document"):
         assert word not in t

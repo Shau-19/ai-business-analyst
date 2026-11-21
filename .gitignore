@@ -220,3 +220,5 @@ evaluation/datasets/*.xlsx
 !evaluation/results_report.txt
 !README.md
 !requirements.txt
+# public datasets for tests/realdata (python tests/realdata/fetch.py)
+tests/realdata/data/
